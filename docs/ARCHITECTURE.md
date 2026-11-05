@@ -173,7 +173,7 @@ flowchart TD
 | --- | --- |
 | 模型来源、revision、本地权重和配置 | model-prepare 固定资产身份；客户入口核对 Agent 对仓库与本地模型的身份复核证据，一致后复用；precheck、adapt、register、verify 消费实际产物 |
 | 客户 model.model_name | 同一名称用于任务记录、展示、vLLM 服务名及功能/精度 API model；客户输入不兼容旧 served_model_name；原生 vLLM 字段由新名称生成 |
-| 镜像、目标版本与运行载体 | image-prepare 与迁移任务分别核对资产、代码和运行环境，不能只靠镜像 tag 判断 |
+| 镜像、目标版本与运行载体 | 客户缺省镜像由准备阶段的 `operation=image` 选版。客户入口核对配方并将选中的身份写入准备请求，image-prepare 核验本地镜像或按平台 digest 拉取，迁移任务核对代码和运行环境。见[缺省镜像契约](../skills/vllm-model-migration/references/customer-task.md#缺省镜像选择) |
 | 目标主机、设备、端口、TP、启动参数 | verify-agent 按本次明确请求执行；示例数字和历史服务器配方不是通用默认值 |
 | 数据来源、split/subset、样本范围 | dataset-prepare 固定数据身份；精度任务使用一致的选择与评分配置 |
 | 评测解释器、backend、版本及配置 | 客户 EvalScope 继承安装选择、固定首次成功版本，本次开关不继承；已有绑定先只读核验，每次有效正式准备仍调用原版脚本；精度核验原生配置与结果，AISBench/资产 SDK 保持原流程 |
