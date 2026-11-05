@@ -3,7 +3,7 @@ from pathlib import Path
 import re
 from urllib.parse import urlsplit
 
-FIELDS = {'source', 'reference', 'archive', 'archive_sha256', 'expected_image_id', 'expected_digest',
+FIELDS = {'source', 'reference', 'archive', 'archive_sha256', 'expected_image_id', 'expected_digest', 'expected_index_digest',
           'platform', 'hardware', 'recipe', 'timeout_seconds'}
 
 
@@ -78,12 +78,18 @@ def normalize_request(value, base=None):
     return result
 
 
-def normalize_identity(result, base):
-    for name in ('expected_image_id', 'expected_digest'):
+def validate_expected_digests(result):
+    for name in ('expected_image_id', 'expected_digest', 'expected_index_digest'):
         if name in result:
             digest(result[name])
     if not {'expected_image_id', 'expected_digest'} & result.keys():
         raise ValueError('必须提供 expected_image_id 或 expected_digest 固定资产身份')
+    if 'expected_index_digest' in result and result['source'] != 'registry':
+        raise ValueError('expected_index_digest 仅适用于 registry 来源')
+
+
+def normalize_identity(result, base):
+    validate_expected_digests(result)
     if result['source'] == 'tar':
         normalize_archive(result, base)
     elif {'archive', 'archive_sha256'} & result.keys():

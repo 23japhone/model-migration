@@ -8,6 +8,7 @@
 | `reference` | 复用/registry 必填；显式 tag、digest 或完整 image ID；不能隐式使用 latest，显式 latest 也必须用预期身份固定。registry 必须为 repository 引用；tar 若提供引用，须等于预期 ID 或归档已有标签 |
 | `expected_image_id` | 完整 `sha256:` 加 64 位小写摘要；tar 必填 |
 | `expected_digest` | repository digest，格式同上；registry 必填。包含 digest 的 reference 必须与其相同 |
+| `expected_index_digest` | registry 可选。多架构标签的索引摘要；`expected_digest` 仍固定目标平台的子 manifest。客户缺省流程从同一次 Quay 镜像发现取得两者 |
 | `archive` | tar 的 Docker save 文件路径；不支持 docker export 或任意 OCI 归档 |
 | `archive_sha256` | tar 可选的 64 位小写文件摘要；与 image ID 分别检查 |
 | `platform` | Linux 目标平台，支持 arm64、amd64 及显式 variant；arm64 与 arm64/v8 可对应；同时核对所连 daemon 架构 |
@@ -15,7 +16,9 @@
 | `recipe` | 必须包含 `source_ref`、`vllm`、`vllm_ascend`、`hardware_families`、`evidence`；上游 repository 为 vLLM-Ascend 镜像，两个版本必须明确；目标系列须在适用列表内；资料为 HTTPS 链接。脚本只检查结构与条件，不浏览资料或验证安装依赖 |
 | `timeout_seconds` | Docker 单个命令等待时间，1—3600 秒，默认 600；超时后 daemon 状态需要复核 |
 
-至少提供一种预期镜像身份。已有引用存在但身份或平台冲突，直接失败，不用 pull 覆盖它。registry 缺失时按 `repository@expected_digest` 拉取，输出实际 ID 和 RepoDigests；原始 tag 未必在本次被创建。Docker daemon 使用环境既有 context，实际名称和 ID 记录在清单中，不能将本地 CLI 所在主机当成 daemon 主机。
+至少提供一种预期镜像身份。已有引用存在但身份或平台冲突，直接失败，不用 pull 覆盖它。registry 的 tag 缺失时继续按固定的平台 digest 和可选索引 digest 查本地缓存，确认各引用均缺失才按平台 digest 拉取。输出记录实际 ID 和 RepoDigests；按 digest 拉取可以只留下 digest 引用。Docker daemon 使用环境既有 context，实际名称和 ID 记录在清单中，不能将本地 CLI 所在主机当成 daemon 主机。
+
+按多架构 tag 提前拉取时，本地 RepoDigests 可能只记录索引摘要。若该摘要与 `expected_index_digest` 匹配，镜像任务读取固定索引的 manifest，核对目标平台唯一子 manifest 的 digest，以及其 config digest 与本地 image ID。核对通过后直接复用，在资产回执保留映射证据和 Docker 实际返回的 RepoDigests；索引、平台或内容冲突时停止。
 
 ## 归档检查
 

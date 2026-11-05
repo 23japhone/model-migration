@@ -4,6 +4,7 @@ import shutil
 import subprocess
 
 from .archive import file_digest, inspect_archive
+from . import index_manifest
 
 
 def repository(ref):
@@ -14,7 +15,7 @@ def repository(ref):
 
 
 class Docker:
-    """命令调用只涉及 info、image inspect、pull 和 load。"""
+    """只读检查 daemon、镜像和固定 manifest；按请求执行 pull 或 load。"""
 
     def __init__(self, timeout, journal):
         self.executable = shutil.which('docker')
@@ -54,7 +55,7 @@ class Docker:
         return {name: info.get(name) for name in ('Name', 'ID', 'OSType', 'Architecture', 'ServerVersion')}
 
 
-def image_identity(record, request):
+def image_identity(record, request, proof=None):
     actual = record.get('Id')
     from .request import digest
     digest(actual)
@@ -70,10 +71,20 @@ def image_identity(record, request):
     tags = record.get('RepoTags') or []
     if not isinstance(digests, list) or not isinstance(tags, list):
         raise ValueError('Docker 镜像标签或 RepoDigests 格式无效')
-    matched = verify_source(digests, request)
+    checked = verified_digests(digests, actual, proof)
+    matched = verify_source(checked, request)
     return {'image_id': actual, 'platform': platform, 'repo_tags': tags, 'repo_digests': digests,
             'size': record.get('Size'), 'source_ref': request['recipe']['source_ref'],
             'source_status': 'registry_record' if matched else 'declared_recipe', 'recipe': request['recipe']}
+
+
+def verified_digests(digests, image_id, proof):
+    if proof is None:
+        return digests
+    if proof['reference'] not in digests or proof['config_digest'] != image_id:
+        raise ValueError('已核验的 index 或本地镜像身份在复查期间变化')
+    repo = repository(proof['reference'])
+    return [*digests, repo + '@' + proof['manifest_digest']]
 
 
 def verify_source(digests, request):
@@ -128,15 +139,25 @@ def prepare_registry(request, docker):
     ref = request['reference']
     existing = docker.inspect(ref, missing_ok=True)
     if existing is not None:
-        image_identity(existing, request)
-        return existing, 'reused'
+        return existing, 'reused', ref
     if request['source'] == 'reuse':
         raise ValueError('请求复用的镜像在目标 Docker 中不存在')
     if '/' not in ref or ref.startswith('sha256:'):
         raise ValueError('registry 来源必须使用明确的 registry/repository 引用')
-    pinned = repository(ref) + '@' + request['expected_digest']
+    repo = repository(ref)
+    pinned = repo + '@' + request['expected_digest']
+    candidates = [pinned]
+    index = request.get('expected_index_digest')
+    if index and index != request['expected_digest']:
+        candidates.append(repo + '@' + index)
+    for candidate in candidates:
+        if candidate == ref:
+            continue
+        cached = docker.inspect(candidate, missing_ok=True)
+        if cached is not None:
+            return cached, 'reused', candidate
     docker.invoke(['image', 'pull', '--platform', request['platform'], pinned])
-    return docker.inspect(pinned), 'pulled'
+    return docker.inspect(pinned), 'pulled', pinned
 
 
 def prepare_image(request, docker):
@@ -144,14 +165,19 @@ def prepare_image(request, docker):
     check_daemon(daemon, request)
     if request['source'] == 'tar':
         record, operation, archive = prepare_tar(request, docker)
+        ref = request.get('reference')
     else:
-        record, operation = prepare_registry(request, docker)
+        record, operation, ref = prepare_registry(request, docker)
         archive = None
-    asset = image_identity(record, request)
+    proof = None
+    if operation == 'reused' and request.get('expected_index_digest'):
+        proof = index_manifest.inspect_cache(docker, record, request, repository(request['reference']))
+    asset = image_identity(record, request, proof)
+    if proof:
+        asset['index_manifest'] = proof
     stable = docker.inspect(asset['image_id'])
-    if image_identity(stable, request)['image_id'] != asset['image_id']:
+    if image_identity(stable, request, proof)['image_id'] != asset['image_id']:
         raise ValueError('镜像在核验期间变化')
-    ref = request.get('reference')
     if operation == 'reused' and ref:
         selected = docker.inspect(ref, missing_ok=True)
         if selected is None or selected.get('Id') != asset['image_id']:

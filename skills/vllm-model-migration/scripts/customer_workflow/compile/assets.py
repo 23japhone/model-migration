@@ -2,6 +2,7 @@
 import copy
 from pathlib import Path
 from coordination.runtime import sources
+from ..defaults.image import image_request
 
 
 def preparation(task, observations, session):
@@ -9,10 +10,7 @@ def preparation(task, observations, session):
     explicit = task['model']['path']
     if isinstance(explicit, str) and Path(model['path']).resolve() != Path(explicit).resolve():
         raise ValueError('模型解析结果改变了客户显式路径')
-    image = copy.deepcopy(observations['image_request'])
-    selected_image = task['environment']['image_name']
-    if isinstance(selected_image, str) and image['reference'] != selected_image:
-        raise ValueError('镜像解析结果改变了客户显式镜像')
+    image = image_request(task, observations, session)
     tasks = {}
     for name, request in (('model', model), ('image', image)):
         ref = session.artifact('prepare-' + name, request)

@@ -15,7 +15,7 @@
 | model.model_repository_id | namespace/repository | 仅在找到完整可用本地权重时允许 |
 | model.path | 权重绝对路径 | 查实际配置的 ModelScope/Hugging Face 缓存；多候选要求明确路径 |
 | model.model_name | 非空模型名称，统一用于任务记录、结果标识、展示、vLLM 服务名及 API model | 按下述模型来源与配置规则解析 |
-| environment.image_name | 明确 tag/digest/image ID | 首次解析官方稳定发布与目标平台身份，冻结后不重选 |
+| environment.image_name | 明确 tag/digest/image ID | 按[缺省镜像选择](#缺省镜像选择)从官方 Quay 选择最高基础版本，冻结选中的标签和目标平台 digest |
 | environment.container_name | 合法 Docker 名称，最长 101 字符 | 根据最终 model_name 生成合法且稳定的名称 |
 | environment.available_npu_devices | 本任务允许使用的 NPU 范围；非空、唯一、非负整数列表 | 当前执行主机实际发现的全部 NPU 候选池；不等于固定 TP |
 | accuracy.evaluator | evalscope / aisbench，大小写不敏感 | evalscope；每次准备调用共用环境安装脚本，绑定实际版本 |
@@ -72,7 +72,13 @@ subset_list 的 -1 不控制题数。limit 为正整数 N 时取 test.jsonl 的�
 
 客户名称进入 vLLM 的 `--served-model-name`、功能验证及精度请求的 API `model`，并保存在客户记录中；下游 vLLM 配置的 `served_model_name` 等原生字段不改名。旧 task 和旧结构回执拒绝续接；请按新模板建立新任务。原输入和历史回执不回写，不继承“本地权重覆盖仓库 ID”的旧结论。
 
-镜像显式本地身份可复用；远程拉取固定 digest。官方版本/硬件兼容性由 Agent 阅读原资料并附证据，不因 tag 名自动判断通过。驱动、CANN、Docker 等系统条件缺失时报告阻塞，不自动安装。
+### 缺省镜像选择
+
+当 `environment.image_name` 缺失、为 `null` 或整数 `-1`，且 prompt 也未指定镜像时，正式流程从[官方 Quay 镜像仓库](https://quay.io/repository/ascend/vllm-ascend?tab=tags)分页读取有效标签。仅比较 `vX.Y.Z`、`vX.Y.Z.postN`、`vX.Y.ZrcN` 三种基础镜像。先按数字选最高的 `X.Y.Z`，再在这一版本内依次优先最高编号的修订版、正式版、最高编号的候选版。例如，同时存在 `v0.30.0`、`v0.31.0rc2` 和 `v0.31.0rc10` 时选 `v0.31.0rc10`；新任务在 `v0.31.0` 发布后选正式版，随后有 `v0.31.0.post1` 时选修订版。
+
+需要 A3、310P、openEuler 等变体时显式填写完整镜像引用。模板中的具体 tag 也是显式选择；希望使用上述默认值时可删除该字段。Agent 根据选中镜像、目标硬件和官方资料核验配方及兼容性。
+
+同一任务续接沿用已选标签，已取得目标平台 digest 后也固定该 digest。目标 Docker 中匹配的镜像可直接复用，确认缺失才按 digest 拉取。标签列表不完整、平台无法唯一匹配或已有同名镜像身份冲突时，该步报告阻塞或失败，保留现场，不自动降级。
 
 ### EvalScope 环境准备
 

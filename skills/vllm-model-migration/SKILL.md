@@ -21,6 +21,8 @@ EvalScope 输出达到已配置上限时，由 [verify-agent-plus](skills/vllm-p
 
 prompt 对数据集内部补值仍使用 accuracy.datasets 列表：与 JSON 的名称序列一致，逐字段补齐 path/subset_list/limit；不修改的条目只写 name，明确值冲突集中确认。不新增索引路径、不合并子集列表、不改变显式数据集选择。完整规则与示例见[数据集补值](references/customer-task.md#prompt-补齐数据集字段)。
 
+缺省镜像由正式流程按[Quay 基础镜像选版规则](references/customer-task.md#缺省镜像选择)解析，Agent 依据选中镜像补齐官方配方。需要 A3、310P 或 openEuler 等变体时显式提供完整镜像名。
+
 1. 理解 prompt，确定完整部署意图及显式条件。部署并精度、部署并性能、部署并精度与性能三种意图都执行完整流程。`model.model_name` 统一作为任务记录、结果标识、展示和 API 服务调用名，由它生成 vLLM `--served-model-name`、功能验证及精度请求的 API `model`。prompt/JSON 冲突集中询问；仓库 ID 与本地路径同时提供时，按来源证据核对身份，一致后复用完整本地权重，冲突时先确认，不自动覆盖或重新下载。
 2. 用 `migrate.py --task ... --plan` 先做无外部效果的 JSON 校验；计划不读取 context、尚未合成 prompt，不能将预览后端当成最终选择。执行时先合成明确 prompt，再应用默认，环境边界与消费者共享同一结果。最终选择 AISBench 须在执行前说明本轮只支持精度执行，不支持三文件交付，不自动切换工具。
 3. Agent 在包外生成 context，绑定 task.json 摘要、意图及实际证据。每次有效正式准备调用原版 install_evalscope.py；首次默认共享 /data/evalscope-venv，续接省略 evalscope_install 时继承环境并固定首次成功版本，操作开关不继承。已有绑定先只读核验，配置变更或实际漂移在安装前拦截，详见[安装契约](references/evalscope-installation.md)。安装帮助/预览独立记录并停止业务执行；正式环境阻塞仍继续独立资产步骤。使用各所有者的公开入口补齐模型、镜像、版本配方、硬件、原生数据与 token 长度，不要求客户补写内部配置。
