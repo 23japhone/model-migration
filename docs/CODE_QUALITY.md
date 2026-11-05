@@ -9,7 +9,7 @@
 | 所有者 | 责任及内部边界 | 允许的跨边界依赖 |
 | --- | --- | --- |
 | 总入口 `vllm-model-migration` | `coordination` 保留旧编排；`customer_workflow` 归一化客户输入、逐步编译请求与续接；`tuning_handoff` 生成、核验并发布三文件 | 阶段公开 CLI、固定结果和契约 |
-| 客户默认解析 | customer_workflow/defaults 的 policy 拥有纯默认规则，model/devices 拥有证据解析，state 拥有逐项冻结；不在输入校验中读取模型或探测设备 | 当前客户模型身份门禁、既有 effects 公开委托、coordination 证据；不导入兄弟 Skill 私有模块 |
+| 客户默认解析 | customer_workflow/defaults 的 policy 拥有纯默认规则，model/devices 拥有证据解析，image 绑定准备阶段返回的镜像身份，previous_image 核验旧任务冻结请求，state 拥有逐项冻结 | 当前客户模型身份门禁、既有 effects 公开委托、coordination 证据；Quay 选版和 Docker 缓存核验分别归准备阶段和镜像任务，见[验证记录](TESTING.md#2026-11-05-客户缺省镜像) |
 | 准备阶段与三个准备任务 | 阶段选择资产和复核回执；任务分别拥有模型、镜像、数据获取与校验 | 固定任务 CLI；总入口共享静态资源 |
 | 迁移阶段与四个任务 | 阶段按路线委托；precheck 判路线，adapt 管源码适配，register 管注册，verify 管载体与功能验证 | 固定任务 CLI 和交接；注册载体检查使用 register 公开入口 |
 | 精度阶段与精度任务 | 阶段组织依赖和汇总；verify-agent-plus 拥有评测、原生结果和历史分析 | 准备/部署公开入口、已有交接；评测 SDK 在指定任务环境中使用 |

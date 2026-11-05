@@ -10,6 +10,7 @@ from .compile import assets, accuracy, deployment
 from .delivery import deliver
 from .invoke import execute
 from .defaults import model as default_model, devices as default_devices, state as default_state
+from .defaults import image as default_image
 from .defaults.policy import pending
 from .evaluation.datasets import bind_prepared, reusable_request
 
@@ -178,7 +179,7 @@ def complete(session, task, observations, supplied, work_root, jobs):
 
 
 def discover(session, task, observations, work_root, install=None):
-    """环境与模型各记台账，单项失败不跳过另一项发现。"""
+    """环境、模型与缺省镜像各记台账，单项失败不阻止其他发现。"""
     observations.pop('evaluator', None)
     environment = guarded(session, 'environment', lambda: effects.evaluator(
         session, task, work_root, install))
@@ -195,6 +196,7 @@ def discover(session, task, observations, work_root, install=None):
             observations['model_resolution'] = resolved
     if observations.get('model_resolution', {}).get('asset_python'):
         observations['asset_python'] = observations['model_resolution']['asset_python']
+    guarded(session, default_image.STEP, lambda: default_image.discover(session, task, observations, work_root))
 
 
 def workflow(session, task, supplied, work_root, install):

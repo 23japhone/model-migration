@@ -58,6 +58,7 @@
 - 数据路径不存在时，Agent 查阅官方来源，优先读取有依据的默认本地位置；可用则复用，默认位置缺失或未提供时下载到客户指定路径。已有坏数据保留并报错，用户无需增加字段；详见[数据来源选择](skills/vllm-model-migration/skills/vllm-migration-prepare/skills/vllm-dataset-prepare/references/contract.md#指定路径缺失时的来源选择)。
 - `environment` 使用 `image_name`、`container_name`、`available_npu_devices`。设备列表限定允许范围，优先选择满足逐卡预算的全空闲组合；不足时允许共享占用卡，共享组合中每张卡额外预留剩余显存的5%。选卡不要求用满列表，也不代表性能最优 TP，详见[共享部署契约](skills/vllm-model-migration/references/customer-observations.md#空闲优先与共享部署)。EvalScope 默认安装到共享 /data/evalscope-venv，安装选项仅放在可选内部 context，见[共用环境契约](skills/vllm-model-migration/references/evalscope-installation.md)。
 - prompt 与 JSON 显式值有冲突时先澄清。客户无需手写内部阶段请求、评测命令或压测负载。
+- 模板的 `image_name` 固定了示例镜像。希望自动选版时删除该字段、填 `null` 或整数 `-1`。流程在官方 Quay 的最高基础版本中优先选正式发布（含修订版），仅有 RC 时选编号最大的 RC。A3 等变体需明确填写。[缺省镜像选择](skills/vllm-model-migration/references/customer-task.md#缺省镜像选择)
 
 完整字段和默认行为见[客户输入契约](skills/vllm-model-migration/references/customer-task.md)。
 

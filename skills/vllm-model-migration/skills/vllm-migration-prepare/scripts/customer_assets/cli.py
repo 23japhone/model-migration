@@ -38,6 +38,14 @@ def perform(value, parent, attempt):
     return image.resolve(value['reference'], value['platform'], attempt)
 
 
+def failure_report(error):
+    report = {'status': 'failed' if isinstance(error, KeyboardInterrupt) else 'blocked', 'reason': safe_text(error)}
+    state = getattr(error, 'selection_frozen', None)
+    if type(state) is bool:
+        report['selection_frozen'] = state
+    return report
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--request', type=Path, required=True)
@@ -69,7 +77,7 @@ def main():
         print(json.dumps({**report, 'manifest': str(attempt / 'resolution.json')}, ensure_ascii=False))
         return 0
     except (OSError, ValueError, RuntimeError, KeyError, TypeError, KeyboardInterrupt, subprocess.TimeoutExpired) as error:
-        report = {'status': 'failed' if isinstance(error, KeyboardInterrupt) else 'blocked', 'reason': safe_text(error)}
+        report = failure_report(error)
         if attempt is not None:
             report['manifest'] = str(attempt / 'resolution.json')
             write_json(attempt / 'resolution.json', report)

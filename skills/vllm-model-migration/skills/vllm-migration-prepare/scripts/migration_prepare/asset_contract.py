@@ -77,13 +77,12 @@ def image_source(asset, request):
     source = request['recipe']['source_ref']
     if asset.get('source_ref') != source:
         raise ValueError('镜像来源声明与本次配方不一致')
-    digests = asset.get('repo_digests')
-    if not isinstance(digests, list) or any(not isinstance(x, str) for x in digests):
-        raise ValueError('镜像清单的 RepoDigests 无效')
     reference = request.get('reference', source)
     if reference.startswith('sha256:'):
         reference = source
-    if request.get('expected_digest') and repository(reference)+'@'+request['expected_digest'] not in digests:
+    repo = repository(reference)
+    digests = verified_image_digests(asset, request, repo)
+    if request.get('expected_digest') and repo+'@'+request['expected_digest'] not in digests:
         raise ValueError('镜像 repository digest 与本次请求不一致')
     origins = [d for d in digests if d.startswith(repository(source)+'@sha256:')]
     if '@' in source and origins and source not in origins:
@@ -91,6 +90,22 @@ def image_source(asset, request):
     expected = 'registry_record' if origins else 'declared_recipe'
     if asset.get('source_status') != expected:
         raise ValueError('镜像来源证明声明与 RepoDigests 不一致')
+
+
+def verified_image_digests(asset, request, repo):
+    digests = asset.get('repo_digests')
+    if not isinstance(digests, list) or any(not isinstance(x, str) for x in digests):
+        raise ValueError('镜像清单的 RepoDigests 无效')
+    if 'index_manifest' not in asset:
+        return digests
+    if request.get('source') != 'registry' or not request.get('expected_index_digest') or asset.get('operation') != 'reused':
+        raise ValueError('索引证明未绑定到本次 registry 缓存复用')
+    index = repo + '@' + request['expected_index_digest']
+    proof = {'reference': index, 'manifest_digest': request['expected_digest'],
+             'platform': request['platform'], 'config_digest': asset['image_id']}
+    if index not in digests or asset['index_manifest'] != proof:
+        raise ValueError('索引证明与实际 RepoDigests、平台 manifest 或配置身份不一致')
+    return [*digests, repo + '@' + request['expected_digest']]
 
 
 def dataset_contract(asset, request):

@@ -26,7 +26,7 @@ prompt_fields 必须为对象，只使用 `model.model_name`、`model.path`、`e
 | --- | --- | --- |
 | 准备 `skills/vllm-migration-prepare/scripts/customer.py` | operation=environment，packages 字符串列表；续接用 versions 映射 | 任务 venv 的 python、实际版本、完整依赖冻结回执；失败后不修改系统环境 |
 | 同上 | operation=evalscope_environment，可选 install 对象对应 context.evalscope_install | 每次调用原版安装脚本；返回 python、venv、evalscope_executable、versions.evalscope 与内部 performance_handoff；帮助/预览为 not_run |
-| 同上 | operation=image，reference 为客户镜像值（含 -1），platform 为实际 linux/arm64 或 linux/amd64 | 官方稳定发布或明确镜像的冻结身份；本地明确镜像可复用 |
+| 同上 | operation=image，reference 为客户镜像值（含 -1），platform 为目标 Linux 镜像平台 | 缺省时从 Quay 基础标签选版并冻结平台 digest；明确镜像可按本地身份复用 |
 | 模型 `skills/vllm-migration-prepare/skills/vllm-model-prepare/scripts/resolve.py` | `--model` 引用包含客户 model 三字段的对象；也接受 --request 别名 | 本地完整性与身份待复核候选，或明确远程仓库及固定 revision；不下载 |
 | 部署 `skills/vllm-migration-execute/skills/verify-agent/scripts/customer.py` | operation=observe，host、port，可选 container_name、capacity=true | 本机检查、空闲端口、NPU 原始表、CPU/内存、同名容器精确身份及 status/running；容量模式另生成结构化设备和来源证据 |
 | 同上 | operation=image，image_id，可选 python | 无 NPU 短容器采集安装包版本、源码快照和摘要；只清理本次身份可证的探测容器 |
@@ -50,7 +50,10 @@ environment 操作只供显式 AISBench 和资产 SDK 使用，不能安装 Eval
 ### 模型、镜像和官方支持资料
 
 - `model_resolution` 为公开模型 resolver 的 result；通常由 runner 自动生成。本地完整性不证明与指定仓库身份一致；存在仓库 ID 时按下节复核。远程权重需要先按 resolver 的固定请求执行模型准备，取得真实 config、文件清单和权重大小后规划部署。
-- `image_request` 使用原 image-prepare 公开契约：source/reference/platform、固定 expected_image_id 或 expected_digest、hardware 和官方 recipe。image helper 的 release_url 等发现元数据留在 evidence，不原样混入请求。明确镜像请求需保留客户原 reference。
+- 缺省镜像由客户入口根据 `target.platform` 调用准备阶段的 `operation=image`，以 `image_resolution` 回执中的标签和平台 digest 生成准备请求。Quay 标签的 `tag_manifest_digest` 在准备请求中对应 `expected_index_digest`，目标平台的 `expected_digest` 用于拉取。若 Agent 填写 `expected_image_id`，必须能用所选平台 manifest 的 `config.digest` 核实，否则在拉取前阻塞。
+- Agent 提供 `target`、官方资料和 `image_request.recipe`，硬件可沿用 `target.hardware`。已有完整 `image_request` 的身份字段须与选择一致，配方须指向选中的镜像并与目标版本匹配。发生冲突时根据回执补正资料，再续接同一任务。Quay 标签分页和资料链接留在发现证据中。
+- 显式镜像继续提交完整的 `image_request`，保留客户原 reference，使用原 image-prepare 契约的 source、platform、固定身份、hardware 和官方 recipe。
+- 同任务续接先读原选择回执。若上次镜像发现失败，`selection_frozen=false` 表示当时尚未选中标签，允许订正平台；已冻结或无法证实冻结状态时保留原平台。升级前已执行过镜像子任务的续接依据原阶段和镜像子回执恢复可核实的固定请求，再由镜像任务核验本机资产。旧证据不足时提示建立新 run-id。
 - `target` 与 `version_review` 使用准备阶段原契约；版本必须匹配实际镜像包，硬件适配结论来自官方版本资料。image helper 不替 Agent 宣告兼容。
 - 旧 evaluator_candidates 已移除；安装选项放在顶层可选 evalscope_install，不增加客户 task.json 字段。
 - `evaluator` 由本次安装回执填入实际 python/version；不沿用旧观察。`asset_python` 可提供独立资产 SDK 解释器，未提供则先用控制 Python；最终采用 resolver 返回的解释器。本地权重不等待评测环境，资产准备保持独立。
