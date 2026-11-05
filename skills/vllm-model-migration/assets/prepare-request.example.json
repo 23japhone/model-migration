@@ -1,0 +1,7 @@
+{
+  "purpose": "assets",
+  "tasks": {
+    "model": {"request": "model.json", "required": true},
+    "dataset": {"request": "dataset.json", "required": true}
+  }
+}

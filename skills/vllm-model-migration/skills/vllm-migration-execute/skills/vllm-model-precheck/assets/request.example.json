@@ -1,0 +1,22 @@
+{
+  "model": {
+    "path": "/用户模型目录",
+    "task": "chat",
+    "modalities": ["text"],
+    "dtype": "bfloat16",
+    "quantization": null
+  },
+  "target": {
+    "backend": "vllm-ascend",
+    "vllm": "0.18.0",
+    "vllm_ascend": "0.18.0",
+    "platform": "linux/arm64",
+    "hardware": {"name": "Ascend910B4", "family": "Atlas A2"}
+  },
+  "sources": {
+    "vllm": {"path": "/目标版本/vllm源码", "revision": "bcf2be96120005e9aea171927f85055a6a5c0cf6"},
+    "vllm_ascend": {"path": "/目标版本/vllm-ascend源码", "revision": "e18643f8a4d5bd9990727654318ad069ea0b56e2"}
+  },
+  "reviews": [],
+  "features": ["eager"]
+}

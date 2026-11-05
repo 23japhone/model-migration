@@ -1,0 +1,7 @@
+{
+  "source": "local",
+  "path": "/data1/develop/models/Qwen/Qwen3.5-27B",
+  "scope": "full",
+  "task": "chat",
+  "modalities": ["text", "image"]
+}

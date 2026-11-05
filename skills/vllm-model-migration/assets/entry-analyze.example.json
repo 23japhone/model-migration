@@ -1,0 +1,12 @@
+{
+  "schema_version": "1.0",
+  "scope": "precision",
+  "stages": {
+    "precision": {
+      "request": {
+        "path": "/包外/historical-analysis.request.json",
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    }
+  }
+}

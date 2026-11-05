@@ -1,0 +1,34 @@
+"""注册一个明确的 lazy 映射；不加载模型、权重或服务。"""
+import sys
+
+REGISTRATION_STATE = None
+
+
+def _mapping(entry):
+    if entry is None:
+        return None
+    if hasattr(entry, 'module_name') and hasattr(entry, 'class_name'):
+        return entry.module_name, entry.class_name
+    cls = getattr(entry, 'cls', None)
+    if isinstance(cls, type):
+        return cls.__module__, cls.__name__
+    raise RuntimeError('已有注册条目无法核对，不允许覆盖')
+
+
+def register():
+    global REGISTRATION_STATE
+    from vllm import ModelRegistry
+
+    architecture = @@ARCHITECTURE@@
+    module = @@MODULE@@
+    class_name = @@CLASS_NAME@@
+    existing = ModelRegistry.models.get(architecture)
+    if existing is not None and _mapping(existing) != (module, class_name):
+        raise RuntimeError('已有 architecture 映射冲突，不允许覆盖')
+    before = module in sys.modules
+    action = 'reused'
+    if existing is None:
+        ModelRegistry.register_model(architecture, module + ':' + class_name)
+        action = 'registered'
+    REGISTRATION_STATE = {'architecture': architecture, 'action': action, 'lazy': True,
+                          'model_imported_before': before, 'model_imported_after': module in sys.modules}

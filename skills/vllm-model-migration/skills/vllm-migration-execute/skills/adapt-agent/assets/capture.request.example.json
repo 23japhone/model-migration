@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0",
+  "model": {
+    "root": "/包外/模型", "config": "config.json", "architecture": "ExampleForGeneration",
+    "modalities": ["text"], "weight_files": ["model.safetensors"],
+    "files": {
+      "config.json": "0000000000000000000000000000000000000000000000000000000000000000",
+      "model.safetensors": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  "target": {"vllm": "0.18.0", "vllm_ascend": "0.18.0"},
+  "precheck": {"path": "/包外/预检/precheck-manifest.json", "sha256": "0000000000000000000000000000000000000000000000000000000000000000"},
+  "sources": {
+    "vllm": {
+      "baseline": "/包外/基线/vllm", "working": "/包外/工作/vllm", "revision": "填写实际固定revision",
+      "origin": {"path": "/包外/来源/vllm-origin.json", "sha256": "0000000000000000000000000000000000000000000000000000000000000000"},
+      "allow": ["vllm/model_executor/models/example"]
+    }
+  },
+  "references": [{"path": "/包外/参考/model.py", "sha256": "0000000000000000000000000000000000000000000000000000000000000000"}],
+  "required_checks": ["forward-reference", "weight-loader"]
+}

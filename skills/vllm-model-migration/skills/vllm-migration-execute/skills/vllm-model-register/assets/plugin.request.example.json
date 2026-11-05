@@ -1,0 +1,9 @@
+{
+  "mode": "plugin",
+  "allowed_changes": ["plugin"],
+  "model": {"config": "/模型资产/config.json", "architecture": "ExistingForCausalLM"},
+  "implementation": {"module": "existing_model", "class_name": "ExistingForCausalLM", "path": "/已有实现/existing_model.py", "sha256": "0000000000000000000000000000000000000000000000000000000000000000"},
+  "target": {"vllm": "0.18.0", "vllm_ascend": "0.18.0", "registry_path": "/目标SDK/vllm/model_executor/models/registry.py", "registry_sha256": "0000000000000000000000000000000000000000000000000000000000000000"},
+  "runtime": {"python": "/目标环境/bin/python3", "import_roots": ["/目标SDK", "/已有实现", "/隔离plugin-site"], "plugins": ["ascend", "ascend_model_loader", "register_existing_model"], "timeout_seconds": 120, "context": "development"},
+  "plugin": {"project_root": "/隔离plugin-project", "install_site": "/隔离plugin-site", "name": "vllm_existing_model_plugin", "version": "0.1.0", "entrypoint": "register_existing_model"}
+}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Repo Context Loader"
+  short_description: "Read project rules before development"
+  default_prompt: "Use $repo-context-loader to read this repository context before planning or editing."

@@ -1,0 +1,122 @@
+{
+  "schema_version": "1.0",
+  "model": {
+    "name": "model-service",
+    "root": "/models/model",
+    "runtime_root": "/model",
+    "files": {
+      "config.json": "0000000000000000000000000000000000000000000000000000000000000000",
+      "model.safetensors": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "weight_files": [
+      "model.safetensors"
+    ],
+    "config": "config.json"
+  },
+  "runtime": {
+    "kind": "docker",
+    "python": "python",
+    "versions": {
+      "vllm": "实际版本",
+      "vllm-ascend": "实际版本"
+    },
+    "files": {
+      "/sdk/vllm/model_executor/models/registry.py": "0000000000000000000000000000000000000000000000000000000000000000",
+      "/sdk/vllm/model_executor/models/model.py": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "env": {
+      "ASCEND_VISIBLE_DEVICES": "0"
+    }
+  },
+  "service": {
+    "ownership": "owned",
+    "endpoint": "http://127.0.0.1:30080",
+    "retention": "keep",
+    "timeout_seconds": 600,
+    "weight_markers": [
+      "Loading weights took"
+    ],
+    "command": [
+      "python",
+      "-m",
+      "vllm.entrypoints.openai.api_server",
+      "--model",
+      "/model",
+      "--served-model-name",
+      "model-service",
+      "--dtype",
+      "bfloat16",
+      "--tensor-parallel-size",
+      "1",
+      "--max-model-len",
+      "4096",
+      "--enforce-eager",
+      "--host",
+      "127.0.0.1",
+      "--port",
+      "30080"
+    ],
+    "docker": {
+      "image_id": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "name": "model-service",
+      "devices": [
+        "/dev/davinci0",
+        "/dev/davinci_manager",
+        "/dev/devmm_svm",
+        "/dev/hisi_hdc"
+      ],
+      "mounts": [
+        {
+          "source": "/models/model",
+          "target": "/model",
+          "read_only": true
+        },
+        {
+          "source": "/usr/local/Ascend/driver",
+          "target": "/usr/local/Ascend/driver",
+          "read_only": true
+        },
+        {
+          "source": "/usr/local/dcmi",
+          "target": "/usr/local/dcmi",
+          "read_only": true
+        }
+      ],
+      "memory": "64g",
+      "shm_size": "8g",
+      "cpus": 8
+    }
+  },
+  "registration": {
+    "resources": "/work/resources/skills",
+    "request": "/work/registration-check.request.json"
+  },
+  "npu": {
+    "devices": [
+      0
+    ]
+  },
+  "required_features": [
+    "text"
+  ],
+  "cases": [
+    {
+      "id": "text",
+      "kind": "text",
+      "route": "/v1/completions",
+      "required": true,
+      "payload": {
+        "model": "model-service",
+        "prompt": "17+25=",
+        "temperature": 0,
+        "max_tokens": 16
+      },
+      "semantic": {
+        "mode": "exact",
+        "expected": [
+          "42"
+        ]
+      }
+    }
+  ]
+}

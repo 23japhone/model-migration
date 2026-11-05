@@ -1,0 +1,6 @@
+{
+  "schema_version": "1.0",
+  "datasets": {"selected-data": {"path": "/包外/dataset.request.json", "sha256": "0000000000000000000000000000000000000000000000000000000000000000"}},
+  "deployments": {"retained-service": {"path": "/包外/verify.request.json", "sha256": "0000000000000000000000000000000000000000000000000000000000000000"}},
+  "evaluations": [{"id": "npu-evaluation", "request": {"path": "/包外/precision-template.json", "sha256": "0000000000000000000000000000000000000000000000000000000000000000"}, "dataset": "selected-data", "deployment": "retained-service"}]
+}

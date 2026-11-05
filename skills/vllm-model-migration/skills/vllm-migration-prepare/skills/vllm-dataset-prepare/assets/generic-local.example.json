@@ -1,0 +1,15 @@
+{
+  "source": "local",
+  "recipe": "generic",
+  "path": "/用户指定数据根/data.jsonl",
+  "split": "test",
+  "format": "jsonl",
+  "required_fields": [
+    "question",
+    "answer"
+  ],
+  "selection": {
+    "offset": 0,
+    "limit": null
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "schema_version": "1.0",
+  "deployment": {
+    "path": "/包外/deployment/verification-manifest.json",
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "dataset": {
+    "path": "/包外/data/dataset-manifest.json",
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "evaluator": {
+    "python": "/包外/evaluator/bin/python",
+    "config": {
+      "path": "/包外/config/evaluation.py",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "timeout_seconds": 14400,
+    "backend": "aisbench"
+  },
+  "tasks": [
+    {
+      "dataset": "open-benchmark",
+      "model_abbr": "explicit-model",
+      "sample_ids": [
+        0,
+        1
+      ],
+      "metrics": {
+        "score": {
+          "path": [
+            "score"
+          ],
+          "unit": "percent",
+          "direction": "higher"
+        }
+      }
+    }
+  ],
+  "targets": []
+}

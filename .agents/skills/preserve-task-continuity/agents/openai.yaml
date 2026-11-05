@@ -1,0 +1,4 @@
+interface:
+  display_name: "Preserve Task Continuity"
+  short_description: "Continue independent work after local failures"
+  default_prompt: "Use $preserve-task-continuity to keep independent task steps running and report partial results."

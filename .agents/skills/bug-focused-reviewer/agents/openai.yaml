@@ -1,0 +1,4 @@
+interface:
+  display_name: "Bug Focused Reviewer"
+  short_description: "Review diffs for bugs, regressions, and risk"
+  default_prompt: "Use $bug-focused-reviewer to review the current diff for bugs and regressions."

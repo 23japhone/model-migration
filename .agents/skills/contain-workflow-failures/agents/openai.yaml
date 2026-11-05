@@ -1,0 +1,4 @@
+interface:
+  display_name: "Contain Workflow Failures"
+  short_description: "Keep local failures inside their owning branch"
+  default_prompt: "Use $contain-workflow-failures to prevent a local failure from aborting independent work."

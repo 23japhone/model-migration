@@ -1,0 +1,4 @@
+interface:
+  display_name: "Debugging Loop"
+  short_description: "Reproduce failures, isolate root cause, verify fixes"
+  default_prompt: "Use $debugging-loop to diagnose this failure before fixing it."

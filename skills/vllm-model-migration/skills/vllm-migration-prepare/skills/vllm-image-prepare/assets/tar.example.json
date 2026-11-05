@@ -1,0 +1,23 @@
+{
+  "source": "tar",
+  "expected_image_id": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "platform": "linux/arm64",
+  "hardware": {
+    "name": "Ascend910B4",
+    "family": "Atlas A2"
+  },
+  "recipe": {
+    "source_ref": "quay.io/ascend/vllm-ascend:v0.18.0",
+    "vllm": "0.18.0",
+    "vllm_ascend": "0.18.0",
+    "hardware_families": [
+      "Atlas A2"
+    ],
+    "evidence": [
+      "https://docs.vllm.ai/projects/ascend/en/v0.18.0/installation.html",
+      "https://docs.vllm.ai/projects/ascend/en/v0.18.0/community/versioning_policy.html"
+    ]
+  },
+  "archive": "/用户指定资产根/vllm-ascend.tar",
+  "archive_sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+}

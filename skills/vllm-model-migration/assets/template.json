@@ -1,0 +1,39 @@
+{
+  "model": {
+    "model_repository_id": "Qwen/Qwen3.5-27B",
+    "path": "/data1/Qwen3.5-27B",
+    "model_name": "Qwen3.5-27B"
+  },
+  "environment": {
+    "image_name": "quay.io/ascend/vllm-ascend:v0.20.2rc1",
+    "container_name": "vLLM_Qwen3.5-27B",
+    "available_npu_devices": [
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  "accuracy": {
+    "evaluator": "evalscope",
+    "datasets": [
+      {
+        "name": "ceval",
+        "path": "/data/ceval",
+        "subset_list": [
+          "accountant",
+          "advanced_mathematics"
+        ],
+        "limit": 15
+      },
+      {
+        "name": "gsm8k",
+        "path": "/data/gsm8k",
+        "subset_list": [
+          "default"
+        ],
+        "limit": 15
+      }
+    ]
+  }
+}

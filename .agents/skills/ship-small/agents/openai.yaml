@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ship Small"
+  short_description: "Prepare a verified slice for commit or PR"
+  default_prompt: "Use $ship-small to prepare this verified slice for commit or PR."

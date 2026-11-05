@@ -1,0 +1,4 @@
+interface:
+  display_name: "Maintainable Code Guardrails"
+  short_description: "Ratchet code complexity without fake abstractions"
+  default_prompt: "Use $maintainable-code-guardrails to make this change without worsening structure or complexity."

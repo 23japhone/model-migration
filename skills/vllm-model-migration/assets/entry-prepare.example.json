@@ -1,0 +1,12 @@
+{
+  "schema_version": "1.0",
+  "scope": "prepare",
+  "stages": {
+    "preparation": {
+      "request": {
+        "path": "/包外/prepare.request.json",
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    }
+  }
+}

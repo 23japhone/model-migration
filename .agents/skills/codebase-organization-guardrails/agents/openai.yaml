@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codebase Organization Guardrails"
+  short_description: "Keep touched code in clear module boundaries"
+  default_prompt: "Use $codebase-organization-guardrails to place this change within clear module boundaries."

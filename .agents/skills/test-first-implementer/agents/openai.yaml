@@ -1,0 +1,4 @@
+interface:
+  display_name: "Test First Implementer"
+  short_description: "Implement approved slices with failing checks first"
+  default_prompt: "Use $test-first-implementer to implement this approved vertical slice with failing checks first."

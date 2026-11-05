@@ -1,0 +1,25 @@
+{
+  "service": {
+    "base_url": "",
+    "model": "",
+    "request_timeout_seconds": null
+  },
+  "tokenizer_path": "",
+  "benchmark": {
+    "concurrency": [],
+    "requests_per_run": null,
+    "warmup_requests": null,
+    "input_tokens": null,
+    "output_tokens": null,
+    "seed": null,
+    "enable_thinking": null,
+    "ignore_eos": null,
+    "timeout_seconds": null
+  },
+  "output_dir": "../outputs",
+  "runtime_metrics": {
+    "enabled": null,
+    "interval_sec": null,
+    "timeout_sec": null
+  }
+}

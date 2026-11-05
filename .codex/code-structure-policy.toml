@@ -1,0 +1,19 @@
+version = 1
+source_roots = ["skills", ".agents/skills"]
+test_roots = ["tests"]
+include_extensions = [".py", ".sh", ".template"]
+exclude_globs = []
+
+[thresholds]
+source_file_soft_lines = 400
+source_file_hard_lines = 800
+test_file_soft_lines = 600
+test_file_hard_lines = 1200
+directory_soft_files = 10
+directory_hard_files = 16
+python_complexity_soft = 10
+python_complexity_hard = 15
+python_branches_soft = 12
+python_branches_hard = 18
+python_statements_soft = 50
+python_statements_hard = 80

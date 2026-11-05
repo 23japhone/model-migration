@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0",
+  "scope": "deployment",
+  "stages": {
+    "preparation": {
+      "result": {
+        "path": "/包外/prepare-manifest.json",
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    },
+    "migration": {
+      "request": {
+        "path": "/包外/migration-template.json",
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    }
+  }
+}

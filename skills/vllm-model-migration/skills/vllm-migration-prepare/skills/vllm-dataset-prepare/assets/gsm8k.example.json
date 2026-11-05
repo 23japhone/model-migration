@@ -1,0 +1,9 @@
+{
+  "source": "recipe",
+  "recipe": "gsm8k",
+  "path": "/用户指定数据根/gsm8k",
+  "split": "test",
+  "selection": {
+    "limit": null
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "source": "huggingface",
+  "repository": "https://huggingface.co/Qwen/Qwen3.5-27B",
+  "revision": "fc05daec18b0a78c049392ed2e771dde82bdf654",
+  "path": "assets/qwen-hf-metadata",
+  "scope": "metadata",
+  "max_workers": 2
+}

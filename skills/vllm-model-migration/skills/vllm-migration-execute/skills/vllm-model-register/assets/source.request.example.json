@@ -1,0 +1,8 @@
+{
+  "mode": "source",
+  "allowed_changes": ["registry"],
+  "model": {"config": "/模型资产/config.json", "architecture": "ExistingForCausalLM"},
+  "implementation": {"module": "vllm.model_executor.models.existing", "class_name": "ExistingForCausalLM", "path": "/目标源码/vllm/model_executor/models/existing.py", "sha256": "0000000000000000000000000000000000000000000000000000000000000000"},
+  "target": {"vllm": "0.18.0", "vllm_ascend": "0.18.0", "registry_path": "/目标源码/vllm/model_executor/models/registry.py", "registry_sha256": "0000000000000000000000000000000000000000000000000000000000000000"},
+  "runtime": {"python": "/目标环境/bin/python3", "import_roots": ["/目标源码"], "plugins": ["ascend", "ascend_model_loader"], "timeout_seconds": 120, "context": "development"}
+}

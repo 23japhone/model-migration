@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.0",
+  "scope": "deployment_precision",
+  "stages": {
+    "migration": {
+      "result": {
+        "path": "/包外/finalized-migration-manifest.json",
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    },
+    "precision": {
+      "request": {
+        "path": "/包外/precision-existing-data-template.json",
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "bindings": {
+        "npu-evaluation": {
+          "deployment": "migration"
+        }
+      }
+    }
+  },
+  "service_retention": "keep"
+}

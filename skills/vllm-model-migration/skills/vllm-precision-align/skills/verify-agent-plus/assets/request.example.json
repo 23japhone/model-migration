@@ -1,0 +1,43 @@
+{
+  "schema_version": "1.0",
+  "deployment": {
+    "path": "/包外/deployment/verification-manifest.json",
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "dataset": {
+    "path": "/包外/data/dataset-manifest.json",
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "evaluator": {
+    "python": "/包外/evaluator/bin/python",
+    "config": {
+      "path": "/包外/config/evaluation.json",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "timeout_seconds": 14400
+  },
+  "tasks": [
+    {
+      "dataset": "open-benchmark",
+      "model_abbr": "explicit-model",
+      "benchmark": "selected-benchmark",
+      "subset": "selected-subset",
+      "sample_ids": [
+        0,
+        1
+      ],
+      "metrics": {
+        "acc": {
+          "selector": {
+            "name": "accuracy",
+            "aggregation": "mean",
+            "dimensions": {}
+          },
+          "unit": "ratio",
+          "direction": "higher"
+        }
+      }
+    }
+  ],
+  "targets": []
+}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Verification Runner"
+  short_description: "Verify completed slices without adding features"
+  default_prompt: "Use $verification-runner to verify the latest implemented vertical slice."

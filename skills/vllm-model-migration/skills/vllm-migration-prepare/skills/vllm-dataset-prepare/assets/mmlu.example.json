@@ -1,0 +1,9 @@
+{
+  "source": "recipe",
+  "recipe": "mmlu",
+  "path": "/用户指定数据根/mmlu",
+  "split": "test",
+  "selection": {
+    "limit": null
+  }
+}

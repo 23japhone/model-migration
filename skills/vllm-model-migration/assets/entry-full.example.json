@@ -1,0 +1,38 @@
+{
+  "schema_version": "1.0",
+  "scope": "deployment_precision",
+  "stages": {
+    "preparation": {
+      "request": {
+        "path": "/包外/model-image-prepare.request.json",
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    },
+    "dataset_preparation": {
+      "request": {
+        "path": "/包外/dataset-prepare.request.json",
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    },
+    "migration": {
+      "request": {
+        "path": "/包外/migration-template.json",
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    },
+    "precision": {
+      "request": {
+        "path": "/包外/precision-stage-template.json",
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "bindings": {
+        "npu-evaluation": {
+          "deployment": "migration",
+          "dataset": "dataset_preparation"
+        }
+      }
+    }
+  },
+  "service_retention": "keep",
+  "performance_target": "保留原始性能目标，本轮不执行性能验收"
+}

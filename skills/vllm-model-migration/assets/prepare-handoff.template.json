@@ -1,0 +1,10 @@
+{
+  "schema_version": "1.0",
+  "run_id": "用户指定运行标识",
+  "phase_manifest": "/用户指定证据根/准备阶段清单.json",
+  "target": null,
+  "conclusions": {"assets": "not_evaluated", "version_materials": "not_evaluated", "preparation": "not_evaluated", "runtime_support": "not_evaluated"},
+  "assets": {},
+  "version_review": [],
+  "uncovered": ["静态模板，不代表已完成资产准备"]
+}

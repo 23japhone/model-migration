@@ -1,0 +1,342 @@
+{
+  "schema_version": 1,
+  "snapshot_date": "2026-10-27",
+  "source": "User-provided local workflow skill snapshots; attribution and license files retained where present.",
+  "direct_skills": [
+    "maintainable-code-guardrails",
+    "codebase-organization-guardrails",
+    "contain-workflow-failures",
+    "preserve-task-continuity",
+    "test-first-implementer",
+    "debugging-loop",
+    "verification-runner",
+    "bug-focused-reviewer",
+    "ship-small",
+    "neat-freak"
+  ],
+  "supporting_skills": [
+    "vertical-slice-planner",
+    "repo-context-loader"
+  ],
+  "files": [
+    {
+      "path": ".agents/skills/bug-focused-reviewer/SKILL.md",
+      "sha256": "34ca2c278ae38bfba12a2a2096a7a48da82ef98a95246b4f45a62ed2bc1eaa2a",
+      "size": 3858,
+      "mode": "0644"
+    },
+    {
+      "path": ".agents/skills/bug-focused-reviewer/agents/openai.yaml",
+      "sha256": "9f391aecd7cd1cf8c860557e943c0220586b54bbb8bee20644a29685a3d55e27",
+      "size": 217,
+      "mode": "0644"
+    },
+    {
+      "path": ".agents/skills/codebase-organization-guardrails/ATTRIBUTION.md",
+      "sha256": "a1ae9fb5ce5528e9530b33576b8628b4822aaff25dbf8f19415b6456acf7a4b0",
+      "size": 1505,
+      "mode": "0644"
+    },
+    {
+      "path": ".agents/skills/codebase-organization-guardrails/LICENSE",
+      "sha256": "fbeabbb698fafda00153eaf58ae8a8f584cf22cf802a3d0d2aeae6092aeebdae",
+      "size": 1120,
+      "mode": "0644"
+    },
+    {
+      "path": ".agents/skills/codebase-organization-guardrails/SKILL.md",
+      "sha256": "63289c0a02f3e572c1eeea1a3e5b6fa6ba65f1b9ec078ff56a090fc2993f3c12",
+      "size": 4304,
+      "mode": "0644"
+    },
+    {
+      "path": ".agents/skills/codebase-organization-guardrails/agents/openai.yaml",
+      "sha256": "c8a230043de62ea4be5f35c383f6303f1e210460fc45c3f2f8f8866e6840c4e9",
+      "size": 241,
+      "mode": "0644"
+    },
+    {
+      "path": ".agents/skills/codebase-organization-guardrails/references/code-structure-policy.md",
+      "sha256": "b5e9e6a1b4137e971a900e984adee648f84eef8922cd53f0adfa6dc8b61c5113",
+      "size": 2920,
+      "mode": "0644"
+    },
+    {
+      "path": ".agents/skills/codebase-organization-guardrails/scripts/source_shape_audit.py",
+      "sha256": "7987e277fd431419d4c297ad3b4e6e93b7a4fe59dd5881498439aec4552a540f",
+      "size": 3310,
+      "mode": "0644"
+    },
+    {
+      "path": ".agents/skills/codebase-organization-guardrails/scripts/source_shape_baseline.py",
+      "sha256": "2545309a11e740eddcfec16c737f39b81ea666b6c6f6bd9c6f43dba85c73328a",
+      "size": 8580,
+      "mode": "0644"
+    },
+    {
+      "path": ".agents/skills/codebase-organization-guardrails/scripts/source_shape_metrics.py",
+      "sha256": "bd556d94caef50c2ab96ec42cfb7a0e77f70fc80f1961a948c63fd9114c12e5d",
+      "size": 8058,
+      "mode": "0644"
+    },
+    {
+      "path": ".agents/skills/codebase-organization-guardrails/scripts/source_shape_policy.py",
+      "sha256": "7ac5c06c95b45b3fc6e2c1854bcec0ddbe66f3b7696cdd6d469cd0cc328173f4",
+      "size": 9629,
+      "mode": "0644"
+    },
+    {
+      "path": ".agents/skills/contain-workflow-failures/SKILL.md",
+      "sha256": "7038e1b564bbbd519b411a7935663c41279dee65c368a473551178f68be39c95",
+      "size": 3438,
+      "mode": "0644"
+    },
+    {
+      "path": ".agents/skills/contain-workflow-failures/agents/openai.yaml",
+      "sha256": "e1fa95e807f7e059030eae8708df54a663a42ccdc17062235b070b801937f9fb",
+      "size": 235,
+      "mode": "0644"
+    },
+    {
+      "path": ".agents/skills/debugging-loop/SKILL.md",
+      "sha256": "78ddd75656783fba57ac9b3ba1ed47502f58447544cba16645abf249758a73d6",
+      "size": 6355,
+      "mode": "0644"
+    },
+    {
+      "path": ".agents/skills/debugging-loop/agents/openai.yaml",
+      "sha256": "7409fb6d4853730447b296269cfabfe82c6968e478eda23e1b1bd5d4bf4ce200",
+      "size": 203,
+      "mode": "0644"
+    },
+    {
+      "path": ".agents/skills/maintainable-code-guardrails/ATTRIBUTION.md",
+      "sha256": "8eb697482d57f95e44e70a157c2726e782a11f1731317a275efe1835ec45cb9e",
+      "size": 655,
+      "mode": "0644"
+    },
+    {
+      "path": ".agents/skills/maintainable-code-guardrails/LICENSE",
+      "sha256": "87c3c90f9e673a76b8ca81049b8fe30996b910a7a80140c3ed57a2ee922d2579",
+      "size": 1077,
+      "mode": "0644"
+    },
+    {
+      "path": ".agents/skills/maintainable-code-guardrails/SKILL.md",
+      "sha256": "7f5b489309e3203aaaa3e8419a4d44f9bd368b1d4f63ff500c06888447cbc5f2",
+      "size": 3661,
+      "mode": "0644"
+    },
+    {
+      "path": ".agents/skills/maintainable-code-guardrails/agents/openai.yaml",
+      "sha256": "4ac2a366395a70c61969fff8e55f53c11d46555155819133a30d3a3225b05c02",
+      "size": 248,
+      "mode": "0644"
+    },
+    {
+      "path": ".agents/skills/neat-freak/SKILL.md",
+      "sha256": "aa5138ca4167bfe817b81b6546a64f5ef08f88eb3fa8e19d3a4294af0b33a19e",
+      "size": 15456,
+      "mode": "0644"
+    },
+    {
+      "path": ".agents/skills/neat-freak/references/agent-paths.md",
+      "sha256": "9f5d905af685b385589f08f4fb417e2f69d5258e605657cb9c10bee7dd79bab3",
+      "size": 5866,
+      "mode": "0644"
+    },
+    {
+      "path": ".agents/skills/neat-freak/references/governance.md",
+      "sha256": "6bf4bbf171864f2c82a5f8b8cf441df043362e8790c69ddca38f207c38bb5f72",
+      "size": 4296,
+      "mode": "0644"
+    },
+    {
+      "path": ".agents/skills/neat-freak/references/sync-matrix.md",
+      "sha256": "5c771ba2695a0d0dc54ef636531d61c916ed7f0f39db39827bbb330268f7648d",
+      "size": 4817,
+      "mode": "0644"
+    },
+    {
+      "path": ".agents/skills/neat-freak/references/verification.md",
+      "sha256": "4e796c34fc33061900c98e02758598cd8976b8979f4ef68acb6c73e2a9c57ed5",
+      "size": 4166,
+      "mode": "0644"
+    },
+    {
+      "path": ".agents/skills/neat-freak/scripts/audit-inventory.sh",
+      "sha256": "ec147941c033b2a34345023bbe416ea8e31d29f101094a2131151eb4fa3ed1ee",
+      "size": 3594,
+      "mode": "0644"
+    },
+    {
+      "path": ".agents/skills/preserve-task-continuity/SKILL.md",
+      "sha256": "c299c91b43596dac01900b1f9562329e9e6aff44f9a5ed50459259606fca4d66",
+      "size": 3392,
+      "mode": "0644"
+    },
+    {
+      "path": ".agents/skills/preserve-task-continuity/agents/openai.yaml",
+      "sha256": "6fad60d80c75f25a3f2d82b01f90e3dd335fc898bdc322d58831a3d5109d04e8",
+      "size": 241,
+      "mode": "0644"
+    },
+    {
+      "path": ".agents/skills/repo-context-loader/SKILL.md",
+      "sha256": "332bb1fc4fd6a4367dc88fb747455aa0d6bf51d91501281971621554e2af4b07",
+      "size": 3239,
+      "mode": "0644"
+    },
+    {
+      "path": ".agents/skills/repo-context-loader/agents/openai.yaml",
+      "sha256": "32f8403465835d22d98a347058ec6b5ccc1e635f51299bfa18b86d9175273c4d",
+      "size": 215,
+      "mode": "0644"
+    },
+    {
+      "path": ".agents/skills/ship-small/SKILL.md",
+      "sha256": "0dfec8d46a0101f40bdc317b65ab56a30e7c710e24d6ebd82e9b6b6000927a41",
+      "size": 5080,
+      "mode": "0644"
+    },
+    {
+      "path": ".agents/skills/ship-small/agents/openai.yaml",
+      "sha256": "287c726bf176f62fd3f9e3de1ca69da54f92a11bb9c8b200453d1a7b1c94dce0",
+      "size": 190,
+      "mode": "0644"
+    },
+    {
+      "path": ".agents/skills/test-first-implementer/SKILL.md",
+      "sha256": "04805707be579582e98847d38060405b03be7cddfb14087a61e21bfc481b8f18",
+      "size": 3911,
+      "mode": "0644"
+    },
+    {
+      "path": ".agents/skills/test-first-implementer/agents/openai.yaml",
+      "sha256": "fe8e8c35309b98e973f92e8e609d9a3fd4b226d9c4716a072024ebdecb0cfad5",
+      "size": 244,
+      "mode": "0644"
+    },
+    {
+      "path": ".agents/skills/verification-runner/SKILL.md",
+      "sha256": "d5926ddd13339e9f9ce5083fe461622ef7520b19408379a096af28533e7a9b50",
+      "size": 3531,
+      "mode": "0644"
+    },
+    {
+      "path": ".agents/skills/verification-runner/agents/openai.yaml",
+      "sha256": "204a893e6d9c7ad4bdb780a4a94dd07960005d713a7fe29a48aa40f46b507fce",
+      "size": 214,
+      "mode": "0644"
+    },
+    {
+      "path": ".agents/skills/vertical-slice-planner/SKILL.md",
+      "sha256": "6235441d52d37b9684b2fd7092d05a5845cb892508782baa9c9232d023ddaa0c",
+      "size": 4288,
+      "mode": "0644"
+    },
+    {
+      "path": ".agents/skills/vertical-slice-planner/agents/openai.yaml",
+      "sha256": "dc2cc126877e2484a678b8a49389bb86947b61c08fc99dab94911c6c5f931a4c",
+      "size": 232,
+      "mode": "0644"
+    }
+  ],
+  "skill_dependencies": {
+    "maintainable-code-guardrails": [
+      "codebase-organization-guardrails",
+      "test-first-implementer",
+      "verification-runner"
+    ],
+    "codebase-organization-guardrails": [],
+    "contain-workflow-failures": [],
+    "preserve-task-continuity": [
+      "contain-workflow-failures"
+    ],
+    "test-first-implementer": [
+      "vertical-slice-planner"
+    ],
+    "debugging-loop": [
+      "bug-focused-reviewer",
+      "repo-context-loader",
+      "test-first-implementer",
+      "verification-runner",
+      "vertical-slice-planner"
+    ],
+    "verification-runner": [
+      "bug-focused-reviewer",
+      "debugging-loop",
+      "test-first-implementer",
+      "vertical-slice-planner"
+    ],
+    "bug-focused-reviewer": [
+      "debugging-loop",
+      "ship-small",
+      "test-first-implementer",
+      "verification-runner",
+      "vertical-slice-planner"
+    ],
+    "ship-small": [
+      "bug-focused-reviewer",
+      "debugging-loop",
+      "test-first-implementer",
+      "verification-runner",
+      "vertical-slice-planner"
+    ],
+    "vertical-slice-planner": [
+      "repo-context-loader"
+    ],
+    "repo-context-loader": [],
+    "neat-freak": []
+  },
+  "skill_snapshots": {
+    "neat-freak": {
+      "version": "3.0.0",
+      "source": "User-selected local skill snapshot; complete execution resources included.",
+      "excluded": [
+        {
+          "path": "evals/",
+          "reason": "Authoring evaluation harness and mock-project fixtures are not execution dependencies of this skill."
+        }
+      ],
+      "local_adaptations": {
+        "references/agent-paths.md": "Correct current Codex skill locations and Claude AGENTS.md support using official documentation; remove unsupported product count.",
+        "references/verification.md": "Apply deployment requirements only when the current project has a deployment target.",
+        "SKILL.md": "Move the compatibility note unchanged under metadata to satisfy the current Codex skill validator.",
+        "scripts/audit-inventory.sh": "Correct the read-only inventory comment: file contents are not printed; wc reads them to measure size."
+      },
+      "upstream_files": [
+        {
+          "path": "SKILL.md",
+          "sha256": "6c0ca2236d3518ccaad710f6db8e9c4aa7af67b685dc699ad347ae42186951e1",
+          "size": 15454
+        },
+        {
+          "path": "references/agent-paths.md",
+          "sha256": "8210a3cc1211283f71f068de99fd17e62fb9ce269ca6e693879ce6c30e31aff6",
+          "size": 5267
+        },
+        {
+          "path": "references/governance.md",
+          "sha256": "6bf4bbf171864f2c82a5f8b8cf441df043362e8790c69ddca38f207c38bb5f72",
+          "size": 4296
+        },
+        {
+          "path": "references/sync-matrix.md",
+          "sha256": "5c771ba2695a0d0dc54ef636531d61c916ed7f0f39db39827bbb330268f7648d",
+          "size": 4817
+        },
+        {
+          "path": "references/verification.md",
+          "sha256": "cd3f4bf5cdc59c3aa51db868801f7461563a4b4a58b72799a6753c1f863c4126",
+          "size": 4042
+        },
+        {
+          "path": "scripts/audit-inventory.sh",
+          "sha256": "260315d659f19e63a12065f9cadd9b57f9c1ddc867457f6c0f6fd87c003a7325",
+          "size": 3593
+        }
+      ]
+    }
+  }
+}

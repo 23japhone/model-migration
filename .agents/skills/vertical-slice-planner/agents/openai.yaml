@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vertical Slice Planner"
+  short_description: "Plan the smallest verifiable feature slice"
+  default_prompt: "Use $vertical-slice-planner to turn this feature into the smallest verifiable vertical slice."

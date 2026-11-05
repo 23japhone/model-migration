@@ -1,0 +1,5 @@
+{
+  "gsm8k": {"url": "https://opencompass.oss-cn-shanghai.aliyuncs.com/datasets/data/gsm8k.zip", "splits": ["train", "test"], "format": "jsonl", "description": "GSM8K 原始 JSONL 发布包，保留 train/test 及原始答案。"},
+  "ceval": {"url": "https://www.modelscope.cn/datasets/opencompass/ceval-exam/resolve/master/ceval-exam.zip", "splits": ["dev", "val", "test"], "format": "csv", "description": "C-Eval 原始 CSV 发布包，保留各科目 dev/val/test 文件及原始列。"},
+  "mmlu": {"url": "https://opencompass.oss-cn-shanghai.aliyuncs.com/datasets/data/mmlu.zip", "splits": ["dev", "test"], "format": "csv", "description": "MMLU 发布包，使用无表头六列 CSV，保留加载器所需 dev/test。"}
+}

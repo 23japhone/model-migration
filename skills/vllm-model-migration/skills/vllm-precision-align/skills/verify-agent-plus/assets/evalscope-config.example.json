@@ -1,0 +1,40 @@
+{
+  "model": "explicit-served-model-name",
+  "model_id": "explicit-model",
+  "api_url": "http://127.0.0.1:32001/v1",
+  "eval_type": "openai_api",
+  "eval_backend": "Native",
+  "datasets": [
+    "selected-benchmark"
+  ],
+  "dataset_args": {
+    "selected-benchmark": {
+      "subset_list": [
+        "selected-subset"
+      ],
+      "eval_split": "selected-split",
+      "few_shot_num": 0
+    }
+  },
+  "limit": null,
+  "repeats": 1,
+  "eval_batch_size": 1,
+  "use_cache": null,
+  "rerun_review": false,
+  "ignore_errors": false,
+  "judge": {
+    "strategy": "rule"
+  },
+  "model_args": {
+    "max_retries": 0
+  },
+  "generation_config": {
+    "max_tokens": 1024,
+    "temperature": 0,
+    "stream": false,
+    "n": 1,
+    "retries": 1
+  },
+  "seed": 42,
+  "collect_perf": false
+}

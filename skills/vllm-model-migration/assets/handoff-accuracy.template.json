@@ -1,0 +1,25 @@
+{
+  "service": {
+    "base_url": "",
+    "model": "",
+    "request_timeout_seconds": null
+  },
+  "evaluation": {
+    "model_path": "",
+    "api_key": "",
+    "timeout_seconds": null,
+    "datasets": [
+      {
+        "name": "",
+        "evaluator": "evalscope",
+        "dataset": "",
+        "subset_list": [],
+        "dataset_args": {},
+        "limit": null,
+        "eval_batch_size": null,
+        "extra_args": []
+      }
+    ]
+  },
+  "output_dir": "../outputs"
+}

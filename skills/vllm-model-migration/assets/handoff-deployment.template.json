@@ -1,0 +1,11 @@
+{
+  "cann_path": "",
+  "env_variables": {},
+  "log_file": "../outputs/server.log",
+  "server": {
+    "model_path": "",
+    "served_model_name": "",
+    "host": "",
+    "port": null
+  }
+}

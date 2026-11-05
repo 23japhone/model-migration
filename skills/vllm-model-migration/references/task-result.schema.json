@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "vLLM 模型迁移任务结果（1.0 版）",
+  "description": "准备任务共用的交接结构；普通说明使用中文，专有名词、技术术语和机器接口标识保持原名。",
+  "type": "object",
+  "required": ["schema_version", "run_id", "task_id", "inputs", "status", "conclusions", "evidence", "uncovered"],
+  "properties": {
+    "schema_version": {"const": "1.0", "description": "交接结构版本。"},
+    "run_id": {"type": "string", "minLength": 1, "description": "各准备任务共用的运行标识。"},
+    "task_id": {"type": "string", "minLength": 1, "description": "执行本次准备的任务技能标识。"},
+    "inputs": {"type": "object", "description": "规范化后的请求输入及资产来源身份。"},
+    "status": {
+      "enum": ["not_run", "running", "completed", "failed", "blocked", "skipped"],
+      "description": "执行状态：未执行、运行中、已完成、失败、阻塞或跳过；使用对应的固定状态值。"
+    },
+    "conclusions": {
+      "type": "object",
+      "description": "验收结论，区分资产完整性与运行支持度等检查维度。",
+      "minProperties": 1,
+      "additionalProperties": {
+        "enum": ["pass", "fail", "not_evaluated", "review_required"],
+        "description": "检查结论：通过、失败、未评估或待复核；使用对应的固定结论值。"
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "description": "运行证据名称及所在位置，证据保存在技能包外。",
+      "additionalProperties": {"type": "string", "description": "对应证据文件的路径。"}
+    },
+    "uncovered": {
+      "type": "array",
+      "description": "本次未覆盖或无法证明的能力与条件。",
+      "items": {"type": "string", "description": "一项未覆盖情况的中文说明。"}
+    },
+    "diagnostic": {
+      "type": "object",
+      "description": "失败或阻塞时的诊断信息；异常类型保留技术标识，说明使用中文。",
+      "required": ["type", "message"],
+      "properties": {
+        "type": {"type": "string", "description": "异常类型或诊断分类。"},
+        "message": {"type": "string", "description": "中文诊断说明；外部 SDK 的原始异常可保留供排查。"}
+      }
+    }
+  }
+}

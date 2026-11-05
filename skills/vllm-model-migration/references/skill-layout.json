@@ -1,0 +1,128 @@
+{
+  "name": "vllm-migration",
+  "root": "vllm-model-migration",
+  "schema_version": "1.0",
+  "skills": {
+    "adapt-agent": {
+      "entrypoint": {
+        "fixture": null,
+        "plan": "assets/capture.request.example.json",
+        "script": "scripts/adapt.py"
+      },
+      "level": 2,
+      "parent": "vllm-migration-execute",
+      "path": "skills/vllm-migration-execute/skills/adapt-agent"
+    },
+    "verify-agent": {
+      "entrypoint": {
+        "fixture": null,
+        "plan": "assets/request.example.json",
+        "script": "scripts/verify.py"
+      },
+      "level": 2,
+      "parent": "vllm-migration-execute",
+      "path": "skills/vllm-migration-execute/skills/verify-agent"
+    },
+    "verify-agent-plus": {
+      "entrypoint": {
+        "fixture": null,
+        "plan": "assets/request.example.json",
+        "script": "scripts/validator.py"
+      },
+      "level": 2,
+      "parent": "vllm-precision-align",
+      "path": "skills/vllm-precision-align/skills/verify-agent-plus"
+    },
+    "vllm-dataset-prepare": {
+      "entrypoint": {
+        "fixture": "local-dataset",
+        "plan": null,
+        "script": "scripts/prepare.py"
+      },
+      "level": 2,
+      "parent": "vllm-migration-prepare",
+      "path": "skills/vllm-migration-prepare/skills/vllm-dataset-prepare"
+    },
+    "vllm-image-prepare": {
+      "entrypoint": {
+        "fixture": null,
+        "plan": "assets/reuse.example.json",
+        "script": "scripts/prepare.py"
+      },
+      "level": 2,
+      "parent": "vllm-migration-prepare",
+      "path": "skills/vllm-migration-prepare/skills/vllm-image-prepare"
+    },
+    "vllm-migration-execute": {
+      "entrypoint": {
+        "fixture": null,
+        "plan": "assets/stage.request.example.json",
+        "script": "scripts/execute.py"
+      },
+      "level": 1,
+      "parent": "vllm-model-migration",
+      "path": "skills/vllm-migration-execute"
+    },
+    "vllm-migration-prepare": {
+      "entrypoint": {
+        "fixture": "local-preparation",
+        "plan": null,
+        "script": "scripts/prepare.py"
+      },
+      "level": 1,
+      "parent": "vllm-model-migration",
+      "path": "skills/vllm-migration-prepare"
+    },
+    "vllm-model-migration": {
+      "entrypoint": {
+        "fixture": null,
+        "plan": "assets/entry-prepare.example.json",
+        "script": "scripts/migrate.py"
+      },
+      "level": 0,
+      "parent": null,
+      "path": "."
+    },
+    "vllm-model-precheck": {
+      "entrypoint": {
+        "fixture": null,
+        "plan": "assets/request.example.json",
+        "script": "scripts/precheck.py"
+      },
+      "level": 2,
+      "parent": "vllm-migration-execute",
+      "path": "skills/vllm-migration-execute/skills/vllm-model-precheck"
+    },
+    "vllm-model-prepare": {
+      "entrypoint": {
+        "fixture": "local-model",
+        "plan": null,
+        "script": "scripts/prepare.py"
+      },
+      "level": 2,
+      "parent": "vllm-migration-prepare",
+      "path": "skills/vllm-migration-prepare/skills/vllm-model-prepare"
+    },
+    "vllm-model-register": {
+      "entrypoint": {
+        "fixture": null,
+        "plan": "assets/source.request.example.json",
+        "script": "scripts/register.py"
+      },
+      "level": 2,
+      "parent": "vllm-migration-execute",
+      "path": "skills/vllm-migration-execute/skills/vllm-model-register"
+    },
+    "vllm-precision-align": {
+      "entrypoint": {
+        "fixture": null,
+        "plan": "assets/run.example.json",
+        "script": "scripts/precision.py"
+      },
+      "level": 1,
+      "parent": "vllm-model-migration",
+      "path": "skills/vllm-precision-align"
+    }
+  },
+  "version": "0.7.0-dev.2"
+}

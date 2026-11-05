@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0",
+  "evaluations": [
+    {"id": "evalscope-history", "request": {"path": "/包外/evalscope-analysis.request.json", "sha256": "0000000000000000000000000000000000000000000000000000000000000000"}},
+    {"id": "aisbench-history", "request": {"path": "/包外/aisbench-analysis.request.json", "sha256": "0000000000000000000000000000000000000000000000000000000000000000"}}
+  ]
+}
