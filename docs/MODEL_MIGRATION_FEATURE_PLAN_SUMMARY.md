@@ -158,6 +158,21 @@ SGLang 迁移与注册、框架自动选择、完整的运行异常分类诊断�
 
 当前保留输入校验、原始错误、真实阻塞原因、超时取消、部分成果和依赖失败隔离；这些基础行为不等于已实现上述完整分类诊断体系。遇到错误不自动换模型、修改量化、升级环境、重试或清理其他任务资源。
 
+### 6.2 评测期间采集逐层数据的可行性
+
+截至 2026-11-11，`verify-agent-plus` 通过 HTTP 向已核验的模型服务发送评测请求，保存请求、回答、原生预测和逐样本评分。服务归 `verify-agent` 管理。精度任务会核验 worker 身份，逐层张量采集仍属范围外调研，本仓尚未接入 MindIE 探针。见[精度测量契约](../skills/vllm-model-migration/skills/vllm-precision-align/skills/verify-agent-plus/references/contract.md#结果与生命周期)。
+
+本次核对 [mindie-agent/debugger 固定提交 `831e03d`](https://github.com/mindie-agent/debugger/tree/831e03d64de24bda35a90f88e7b7dc8fe531e014)。下表记录可用于逐层诊断的上游能力。
+
+| 采集位置 | 输入与输出 | 使用边界 |
+| --- | --- | --- |
+| [ACLGraph 模块输出](https://github.com/mindie-agent/debugger/blob/831e03d64de24bda35a90f88e7b7dc8fe531e014/mindie_debugger/aclgraph.py#L328) | 在图捕获前挂接模型模块，重放时采集匹配模块输出中的首个张量 | 默认选择叶子模块，循环保留 8 个槽位，每个快照最多取前 16384 个元素并转为 FP32。读回快照需要设备到主机复制，vLLM Inspector 的步号读取也会同步 |
+| [张量观察点](https://github.com/mindie-agent/debugger/blob/831e03d64de24bda35a90f88e7b7dc8fe531e014/mindie_debugger/precision/npu_watch.py#L176) | 对指定张量记录统计值，出现 NaN、Inf 或越过阈值时锁存有界快照 | 调用方选择张量和观察位置。设备端环形缓冲区的记录需显式读回 |
+| [模块调用前后对照](https://github.com/mindie-agent/debugger/blob/831e03d64de24bda35a90f88e7b7dc8fe531e014/mindie_debugger/precision/lockstep_diff.py#L1) | 在模块调用前后记录输入、输出和可达状态，按模块、调用序号和 rank 对照基线 | 快照读取会同步设备。启用 healing 会用基线状态或输出替换现场值，适用于独立诊断 |
+| [单次算子或函数调用](https://github.com/mindie-agent/debugger/blob/831e03d64de24bda35a90f88e7b7dc8fe531e014/mindie_debugger/precision/call_repro.py#L94) | 包装选定调用，保存实参、返回值、可达状态的前后快照及 RNG 信息，供复现 | 采集粒度由调用边界决定。融合 kernel 内部中间值需要单独的可观察点 |
+
+若后续接入，部署侧需要在执行模型的各个 worker 安装采集点。评测侧需要把样本与服务请求、rank、前向步及批内有效 token 位置对应起来，再将原生评分关联到选定层或算子的记录。持续导出需要处理槽位复用，并标明实际覆盖、截断和丢失情况。实机验收仍为 pending，需在固定模型和软件版本上分别核对 Eager、ACLGraph 的样本归属，以及开关采集前后的输出、延迟和显存占用。
+
 ## 7. 当前迁入状态与验证边界
 
 截至 2026-10-28，新仓保留完整 12 个嵌套 Skill，当前资源数量见 TESTING.md。支持文件位于总 Skill 的 `scripts/` 和 `references/`，导入、索引、资源归属、输出保护及不依赖构建清单的资源枚举/复制已通过本地回归。现行路径契约见[架构文档](ARCHITECTURE.md)，本文件不另维护重复清单。
