@@ -162,9 +162,13 @@ SGLang 迁移与注册、框架自动选择、完整的运行异常分类诊断�
 
 ### 6.2 评测期间采集逐层数据的可行性
 
-截至 2026-11-11，`verify-agent-plus` 通过 HTTP 向已核验的模型服务发送评测请求，保存请求、回答、原生预测和逐样本评分。服务归 `verify-agent` 管理。精度任务会核验 worker 身份，逐层张量采集仍属范围外调研，本仓尚未接入 MindIE 探针。见[精度测量契约](../skills/vllm-model-migration/skills/vllm-precision-align/skills/verify-agent-plus/references/contract.md#结果与生命周期)。
+截至 2026-11-11，`verify-agent-plus` 通过 HTTP 向已核验的模型服务发送评测请求，保存请求、回答、原生预测和逐样本评分。服务归 `verify-agent` 管理。精度任务会核验 worker 身份。msprobe 和 mindie-debugger 的逐层采集均属范围外调研，尚未接入本仓评测流程。见[精度测量契约](../skills/vllm-model-migration/skills/vllm-precision-align/skills/verify-agent-plus/references/contract.md#结果与生命周期)。
 
-本次核对 [mindie-agent/debugger 固定提交 `831e03d`](https://github.com/mindie-agent/debugger/tree/831e03d64de24bda35a90f88e7b7dc8fe531e014)。下表记录可用于逐层诊断的上游能力。
+若要比对 GPU 与 NPU 上每一步的模块及受支持 API 的输入输出，建议用 msprobe 采集张量。`task=tensor` 保存采集范围内的真实张量，`statistics` 保存统计信息。固定提交 `7ae8857` 的接入说明列出 GPU 原生 vLLM 的 Eager 采集，以及 NPU vLLM-Ascend 的 Eager、ACLGraph 采集。GPU CUDA Graph 在该版本的支持范围之外，切到 Eager 后取得的数据只验证 Eager 路径。[msprobe 的 vLLM 支持表](https://github.com/Ascend/msprobe/blob/7ae8857f16ced36aca1a7138de21c09a4c6e9925/docs/zh/user_guide/dump/vllm_dump_instruct.md)
+
+Eager 在每次前向中调用模块和 API。图重放则一次提交已经捕获的一段设备任务，每次都用本轮输入重新计算。要取得 NPU 每次重放的中间值，msprobe 的 `AclGraphDumper` 需在捕图前挂接，使采集操作随图执行，再按步归档张量。[ACLGraph 采集说明](https://github.com/Ascend/msprobe/blob/7ae8857f16ced36aca1a7138de21c09a4c6e9925/docs/zh/user_guide/dump/aclgraph_dump_instruct.md)
+
+若已定位到可疑模块或调用，建议用 mindie-debugger 检查状态或复现。各探针的采集边界如下表所示。[mindie-agent/debugger 固定提交 `831e03d`](https://github.com/mindie-agent/debugger/tree/831e03d64de24bda35a90f88e7b7dc8fe531e014)
 
 | 采集位置 | 输入与输出 | 使用边界 |
 | --- | --- | --- |
@@ -173,7 +177,9 @@ SGLang 迁移与注册、框架自动选择、完整的运行异常分类诊断�
 | [模块调用前后对照](https://github.com/mindie-agent/debugger/blob/831e03d64de24bda35a90f88e7b7dc8fe531e014/mindie_debugger/precision/lockstep_diff.py#L1) | 在模块调用前后记录输入、输出和可达状态，按模块、调用序号和 rank 对照基线 | 快照读取会同步设备。启用 healing 会用基线状态或输出替换现场值，适用于独立诊断 |
 | [单次算子或函数调用](https://github.com/mindie-agent/debugger/blob/831e03d64de24bda35a90f88e7b7dc8fe531e014/mindie_debugger/precision/call_repro.py#L94) | 包装选定调用，保存实参、返回值、可达状态的前后快照及 RNG 信息，供复现 | 采集粒度由调用边界决定。融合 kernel 内部中间值需要单独的可观察点 |
 
-若后续接入，部署侧需要在执行模型的各个 worker 安装采集点。评测侧需要把样本与服务请求、rank、前向步及批内有效 token 位置对应起来，再将原生评分关联到选定层或算子的记录。持续导出需要处理槽位复用，并标明实际覆盖、截断和丢失情况。实机验收仍为 pending，需在固定模型和软件版本上分别核对 Eager、ACLGraph 的样本归属，以及开关采集前后的输出、延迟和显存占用。
+若后续接入，部署侧需在执行模型的 worker 安装采集点。评测侧需把样本和评分关联到服务请求、rank、前向步、批内有效 token 位置及对应的张量文件。当前 HTTP 记录器只转发 `Content-Type`、`Accept` 和 `User-Agent` 三种传入请求头，采用上游按 `X-Request-ID` 筛选的方案时还需贯通请求标识。见[记录器实现](../skills/vllm-model-migration/skills/vllm-precision-align/skills/verify-agent-plus/scripts/precision/runtime/capture.py)。
+
+全量采集的验收应先列明预期样本、rank、步和采集点，再逐项核对张量文件是否落盘，记录跳过、截断、覆盖和写入失败。使用环形缓冲区时，需在槽位复用前导出快照。两端实际部署模式下的覆盖、样本归属，以及开关采集前后的输出、延迟和设备内存占用仍待实机验证。
 
 ## 7. 当前迁入状态与验证边界
 
