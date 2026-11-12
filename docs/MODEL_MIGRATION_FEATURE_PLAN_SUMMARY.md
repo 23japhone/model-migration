@@ -99,7 +99,7 @@ SGLang 迁移与注册、框架自动选择、完整的运行异常分类诊断�
 
 #### 4.3.2 精度对齐专项开发规划
 
-下表依据《智谱精度对齐》第 3 页“精度对齐特性开发规划”，列出专项内的 5 个任务阶段、11 项工作。项目整体仍按第 4.1 至 4.3 节组织。表中的“准备工作”负责核对评测条件和比较资料，需要模型或数据资产时复用第 4.1 节的准备结果。
+下表依据《智谱精度对齐》第 3 页“精度对齐特性开发规划”，列出专项内的 5 个任务阶段、11 项工作。项目整体仍按第 4.1 至 4.3 节组织。表中的“准备工作”负责核对评测条件和比较资料，需要模型或数据资产时复用第 4.1 节的准备结果。各项工作的主责模块和交接产物见[精度对齐目录架构与任务归属](#433-精度对齐目录架构与任务归属)。
 
 **期望输入**包括模型、测试数据集、模型部署与评测配置、开源任务基线、GPU 运行数据、CPU 高精度参考和精度目标。按比较层次使用这些资料：任务质量对齐需要可比的任务成绩和评测条件，Token 与张量对齐还需对应的 GPU 运行记录和 CPU 参考。每层分别说明覆盖范围、判定依据和可复查的证据。
 
@@ -147,6 +147,87 @@ Token 和张量比较使用两端各自在对应 benchmark 同一轮推理中采
 针对参考版本已复现的三种误判，按以下预期结果验收。双端空日志且匹配点为零时，记录缺少可比数据；没有双端日志和 dump 时，逐层诊断标记为未评估；只有 L1 超限而没有 msprobe 比对产物时，报告只引用 L1 证据。另用一个早期轻微超限、后期误差更大的用例，验证报告能分别指出首个超限调用和最大误差调用。
 
 出现超限时，按证据的详细程度交给后续精度问题分析。仅有任务分数时，交付指标差值、评测条件和样本范围。有逐题、Token 或算子记录时，再附差异题目、首个可定位的生成位置或超限调用，以及可复查的输入输出。后续分析据此定界服务链路或模型计算问题，通过重放和对照实验确认原因。
+
+#### 4.3.3 精度对齐目录架构与任务归属
+
+精度对齐沿用“总入口 → 阶段 → 独立任务”三层结构。总入口按请求选择阶段，准备阶段交付固定版本的资产，迁移阶段交付已验证的模型服务，精度阶段按需使用服务、数据或历史证据。当前精度阶段只有一个直属任务 `verify-agent-plus`。下一阶段拟增加两个可独立调用的任务：`vllm-precision-compare` 接受已有证据，回答“哪里有差异、差多少”；`vllm-precision-diagnose` 接受具体异常，回答“差异最早出现在哪个环节、能否复现并确认原因”。两项落地后，全仓将从 12 个业务 Skill 增至 14 个（1 个总入口、3 个阶段、10 个任务）。[现行三层职责与公开入口](ARCHITECTURE.md#3-三层职责与公开入口)
+
+##### 现有目录与复用位置
+
+下图只列专项开发要复用的现有路径。“拟扩展”表示该目录已存在，注释中的新增能力待开发。完整实现布局由[架构文档](ARCHITECTURE.md#2-当前目录与资源归属)维护，新模块落地后再更新该文档。
+
+```text
+skills/vllm-model-migration/
+├── scripts/migrate.py                            总入口，选择阶段并核验交接
+├── references/                                   共用 Schema 和 Skill 布局索引
+└── skills/
+    ├── vllm-migration-prepare/skills/vllm-dataset-prepare/
+    │   └── scripts/prepare.py                    准备数据集，固定版本、split 和实际样本
+    ├── vllm-migration-execute/skills/verify-agent/
+    │   ├── scripts/verify.py                     部署、功能验证及服务生命周期
+    │   └── scripts/verification/runtime/         拟扩展：在实际模型 worker 接入采集点
+    └── vllm-precision-align/
+        ├── references/                           精度阶段请求与交接契约
+        ├── scripts/precision.py                  精度阶段公开入口
+        ├── scripts/alignment/                    现有依赖委托、回执核验和汇总；拟扩展基线选择及专项报告
+        └── skills/verify-agent-plus/
+            ├── references/                       原生评测及历史结果分析契约
+            ├── scripts/validator.py              评测任务公开入口
+            └── scripts/precision/runtime/        现有原生评测、HTTP 记录和样本核验；拟扩展外部 benchmark 和同轮采集关联
+```
+
+##### 拟新增目录与模块
+
+下图标出两个现有父目录。其下的 `capture/`、`vllm-precision-compare/`、`vllm-precision-diagnose/` 及所列内容均拟新增。两个新增任务各有 `SKILL.md`、公开 CLI 和文件契约。比较算法与诊断方法是任务内部模块，可以按证据范围单独选用。
+
+```text
+skills/vllm-model-migration/skills/
+├── vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/  现有父目录
+│   └── capture/                                  实际 worker 的采集配置、挂接和记录
+└── vllm-precision-align/skills/                   现有父目录
+    ├── vllm-precision-compare/
+    │   ├── SKILL.md
+    │   ├── references/                           比较输入、阈值、覆盖与结果契约
+    │   ├── scripts/compare.py                    选择任务质量、Token 或张量比较，可选多层
+    │   └── scripts/comparison/
+    │       ├── quality.py                        对照原生分数、分项、逐题或逐检查项结果
+    │       ├── token.py                          比较相同前文下的预测分数、选词和停止位置
+    │       └── tensor.py                         比较同一输入及状态下逐次调用的张量
+    └── vllm-precision-diagnose/
+        ├── SKILL.md
+        ├── references/                           异常请求、定位证据和独立重放契约
+        ├── scripts/diagnose.py                   选择服务定界、算子定位或异常复现
+        └── scripts/diagnosis/
+            ├── service.py                        核对原始请求、渲染输入、生成与解析结果
+            ├── operator.py                       按调用顺序追查激活值偏差的来源
+            └── replay.py                         恢复输入和运行状态，做独立重放与对照
+```
+
+##### 调用与证据交接
+
+1. **阶段选择测量或复用。** `vllm-precision-align` 按[任务质量对齐的评测选择](#任务质量对齐的评测选择)核对 GPU 基线与已有 NPU 结果。条件一致时，委托 `validator.py` 只读核验并引用原生结果。原生工具相同而条件不符时，另建测量请求；GPU 使用专用 benchmark 时，由扩展后的 `verify-agent-plus` 在 NPU 上运行对应版本、数据和原评分器。迁移任务自身的精度测试独立交付。基线来源或复测材料不足，只将受影响的相对目标列为未评估。
+2. **评测侧与 worker 侧连接同一道题。** 阶段经公开入口复用数据集和服务，按需委托 `verify-agent` 在原部署模式的实际模型 worker 接入采集点。`verify-agent-plus` 记录“原生评分 → 样本 → 服务请求”，worker 记录“服务请求 → 批内 Token 位置、前向步、rank → 层或算子调用 → 采集文件”。各端用本轮请求 ID 关联本端的评测与 worker 记录。GPU 与 NPU 跨端配对使用固定样本身份、前文、生成位置及对应的调用和 rank，可接受两次运行使用不同请求 ID。借用服务缺少采集点时记录覆盖限制；独立诊断运行的产物单独归档。
+3. **阶段按证据委托比较与诊断。** 双方已有成绩时可委托 `compare.py` 核对评测条件，确认可比后才计算差值。Token 和张量模块分别读取相应的同轮记录和 CPU 参考。已有完整异常 Chat 请求时可直接委托 `diagnose.py` 做服务定界。有可比张量时，把逐调用比较回执交给算子定位；验证具体疑点时，再独立重放。测量、比较和诊断均向阶段交付带文件路径与 SHA256 的回执，模块之间通过回执交换结果。阶段把结论、证据范围及缺项写入台账、报告和交接文件；原始请求、张量及重放产物保存在包外工作目录。
+
+现行精度阶段要求 `evaluations` 非空，总入口按现有台账组核对测量回执。实现时需为独立比较、独立诊断分别定义请求和回执，并同步扩展阶段与总入口的核验逻辑。旧 `run`、只读 `analyze` 及三文件导出继续按原契约消费测量结果；新任务落地时再登记布局索引、更新结构测试。详见[精度阶段契约](../skills/vllm-model-migration/skills/vllm-precision-align/references/contract.md)、[总入口回执核验](../skills/vllm-model-migration/scripts/coordination/runtime/precision_receipts.py)和[现行布局索引](../skills/vllm-model-migration/references/skill-layout.json)。
+
+##### PPT 第 3 页的 11 项任务与模块对照
+
+下表与第 4.3.2 节的任务顺序一致。“主责模块与协作方”指本次设计中的归属，开发进度和验收标准见原规划表。
+
+| 序号 | PPT 任务 | 主责模块与协作方 | 交付给下一环节的结果 |
+| ---: | --- | --- | --- |
+| 1 | 评测条件确认 | 精度阶段 `alignment/`，引用数据准备和测量回执 | 一份两端评测条件对照，标出一致、差异及未知项，供阶段选择复用或复测。 |
+| 2 | 对比基线准备 | 精度阶段 `alignment/`，沿用第 1 项核对记录 | 按任务、Token、张量登记基线来源、设备、可用范围、阈值和缺项，绑定 GPU 记录及适用的 CPU 高精度参考。 |
+| 3 | 数据集评测 | `verify-agent-plus`，按需复用 `vllm-dataset-prepare` | 本次迁移任务指定 benchmark 的有效 NPU 原生结果、实际样本范围和评分依据。 |
+| 4 | 运行数据采集 | `verify-agent` 的 `runtime/capture/` 采集 worker 数据；`verify-agent-plus` 的 `precision/runtime/` 关联样本 | 可从某题评分查到同轮生成位置、rank、调用和文件的索引，以及漏采、截断和写入失败清单。 |
+| 5 | 任务质量对齐 | `alignment/` 选 benchmark，`verify-agent-plus` 取得或核验成绩，`comparison/quality.py` 对照 | 复用有效原生分数，按资料粒度给出总分、分项或逐题差异。已有判定与本次基线、条件、目标一致时引用原结论，否则按本次条件及阈值判定可比性与达标情况。 |
+| 6 | Token 预测对齐 | `comparison/token.py`，可复用 `logprobs-diff` 的候选排序 | 相同前文下全词表原始 logits、选词规则处理后的分数及 CPU 参考对照，分别指出首次分数超限、首次选词分歧和提前停止位置。 |
+| 7 | 张量与算子对齐 | `comparison/tensor.py`，可复用 `msprobe-probe` 对已有双端 dump 的比较 | 按样本、Token 位置、rank 和调用配对，核对形状、布局、类型及状态，交付 GPU、NPU 分别相对 CPU 参考的误差和未匹配调用。 |
+| 8 | 服务链路的问题定界 | `diagnosis/service.py`，接入 `three-step-demarcation` | 从原始请求和渲染 Token ID 追到两次独立的 Completion、Chat 重放，交付最早可定位的环节及证据限制。 |
+| 9 | 模型算子的问题定位 | `diagnosis/operator.py`，消费第 7 项回执，可用 `l1-norm-probe` 粗筛 | 沿调用顺序判断偏差来自上游输入还是本次输出，分别列出首个超限调用、最大误差调用和可供复现的疑点。 |
+| 10 | 问题重现与原因确认 | `diagnosis/replay.py` | 记录恢复的输入、权重和缓存等必要状态、独立重放和单变量对照结果。原因经验证后给出修复建议。 |
+| 11 | 精度对齐报告 | 精度阶段 `alignment/`，汇总测量、比较及按需取得的诊断回执 | 沿用阶段 manifest、台账和 handoff，逐层列出基线、目标、实际覆盖、结论和可复查证据。 |
 
 ## 5. Skills 设计要求与后续补充需求
 
