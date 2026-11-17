@@ -9,6 +9,8 @@ import sys
 from . import request as inputs
 from . import outputs
 from .evidence import safe_text
+from .runtime.capture import action as capture_action
+from .runtime.capture import session as capture_session
 from .runner import run
 from .review import review, stop
 from .devices.recheck import inspect as inspect_devices
@@ -27,6 +29,12 @@ def action_request(path, action, work_root, run_id):
         request = inputs.load(path)
         return request, inputs.output_target(request, work_root, run_id)
     request = json.loads(Path(path).read_text())
+    if action == 'capture-session':
+        capture_session.validate(request)
+        return request, outputs.target(work_root, run_id)
+    if action in ('capture-one', 'capture-read'):
+        capture_action.validate(request, action)
+        return request, outputs.target(work_root, run_id)
     required = ['source', 'cases'] if action == 'review' else ['handoff']
     inputs.fields(request, required)
     item = request['source' if action == 'review' else 'handoff']
@@ -51,7 +59,7 @@ def main():
     parser.add_argument('--work-root', required=True, type=Path, help='包外运行证据根')
     parser.add_argument('--run-id', required=True, help='本次运行标识')
     parser.add_argument('--plan', action='store_true', help='仅检查形状与路径，不读目标资产、构建、启动或写目录')
-    parser.add_argument('--action', choices=['verify', 'review', 'stop', 'inspect-devices'], default='verify', help='验证、语义复核、精确停止或只读设备复核')
+    parser.add_argument('--action', choices=['verify', 'review', 'stop', 'inspect-devices', 'capture-one', 'capture-read', 'capture-session'], default='verify', help='部署验证、语义复核、停止、设备复核、单请求采集、采集会话或离线回查')
     args = parser.parse_args()
     try:
         request, target = action_request(args.request, args.action, args.work_root, args.run_id)
@@ -61,7 +69,8 @@ def main():
     if args.plan:
         print(json.dumps({'status': 'not_run', 'operation': args.action, 'request': request}, ensure_ascii=False))
         return 0
-    operation = {'verify': run, 'review': review, 'stop': stop, 'inspect-devices': inspect_devices}[args.action]
+    operation = {'capture-session': capture_session.run, 'capture-one': capture_action.run, 'capture-read': capture_action.lookup,
+                 'verify': run, 'review': review, 'stop': stop, 'inspect-devices': inspect_devices}[args.action]
     previous = signal.signal(signal.SIGTERM, cancelled)
     try:
         code, result = operation(request, target, args.run_id)

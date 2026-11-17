@@ -4,6 +4,7 @@ from .evidence import begin, safe_text, sha256, write_json
 from .inputs import collect
 from .protocol.cases import conclusions, execute
 from .runtime import carrier
+from .runtime.capture.prepare import prepare as prepare_capture
 from .lifecycle import complete, finalize
 
 PHASES = ('inputs', 'carrier', 'devices', 'runtime', 'registration', 'service', 'cases', 'final_handoff')
@@ -27,6 +28,15 @@ def block_dependents(manifest):
     seen = {entry['step'] for entry in ledger}
     ledger.extend({'step': name, 'status': 'blocked', 'reason': '必需前置未完成，详见原始诊断'}
                   for name in PHASES if name not in seen)
+
+
+def prepare_worker_capture(request, resource, attempt, manifest):
+    if 'worker_capture' not in request:
+        return
+    record(manifest, attempt, 'worker_capture')
+    executable = manifest['detailed_report']['runtime_checks']['executable_realpath']
+    result = prepare_capture(request, resource, attempt, executable)
+    manifest['detailed_report']['ledger'][-1].update(status=result['status'], reason=result['reason'])
 
 
 def run(request, target, run_id):
@@ -59,6 +69,7 @@ def run(request, target, run_id):
         manifest['detailed_report']['registration'] = carrier.check_registration(request, resource, attempt)
         manifest['conclusions']['registration'] = 'pass'
         completed(manifest)
+        prepare_worker_capture(request, resource, attempt, manifest)
         record(manifest, attempt, 'service')
         carrier.launch(request, resource, attempt)
         handoff = carrier.capture(request, resource, attempt)

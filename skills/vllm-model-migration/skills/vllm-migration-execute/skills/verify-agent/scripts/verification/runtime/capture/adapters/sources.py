@@ -1,0 +1,14 @@
+"""已核对的 vLLM 与 Ascend runner、sampler、调度器和请求协议。"""
+SOURCES = {'vllm.entrypoints.openai.chat_completion.serving': ('7c19fe3fc8e6951ebdcaf088695c2351939aea80726630974783ef066c062141',),
+ 'vllm.entrypoints.openai.completion.serving': ('b8f4665d728b76ce1e8e37655d57260554fc1550ded25c4f8cabf24a2bd0c067',
+                                                'ffb08a4e5113ed2bf2f23b5389f4f01f1b3393a7b3a5028e26e4c91ce3831bc5'),
+ 'vllm.v1.core.sched.scheduler': ('dd5dd6e7668a2f76ee0e1df92b972196485f2d515acc81d91993e9614f70608f',
+                                  'ff208267973b16f1cde384cb4d86090b950f35d0e8bcd97433c642551867572d'),
+ 'vllm.v1.engine.input_processor': ('951cc1a8809ad296e8a61ddfd5d4759d4b2f6ecbd19de6667a03ad8cee7193fe',
+                                    '17c091fef7bbaa4537335367abf8267345a782914f00fe01919c6efbbeff9c3b'),
+ 'vllm.v1.sample.sampler': ('b93600890dabde54310a39b34cf2a96173fbb66211b9d4a74386c1ab9ee4ae5e',
+                            'b8c03e99ea099f710440a1390e1495772a563477a5eafaf3f6d75af194024f76'),
+ 'vllm_ascend.sample.sampler': ('3cdbf8bf456d9a269ba1cf3382d4848a03b0f62ef7a506d336f37914da77a03e',
+                                'df46f904ba989b7d3579bd965c67c9f0fac7018bc13958dd2f203b21b2b17829'),
+ 'vllm_ascend.worker.model_runner_v1': ('8d35f26a9db8f63038158c139a43f92e3e970117bb4a2b43c82fd828e349b981',
+                                        '923164ecd6fbeb0c7ada2dd336c6541efed46e1785860256746b505c74235358')}

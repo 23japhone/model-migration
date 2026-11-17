@@ -5,6 +5,7 @@ import signal
 
 from .evidence import finish as save_result, safe_text, sha256, write_json
 from .runtime import carrier
+from .runtime.capture.prepare import publish as publish_capture
 
 ERRORS = (OSError, ValueError, RuntimeError, KeyError)
 
@@ -50,15 +51,31 @@ def cleanup(request, resource, attempt, manifest, failed):
         final = {'state': 'retained', 'resource': resource}
     manifest['detailed_report']['final_service'] = final
     write_json(attempt / 'service-final.json', final)
-    handoff = attempt / 'deployment-handoff.json'
-    if handoff.exists():
-        value = json.loads(handoff.read_text());value['final_service'] = final
-        write_json(handoff, value)
-        manifest['detailed_report']['handoff_sha256'] = sha256(handoff)
+    seal_handoff(attempt, manifest, final)
     manifest['conclusions']['lifecycle'] = 'pass'
 
 
+def seal_handoff(attempt, manifest, final):
+    handoff = attempt / 'deployment-handoff.json'
+    if not handoff.exists():
+        return
+    details = manifest['detailed_report']
+    value = json.loads(handoff.read_text())
+    value['final_service'] = final
+    if 'worker_capture' in details and any(row['step'] == 'final_handoff' and row['status'] == 'succeeded'
+                                           for row in details.get('ledger', [])):
+        value['worker_capture'] = details['worker_capture']
+    write_json(handoff, value)
+    details['handoff_sha256'] = sha256(handoff)
+
+
 def finalize(request, resource, attempt, manifest, failed):
+    try:
+        publish_capture(request, attempt, manifest)
+    except (*ERRORS, KeyboardInterrupt) as error:
+        manifest['detailed_report']['capture_receipt_error'] = diagnostic(error)
+        manifest.setdefault('diagnostic', diagnostic(error))
+        failed = True
     outcome = settle(lambda: cleanup(request, resource, attempt, manifest, failed),
                      lambda: cleanup(request, resource, attempt, manifest, True))
     manifest['detailed_report']['cleanup'] = {k: v for k, v in outcome.items() if k != 'value'}
@@ -68,7 +85,7 @@ def finalize(request, resource, attempt, manifest, failed):
         manifest['conclusions']['lifecycle'] = 'fail'
         manifest['detailed_report']['cleanup_error'] = outcome['error']
         manifest.setdefault('diagnostic', outcome['cancellation'] or outcome['error'])
-    return not outcome['cancellation'] and not outcome['error']
+    return not (outcome['cancellation'] or outcome['error'] or 'capture_receipt_error' in manifest['detailed_report'])
 
 
 def stop(resource, attempt, manifest):

@@ -5,6 +5,7 @@ from pathlib import Path
 import uuid
 
 from .command import run
+from .capture.launch import command as launch_command
 from ..evidence import write_json
 from ..devices.policy import creation_environment
 from .execution import docker_prefix
@@ -69,7 +70,7 @@ def launch(request, resource, attempt):
     resource['log_path'] = path
     code = 'import subprocess,sys; f=open(sys.argv[1], "ab", buffering=0); raise SystemExit(subprocess.call(sys.argv[2:], stdout=f, stderr=f))'
     run([*docker_prefix(resource, request['runtime']['env'], ('-d',)), request['runtime']['python'], '-c', code,
-         path, *request['service']['command']], attempt / 'service-launch')
+         path, *launch_command(request)], attempt / 'service-launch')
     write_json(attempt / 'resource-pending.json', resource)
 
 

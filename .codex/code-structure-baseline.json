@@ -81,6 +81,14 @@
         "files": 10,
         "kind": "source"
       },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture": {
+        "files": 11,
+        "kind": "source"
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters": {
+        "files": 9,
+        "kind": "source"
+      },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/vllm-model-precheck/scripts": {
         "files": 1,
         "kind": "source"
@@ -183,6 +191,10 @@
       },
       "tests/vllm-model-migration/source_contract": {
         "files": 6,
+        "kind": "test"
+      },
+      "tests/vllm-model-migration/worker_capture": {
+        "files": 12,
         "kind": "test"
       }
     },
@@ -593,7 +605,7 @@
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/cli.py": {
         "kind": "source",
-        "lines": 74
+        "lines": 83
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/customer/__init__.py": {
         "kind": "source",
@@ -677,7 +689,7 @@
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/lifecycle.py": {
         "kind": "source",
-        "lines": 94
+        "lines": 111
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/outputs.py": {
         "kind": "source",
@@ -705,7 +717,7 @@
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py": {
         "kind": "source",
-        "lines": 293
+        "lines": 295
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/review.py": {
         "kind": "source",
@@ -713,11 +725,91 @@
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runner.py": {
         "kind": "source",
-        "lines": 91
+        "lines": 102
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/__init__.py": {
         "kind": "source",
         "lines": 1
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/action.py": {
+        "kind": "source",
+        "lines": 141
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/__init__.py": {
+        "kind": "source",
+        "lines": 1
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/bootstrap.py": {
+        "kind": "source",
+        "lines": 29
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/coverage.py": {
+        "kind": "source",
+        "lines": 79
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/engine.py": {
+        "kind": "source",
+        "lines": 44
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/frontend.py": {
+        "kind": "source",
+        "lines": 71
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/install.py": {
+        "kind": "source",
+        "lines": 51
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/sources.py": {
+        "kind": "source",
+        "lines": 14
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/state.py": {
+        "kind": "source",
+        "lines": 53
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/worker.py": {
+        "kind": "source",
+        "lines": 182
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/contract.py": {
+        "kind": "source",
+        "lines": 71
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/index.py": {
+        "kind": "source",
+        "lines": 143
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/launch.py": {
+        "kind": "source",
+        "lines": 34
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/lease.py": {
+        "kind": "source",
+        "lines": 42
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/prepare.py": {
+        "kind": "source",
+        "lines": 123
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/probe.py": {
+        "kind": "source",
+        "lines": 49
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/service.py": {
+        "kind": "source",
+        "lines": 85
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/session.py": {
+        "kind": "source",
+        "lines": 112
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/session_receipt.py": {
+        "kind": "source",
+        "lines": 90
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/tensors.py": {
+        "kind": "source",
+        "lines": 122
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/carrier.py": {
         "kind": "source",
@@ -729,7 +821,7 @@
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/docker.py": {
         "kind": "source",
-        "lines": 111
+        "lines": 112
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/execution.py": {
         "kind": "source",
@@ -749,7 +841,7 @@
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/process.py": {
         "kind": "source",
-        "lines": 68
+        "lines": 69
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/registration.py": {
         "kind": "source",
@@ -1412,6 +1504,54 @@
         "lines": 145
       },
       "tests/vllm-model-migration/test_skill_paths.py": {
+        "kind": "test",
+        "lines": 135
+      },
+      "tests/vllm-model-migration/worker_capture/__init__.py": {
+        "kind": "test",
+        "lines": 0
+      },
+      "tests/vllm-model-migration/worker_capture/native_fixture.py": {
+        "kind": "test",
+        "lines": 76
+      },
+      "tests/vllm-model-migration/worker_capture/session_fixture.py": {
+        "kind": "test",
+        "lines": 108
+      },
+      "tests/vllm-model-migration/worker_capture/test_capture_cli.py": {
+        "kind": "test",
+        "lines": 36
+      },
+      "tests/vllm-model-migration/worker_capture/test_capture_coverage.py": {
+        "kind": "test",
+        "lines": 31
+      },
+      "tests/vllm-model-migration/worker_capture/test_capture_index.py": {
+        "kind": "test",
+        "lines": 91
+      },
+      "tests/vllm-model-migration/worker_capture/test_capture_query.py": {
+        "kind": "test",
+        "lines": 22
+      },
+      "tests/vllm-model-migration/worker_capture/test_capture_session.py": {
+        "kind": "test",
+        "lines": 64
+      },
+      "tests/vllm-model-migration/worker_capture/test_frontend.py": {
+        "kind": "test",
+        "lines": 43
+      },
+      "tests/vllm-model-migration/worker_capture/test_preparation.py": {
+        "kind": "test",
+        "lines": 310
+      },
+      "tests/vllm-model-migration/worker_capture/test_runtime_closure.py": {
+        "kind": "test",
+        "lines": 196
+      },
+      "tests/vllm-model-migration/worker_capture/test_worker_events.py": {
         "kind": "test",
         "lines": 135
       }
@@ -5515,35 +5655,35 @@
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/cli.py::ChineseParser.error": {
         "branches": 0,
         "complexity": 1,
-        "line": 21,
+        "line": 23,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/cli.py",
         "statements": 1
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/cli.py::ChineseParser.format_help": {
         "branches": 0,
         "complexity": 1,
-        "line": 18,
+        "line": 20,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/cli.py",
         "statements": 1
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/cli.py::action_request": {
-        "branches": 9,
-        "complexity": 8,
-        "line": 25,
+        "branches": 11,
+        "complexity": 10,
+        "line": 27,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/cli.py",
-        "statements": 17
+        "statements": 23
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/cli.py::cancelled": {
         "branches": 0,
         "complexity": 1,
-        "line": 43,
+        "line": 51,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/cli.py",
         "statements": 1
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/cli.py::main": {
         "branches": 4,
         "complexity": 4,
-        "line": 47,
+        "line": 55,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/cli.py",
         "statements": 24
       },
@@ -6059,51 +6199,58 @@
         "statements": 3
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/lifecycle.py::cleanup": {
-        "branches": 7,
-        "complexity": 10,
-        "line": 39,
+        "branches": 6,
+        "complexity": 9,
+        "line": 40,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/lifecycle.py",
-        "statements": 22
+        "statements": 17
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/lifecycle.py::complete": {
         "branches": 1,
         "complexity": 2,
-        "line": 86,
+        "line": 103,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/lifecycle.py",
         "statements": 8
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/lifecycle.py::defer_interrupts": {
         "branches": 3,
         "complexity": 3,
-        "line": 17,
+        "line": 18,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/lifecycle.py",
         "statements": 7
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/lifecycle.py::diagnostic": {
         "branches": 0,
         "complexity": 2,
-        "line": 12,
+        "line": 13,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/lifecycle.py",
         "statements": 1
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/lifecycle.py::finalize": {
-        "branches": 2,
-        "complexity": 7,
-        "line": 61,
+        "branches": 3,
+        "complexity": 9,
+        "line": 72,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/lifecycle.py",
-        "statements": 9
+        "statements": 14
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/lifecycle.py::seal_handoff": {
+        "branches": 2,
+        "complexity": 6,
+        "line": 58,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/lifecycle.py",
+        "statements": 10
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/lifecycle.py::settle": {
         "branches": 3,
         "complexity": 4,
-        "line": 27,
+        "line": 28,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/lifecycle.py",
         "statements": 10
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/lifecycle.py::stop": {
         "branches": 3,
         "complexity": 8,
-        "line": 74,
+        "line": 91,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/lifecycle.py",
         "statements": 8
       },
@@ -6229,161 +6376,161 @@
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py::absolute": {
         "branches": 1,
         "complexity": 3,
-        "line": 21,
+        "line": 22,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py",
         "statements": 3
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py::argument": {
         "branches": 7,
         "complexity": 8,
-        "line": 234,
+        "line": 236,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py",
         "statements": 11
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py::argv": {
         "branches": 2,
         "complexity": 9,
-        "line": 40,
+        "line": 41,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py",
         "statements": 4
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py::borrowed_fields": {
         "branches": 6,
         "complexity": 8,
-        "line": 102,
+        "line": 103,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py",
         "statements": 12
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py::case_fields": {
         "branches": 8,
         "complexity": 14,
-        "line": 129,
+        "line": 130,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py",
         "statements": 22
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py::case_shape": {
         "branches": 7,
         "complexity": 12,
-        "line": 148,
+        "line": 149,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py",
         "statements": 16
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py::docker_devices": {
         "branches": 2,
         "complexity": 6,
-        "line": 263,
+        "line": 265,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py",
         "statements": 6
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py::docker_fields": {
         "branches": 6,
         "complexity": 9,
-        "line": 116,
+        "line": 117,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py",
         "statements": 15
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py::endpoint_fields": {
         "branches": 0,
         "complexity": 1,
-        "line": 97,
+        "line": 98,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py",
         "statements": 2
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py::execution_identity": {
         "branches": 8,
         "complexity": 11,
-        "line": 246,
+        "line": 248,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py",
         "statements": 16
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py::fields": {
         "branches": 1,
         "complexity": 4,
-        "line": 16,
+        "line": 17,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py",
         "statements": 2
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py::hashes": {
         "branches": 6,
         "complexity": 10,
-        "line": 27,
+        "line": 28,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py",
         "statements": 9
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py::image_id": {
         "branches": 2,
         "complexity": 5,
-        "line": 191,
+        "line": 192,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py",
         "statements": 7
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py::load": {
         "branches": 5,
         "complexity": 12,
-        "line": 208,
+        "line": 209,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py",
-        "statements": 24
+        "statements": 25
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py::message_images": {
         "branches": 6,
         "complexity": 8,
-        "line": 179,
+        "line": 180,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py",
         "statements": 11
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py::model_fields": {
         "branches": 2,
         "complexity": 9,
-        "line": 47,
+        "line": 48,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py",
         "statements": 9
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py::optional_fields": {
         "branches": 7,
         "complexity": 12,
-        "line": 271,
+        "line": 273,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py",
         "statements": 18
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py::output_target": {
         "branches": 0,
         "complexity": 1,
-        "line": 292,
+        "line": 294,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py",
         "statements": 1
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py::payload_fields": {
         "branches": 6,
         "complexity": 11,
-        "line": 163,
+        "line": 164,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py",
         "statements": 15
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py::real_load": {
         "branches": 2,
         "complexity": 5,
-        "line": 91,
+        "line": 92,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py",
         "statements": 3
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py::runtime_fields": {
         "branches": 5,
         "complexity": 10,
-        "line": 58,
+        "line": 59,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py",
         "statements": 13
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py::semantic_fields": {
         "branches": 2,
         "complexity": 8,
-        "line": 200,
+        "line": 201,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py",
         "statements": 5
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py::service_fields": {
         "branches": 6,
         "complexity": 12,
-        "line": 72,
+        "line": 73,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/request.py",
         "statements": 14
       },
@@ -6453,30 +6600,835 @@
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runner.py::block_dependents": {
         "branches": 0,
         "complexity": 4,
-        "line": 25,
+        "line": 26,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runner.py",
         "statements": 3
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runner.py::completed": {
         "branches": 0,
         "complexity": 1,
-        "line": 21,
+        "line": 22,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runner.py",
         "statements": 1
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runner.py::prepare_worker_capture": {
+        "branches": 1,
+        "complexity": 2,
+        "line": 33,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runner.py",
+        "statements": 6
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runner.py::record": {
         "branches": 0,
         "complexity": 1,
-        "line": 15,
+        "line": 16,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runner.py",
         "statements": 3
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runner.py::run": {
         "branches": 7,
         "complexity": 8,
-        "line": 32,
+        "line": 42,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runner.py",
-        "statements": 59
+        "statements": 60
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/action.py::capture": {
+        "branches": 7,
+        "complexity": 12,
+        "line": 72,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/action.py",
+        "statements": 37
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/action.py::exclusive": {
+        "branches": 1,
+        "complexity": 3,
+        "line": 50,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/action.py",
+        "statements": 5
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/action.py::generate": {
+        "branches": 2,
+        "complexity": 5,
+        "line": 58,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/action.py",
+        "statements": 8
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/action.py::lookup": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 139,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/action.py",
+        "statements": 2
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/action.py::run": {
+        "branches": 1,
+        "complexity": 2,
+        "line": 121,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/action.py",
+        "statements": 13
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/action.py::validate": {
+        "branches": 11,
+        "complexity": 15,
+        "line": 18,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/action.py",
+        "statements": 18
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/action.py::validate_generation": {
+        "branches": 2,
+        "complexity": 10,
+        "line": 40,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/action.py",
+        "statements": 6
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/bootstrap.py::main": {
+        "branches": 2,
+        "complexity": 2,
+        "line": 8,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/bootstrap.py",
+        "statements": 11
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/coverage.py::Coverage.__init__": {
+        "branches": 2,
+        "complexity": 3,
+        "line": 21,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/coverage.py",
+        "statements": 7
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/coverage.py::Coverage.attach": {
+        "branches": 1,
+        "complexity": 2,
+        "line": 39,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/coverage.py",
+        "statements": 3
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/coverage.py::Coverage.collector": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 44,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/coverage.py",
+        "statements": 3
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/coverage.py::Coverage.collector.observed": {
+        "branches": 1,
+        "complexity": 2,
+        "line": 47,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/coverage.py",
+        "statements": 3
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/coverage.py::Coverage.finish": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 56,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/coverage.py",
+        "statements": 3
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/coverage.py::Coverage.module": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 29,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/coverage.py",
+        "statements": 3
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/coverage.py::Coverage.module.invoked": {
+        "branches": 2,
+        "complexity": 3,
+        "line": 32,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/coverage.py",
+        "statements": 6
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/coverage.py::Coverage.start": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 52,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/coverage.py",
+        "statements": 2
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/coverage.py::check_support": {
+        "branches": 2,
+        "complexity": 3,
+        "line": 7,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/coverage.py",
+        "statements": 6
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/coverage.py::normalized": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 16,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/coverage.py",
+        "statements": 1
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/coverage.py::verify": {
+        "branches": 6,
+        "complexity": 15,
+        "line": 64,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/coverage.py",
+        "statements": 19
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/engine.py::input_processor": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 5,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/engine.py",
+        "statements": 3
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/engine.py::input_processor.assign": {
+        "branches": 5,
+        "complexity": 5,
+        "line": 7,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/engine.py",
+        "statements": 10
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/engine.py::scheduler": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 24,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/engine.py",
+        "statements": 4
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/engine.py::scheduler.accept": {
+        "branches": 5,
+        "complexity": 7,
+        "line": 29,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/engine.py",
+        "statements": 11
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/engine.py::scheduler.initialize": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 26,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/engine.py",
+        "statements": 2
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/frontend.py::install": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 39,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/frontend.py",
+        "statements": 6
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/frontend.py::install.init": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 43,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/frontend.py",
+        "statements": 3
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/frontend.py::install.invoked": {
+        "branches": 6,
+        "complexity": 7,
+        "line": 48,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/frontend.py",
+        "statements": 20
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/frontend.py::wrap_client": {
+        "branches": 1,
+        "complexity": 2,
+        "line": 11,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/frontend.py",
+        "statements": 7
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/frontend.py::wrap_client.generate": {
+        "branches": 6,
+        "complexity": 9,
+        "line": 16,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/frontend.py",
+        "statements": 17
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/install.py::Hooks.find_spec": {
+        "branches": 2,
+        "complexity": 4,
+        "line": 33,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/install.py",
+        "statements": 8
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/install.py::attach": {
+        "branches": 7,
+        "complexity": 8,
+        "line": 11,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/install.py",
+        "statements": 17
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/install.py::enable": {
+        "branches": 2,
+        "complexity": 4,
+        "line": 46,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/install.py",
+        "statements": 5
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/state.py::active": {
+        "branches": 1,
+        "complexity": 2,
+        "line": 26,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/state.py",
+        "statements": 3
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/state.py::fail": {
+        "branches": 1,
+        "complexity": 2,
+        "line": 51,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/state.py",
+        "statements": 2
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/state.py::mapped": {
+        "branches": 2,
+        "complexity": 3,
+        "line": 33,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/state.py",
+        "statements": 6
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/state.py::read": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 13,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/state.py",
+        "statements": 1
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/state.py::ready": {
+        "branches": 0,
+        "complexity": 2,
+        "line": 43,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/state.py",
+        "statements": 3
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/state.py::root": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 9,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/state.py",
+        "statements": 1
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/state.py::write": {
+        "branches": 1,
+        "complexity": 1,
+        "line": 17,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/state.py",
+        "statements": 5
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/worker.py::Recorder.__init__": {
+        "branches": 5,
+        "complexity": 14,
+        "line": 21,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/worker.py",
+        "statements": 20
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/worker.py::Recorder.candidate": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 70,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/worker.py",
+        "statements": 1
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/worker.py::Recorder.close": {
+        "branches": 3,
+        "complexity": 3,
+        "line": 108,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/worker.py",
+        "statements": 6
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/worker.py::Recorder.finish": {
+        "branches": 3,
+        "complexity": 4,
+        "line": 124,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/worker.py",
+        "statements": 12
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/worker.py::Recorder.install_sampler": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 46,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/worker.py",
+        "statements": 4
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/worker.py::Recorder.install_sampler.greedy": {
+        "branches": 2,
+        "complexity": 3,
+        "line": 49,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/worker.py",
+        "statements": 6
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/worker.py::Recorder.logits": {
+        "branches": 1,
+        "complexity": 3,
+        "line": 117,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/worker.py",
+        "statements": 5
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/worker.py::Recorder.observe": {
+        "branches": 1,
+        "complexity": 2,
+        "line": 58,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/worker.py",
+        "statements": 4
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/worker.py::Recorder.scores": {
+        "branches": 1,
+        "complexity": 2,
+        "line": 65,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/worker.py",
+        "statements": 3
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/worker.py::Recorder.select": {
+        "branches": 2,
+        "complexity": 3,
+        "line": 73,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/worker.py",
+        "statements": 7
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/worker.py::Recorder.start": {
+        "branches": 7,
+        "complexity": 7,
+        "line": 83,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/worker.py",
+        "statements": 21
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/worker.py::install": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 139,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/worker.py",
+        "statements": 6
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/worker.py::install.invoked": {
+        "branches": 1,
+        "complexity": 3,
+        "line": 163,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/worker.py",
+        "statements": 5
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/worker.py::install.loaded": {
+        "branches": 1,
+        "complexity": 2,
+        "line": 141,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/worker.py",
+        "statements": 6
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/worker.py::install.sampled": {
+        "branches": 4,
+        "complexity": 6,
+        "line": 169,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/worker.py",
+        "statements": 11
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/worker.py::install.scheduled": {
+        "branches": 6,
+        "complexity": 7,
+        "line": 149,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/worker.py",
+        "statements": 11
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/worker.py::save_vector": {
+        "branches": 1,
+        "complexity": 3,
+        "line": 11,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/worker.py",
+        "statements": 6
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/contract.py::check_additional_config": {
+        "branches": 2,
+        "complexity": 3,
+        "line": 32,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/contract.py",
+        "statements": 5
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/contract.py::check_options": {
+        "branches": 7,
+        "complexity": 10,
+        "line": 40,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/contract.py",
+        "statements": 12
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/contract.py::check_service": {
+        "branches": 3,
+        "complexity": 6,
+        "line": 55,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/contract.py",
+        "statements": 10
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/contract.py::native_config": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 68,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/contract.py",
+        "statements": 1
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/contract.py::validate": {
+        "branches": 5,
+        "complexity": 8,
+        "line": 12,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/contract.py",
+        "statements": 12
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/contract.py::validate_root": {
+        "branches": 1,
+        "complexity": 5,
+        "line": 27,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/contract.py",
+        "statements": 2
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/index.py::correlate": {
+        "branches": 2,
+        "complexity": 11,
+        "line": 11,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/index.py",
+        "statements": 8
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/index.py::decoded": {
+        "branches": 2,
+        "complexity": 3,
+        "line": 142,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/index.py",
+        "statements": 1
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/index.py::layer_calls": {
+        "branches": 2,
+        "complexity": 8,
+        "line": 134,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/index.py",
+        "statements": 7
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/index.py::native_forward": {
+        "branches": 2,
+        "complexity": 4,
+        "line": 71,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/index.py",
+        "statements": 9
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/index.py::prediction": {
+        "branches": 4,
+        "complexity": 10,
+        "line": 41,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/index.py",
+        "statements": 20
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/index.py::query": {
+        "branches": 9,
+        "complexity": 13,
+        "line": 83,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/index.py",
+        "statements": 23
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/index.py::selected": {
+        "branches": 2,
+        "complexity": 9,
+        "line": 121,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/index.py",
+        "statements": 10
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/index.py::vector": {
+        "branches": 4,
+        "complexity": 8,
+        "line": 24,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/index.py",
+        "statements": 14
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/index.py::verify_native": {
+        "branches": 2,
+        "complexity": 3,
+        "line": 106,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/index.py",
+        "statements": 4
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/index.py::verify_tensors": {
+        "branches": 4,
+        "complexity": 6,
+        "line": 111,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/index.py",
+        "statements": 7
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/launch.py::command": {
+        "branches": 4,
+        "complexity": 8,
+        "line": 21,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/launch.py",
+        "statements": 12
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/launch.py::stage": {
+        "branches": 1,
+        "complexity": 2,
+        "line": 8,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/launch.py",
+        "statements": 10
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/lease.py::identity": {
+        "branches": 2,
+        "complexity": 3,
+        "line": 23,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/lease.py",
+        "statements": 8
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/lease.py::locked": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 12,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/lease.py",
+        "statements": 3
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/lease.py::no_lease": {
+        "branches": 1,
+        "complexity": 3,
+        "line": 18,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/lease.py",
+        "statements": 2
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/lease.py::owned": {
+        "branches": 2,
+        "complexity": 5,
+        "line": 35,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/lease.py",
+        "statements": 7
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/prepare.py::check_target": {
+        "branches": 4,
+        "complexity": 6,
+        "line": 37,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/prepare.py",
+        "statements": 11
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/prepare.py::prepare": {
+        "branches": 3,
+        "complexity": 3,
+        "line": 93,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/prepare.py",
+        "statements": 11
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/prepare.py::prepare_files": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 54,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/prepare.py",
+        "statements": 12
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/prepare.py::publish": {
+        "branches": 2,
+        "complexity": 3,
+        "line": 109,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/prepare.py",
+        "statements": 11
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/prepare.py::runtime_root": {
+        "branches": 5,
+        "complexity": 9,
+        "line": 19,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/prepare.py",
+        "statements": 15
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/prepare.py::shadows_attempt": {
+        "branches": 0,
+        "complexity": 3,
+        "line": 14,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/prepare.py",
+        "statements": 1
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/prepare.py::verify_files": {
+        "branches": 4,
+        "complexity": 8,
+        "line": 69,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/prepare.py",
+        "statements": 18
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/probe.py::checked_dump": {
+        "branches": 2,
+        "complexity": 4,
+        "line": 10,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/probe.py",
+        "statements": 7
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/probe.py::inspect": {
+        "branches": 7,
+        "complexity": 9,
+        "line": 20,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/probe.py",
+        "statements": 23
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/service.py::deployment": {
+        "branches": 5,
+        "complexity": 11,
+        "line": 15,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/service.py",
+        "statements": 20
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/service.py::live": {
+        "branches": 9,
+        "complexity": 13,
+        "line": 49,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/service.py",
+        "statements": 27
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/service.py::process_matches": {
+        "branches": 1,
+        "complexity": 6,
+        "line": 39,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/service.py",
+        "statements": 6
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/service.py::verify_sources": {
+        "branches": 4,
+        "complexity": 5,
+        "line": 79,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/service.py",
+        "statements": 6
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/session.py::arm": {
+        "branches": 2,
+        "complexity": 5,
+        "line": 70,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/session.py",
+        "statements": 11
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/session.py::begin": {
+        "branches": 2,
+        "complexity": 3,
+        "line": 51,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/session.py",
+        "statements": 19
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/session.py::configure": {
+        "branches": 2,
+        "complexity": 4,
+        "line": 43,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/session.py",
+        "statements": 7
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/session.py::operate": {
+        "branches": 5,
+        "complexity": 7,
+        "line": 81,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/session.py",
+        "statements": 28
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/session.py::run": {
+        "branches": 1,
+        "complexity": 2,
+        "line": 109,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/session.py",
+        "statements": 4
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/session.py::validate": {
+        "branches": 3,
+        "complexity": 7,
+        "line": 15,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/session.py",
+        "statements": 12
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/session.py::validate_operation": {
+        "branches": 5,
+        "complexity": 11,
+        "line": 29,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/session.py",
+        "statements": 12
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/session_receipt.py::complete_coverage": {
+        "branches": 7,
+        "complexity": 11,
+        "line": 72,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/session_receipt.py",
+        "statements": 21
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/session_receipt.py::completed_forwards": {
+        "branches": 3,
+        "complexity": 7,
+        "line": 58,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/session_receipt.py",
+        "statements": 7
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/session_receipt.py::http_json": {
+        "branches": 1,
+        "complexity": 2,
+        "line": 10,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/session_receipt.py",
+        "statements": 5
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/session_receipt.py::mapped_response": {
+        "branches": 1,
+        "complexity": 7,
+        "line": 48,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/session_receipt.py",
+        "statements": 7
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/session_receipt.py::require_coverage": {
+        "branches": 1,
+        "complexity": 3,
+        "line": 67,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/session_receipt.py",
+        "statements": 2
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/session_receipt.py::seal": {
+        "branches": 3,
+        "complexity": 11,
+        "line": 17,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/session_receipt.py",
+        "statements": 22
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/tensors.py::arguments": {
+        "branches": 8,
+        "complexity": 12,
+        "line": 15,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/tensors.py",
+        "statements": 16
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/tensors.py::file_ref": {
+        "branches": 1,
+        "complexity": 4,
+        "line": 9,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/tensors.py",
+        "statements": 3
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/tensors.py::has_io": {
+        "branches": 0,
+        "complexity": 3,
+        "line": 80,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/tensors.py",
+        "statements": 2
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/tensors.py::inventory": {
+        "branches": 8,
+        "complexity": 15,
+        "line": 95,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/tensors.py",
+        "statements": 24
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/tensors.py::linear_slices": {
+        "branches": 2,
+        "complexity": 11,
+        "line": 85,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/tensors.py",
+        "statements": 5
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/tensors.py::literals": {
+        "branches": 0,
+        "complexity": 4,
+        "line": 72,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/tensors.py",
+        "statements": 1
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/tensors.py::module_path": {
+        "branches": 2,
+        "complexity": 2,
+        "line": 54,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/tensors.py",
+        "statements": 2
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/tensors.py::owner": {
+        "branches": 3,
+        "complexity": 4,
+        "line": 59,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/tensors.py",
+        "statements": 10
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/tensors.py::tensor_only": {
+        "branches": 0,
+        "complexity": 4,
+        "line": 76,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/tensors.py",
+        "statements": 1
+      },
+      "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/tensors.py::tensor_ref": {
+        "branches": 6,
+        "complexity": 13,
+        "line": 35,
+        "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/tensors.py",
+        "statements": 13
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/carrier.py::capture": {
         "branches": 2,
@@ -6607,56 +7559,56 @@
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/docker.py::assert_identity": {
         "branches": 2,
         "complexity": 4,
-        "line": 21,
+        "line": 22,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/docker.py",
         "statements": 4
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/docker.py::build": {
         "branches": 2,
         "complexity": 4,
-        "line": 27,
+        "line": 28,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/docker.py",
         "statements": 11
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/docker.py::create": {
         "branches": 8,
         "complexity": 8,
-        "line": 41,
+        "line": 42,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/docker.py",
         "statements": 21
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/docker.py::inspect": {
         "branches": 0,
         "complexity": 2,
-        "line": 13,
+        "line": 14,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/docker.py",
         "statements": 2
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/docker.py::launch": {
         "branches": 0,
         "complexity": 1,
-        "line": 66,
+        "line": 67,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/docker.py",
         "statements": 6
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/docker.py::logs": {
         "branches": 1,
         "complexity": 2,
-        "line": 76,
+        "line": 77,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/docker.py",
         "statements": 4
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/docker.py::recover_intent": {
         "branches": 4,
         "complexity": 8,
-        "line": 97,
+        "line": 98,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/docker.py",
         "statements": 14
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/docker.py::stop": {
         "branches": 2,
         "complexity": 3,
-        "line": 84,
+        "line": 85,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/docker.py",
         "statements": 11
       },
@@ -6831,42 +7783,42 @@
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/process.py::assert_identity": {
         "branches": 1,
         "complexity": 3,
-        "line": 18,
+        "line": 19,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/process.py",
         "statements": 4
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/process.py::create": {
         "branches": 1,
         "complexity": 2,
-        "line": 25,
+        "line": 26,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/process.py",
         "statements": 3
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/process.py::identity": {
         "branches": 0,
         "complexity": 1,
-        "line": 12,
+        "line": 13,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/process.py",
         "statements": 2
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/process.py::launch": {
         "branches": 0,
         "complexity": 1,
-        "line": 30,
+        "line": 31,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/process.py",
         "statements": 7
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/process.py::members": {
         "branches": 3,
         "complexity": 4,
-        "line": 42,
+        "line": 43,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/process.py",
         "statements": 8
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/process.py::stop": {
         "branches": 6,
         "complexity": 7,
-        "line": 52,
+        "line": 53,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/process.py",
         "statements": 18
       },
@@ -15759,6 +16711,629 @@
         "line": 15,
         "path": "tests/vllm-model-migration/test_skill_paths.py",
         "statements": 4
+      },
+      "tests/vllm-model-migration/worker_capture/native_fixture.py::frame": {
+        "branches": 9,
+        "complexity": 6,
+        "line": 40,
+        "path": "tests/vllm-model-migration/worker_capture/native_fixture.py",
+        "statements": 13
+      },
+      "tests/vllm-model-migration/worker_capture/native_fixture.py::native_dump": {
+        "branches": 3,
+        "complexity": 4,
+        "line": 12,
+        "path": "tests/vllm-model-migration/worker_capture/native_fixture.py",
+        "statements": 14
+      },
+      "tests/vllm-model-migration/worker_capture/native_fixture.py::respond": {
+        "branches": 1,
+        "complexity": 2,
+        "line": 64,
+        "path": "tests/vllm-model-migration/worker_capture/native_fixture.py",
+        "statements": 10
+      },
+      "tests/vllm-model-migration/worker_capture/native_fixture.py::tensors": {
+        "branches": 1,
+        "complexity": 2,
+        "line": 29,
+        "path": "tests/vllm-model-migration/worker_capture/native_fixture.py",
+        "statements": 8
+      },
+      "tests/vllm-model-migration/worker_capture/session_fixture.py::deployment": {
+        "branches": 1,
+        "complexity": 2,
+        "line": 77,
+        "path": "tests/vllm-model-migration/worker_capture/session_fixture.py",
+        "statements": 11
+      },
+      "tests/vllm-model-migration/worker_capture/session_fixture.py::device_handoff": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 55,
+        "path": "tests/vllm-model-migration/worker_capture/session_fixture.py",
+        "statements": 8
+      },
+      "tests/vllm-model-migration/worker_capture/session_fixture.py::isolated_bundle": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 25,
+        "path": "tests/vllm-model-migration/worker_capture/session_fixture.py",
+        "statements": 9
+      },
+      "tests/vllm-model-migration/worker_capture/session_fixture.py::public": {
+        "branches": 2,
+        "complexity": 2,
+        "line": 100,
+        "path": "tests/vllm-model-migration/worker_capture/session_fixture.py",
+        "statements": 5
+      },
+      "tests/vllm-model-migration/worker_capture/session_fixture.py::reference": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 15,
+        "path": "tests/vllm-model-migration/worker_capture/session_fixture.py",
+        "statements": 1
+      },
+      "tests/vllm-model-migration/worker_capture/session_fixture.py::write": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 19,
+        "path": "tests/vllm-model-migration/worker_capture/session_fixture.py",
+        "statements": 3
+      },
+      "tests/vllm-model-migration/worker_capture/test_capture_cli.py::CaptureCLI.cli": {
+        "branches": 2,
+        "complexity": 2,
+        "line": 18,
+        "path": "tests/vllm-model-migration/worker_capture/test_capture_cli.py",
+        "statements": 3
+      },
+      "tests/vllm-model-migration/worker_capture/test_capture_cli.py::CaptureCLI.setUp": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 13,
+        "path": "tests/vllm-model-migration/worker_capture/test_capture_cli.py",
+        "statements": 3
+      },
+      "tests/vllm-model-migration/worker_capture/test_capture_cli.py::CaptureCLI.test_plans_no_effects": {
+        "branches": 1,
+        "complexity": 2,
+        "line": 26,
+        "path": "tests/vllm-model-migration/worker_capture/test_capture_cli.py",
+        "statements": 5
+      },
+      "tests/vllm-model-migration/worker_capture/test_capture_cli.py::CaptureCLI.test_rejects_invalid_query_or_unbound_input": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 33,
+        "path": "tests/vllm-model-migration/worker_capture/test_capture_cli.py",
+        "statements": 3
+      },
+      "tests/vllm-model-migration/worker_capture/test_capture_coverage.py::CoverageTests.fixture": {
+        "branches": 2,
+        "complexity": 3,
+        "line": 12,
+        "path": "tests/vllm-model-migration/worker_capture/test_capture_coverage.py",
+        "statements": 4
+      },
+      "tests/vllm-model-migration/worker_capture/test_capture_coverage.py::CoverageTests.test_complete_scope_does_not_claim_device_kernel_coverage": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 28,
+        "path": "tests/vllm-model-migration/worker_capture/test_capture_coverage.py",
+        "statements": 4
+      },
+      "tests/vllm-model-migration/worker_capture/test_capture_coverage.py::CoverageTests.test_second_api_missing_is_incomplete": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 20,
+        "path": "tests/vllm-model-migration/worker_capture/test_capture_coverage.py",
+        "statements": 3
+      },
+      "tests/vllm-model-migration/worker_capture/test_capture_coverage.py::CoverageTests.test_unclosed_module_is_incomplete": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 24,
+        "path": "tests/vllm-model-migration/worker_capture/test_capture_coverage.py",
+        "statements": 4
+      },
+      "tests/vllm-model-migration/worker_capture/test_capture_index.py::Rows.receipt": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 56,
+        "path": "tests/vllm-model-migration/worker_capture/test_capture_index.py",
+        "statements": 5
+      },
+      "tests/vllm-model-migration/worker_capture/test_capture_index.py::Rows.save": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 53,
+        "path": "tests/vllm-model-migration/worker_capture/test_capture_index.py",
+        "statements": 1
+      },
+      "tests/vllm-model-migration/worker_capture/test_capture_index.py::Rows.setUp": {
+        "branches": 3,
+        "complexity": 4,
+        "line": 16,
+        "path": "tests/vllm-model-migration/worker_capture/test_capture_index.py",
+        "statements": 31
+      },
+      "tests/vllm-model-migration/worker_capture/test_capture_index.py::Rows.test_digest_changes_and_missing_files": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 73,
+        "path": "tests/vllm-model-migration/worker_capture/test_capture_index.py",
+        "statements": 8
+      },
+      "tests/vllm-model-migration/worker_capture/test_capture_index.py::Rows.test_early_eos": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 83,
+        "path": "tests/vllm-model-migration/worker_capture/test_capture_index.py",
+        "statements": 2
+      },
+      "tests/vllm-model-migration/worker_capture/test_capture_index.py::Rows.test_repeated_token_and_two_api_calls": {
+        "branches": 0,
+        "complexity": 2,
+        "line": 64,
+        "path": "tests/vllm-model-migration/worker_capture/test_capture_index.py",
+        "statements": 6
+      },
+      "tests/vllm-model-migration/worker_capture/test_capture_index.py::Rows.test_worker_and_engine_mismatch": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 87,
+        "path": "tests/vllm-model-migration/worker_capture/test_capture_index.py",
+        "statements": 4
+      },
+      "tests/vllm-model-migration/worker_capture/test_capture_query.py::PredictionTests.check": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 11,
+        "path": "tests/vllm-model-migration/worker_capture/test_capture_query.py",
+        "statements": 2
+      },
+      "tests/vllm-model-migration/worker_capture/test_capture_query.py::PredictionTests.test_second_token": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 16,
+        "path": "tests/vllm-model-migration/worker_capture/test_capture_query.py",
+        "statements": 1
+      },
+      "tests/vllm-model-migration/worker_capture/test_capture_query.py::PredictionTests.test_wrong_position_or_input": {
+        "branches": 1,
+        "complexity": 2,
+        "line": 19,
+        "path": "tests/vllm-model-migration/worker_capture/test_capture_query.py",
+        "statements": 3
+      },
+      "tests/vllm-model-migration/worker_capture/test_capture_session.py::SessionTests.setUp": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 16,
+        "path": "tests/vllm-model-migration/worker_capture/test_capture_session.py",
+        "statements": 3
+      },
+      "tests/vllm-model-migration/worker_capture/test_capture_session.py::SessionTests.test_foreign_or_stale_lease_not_removed": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 58,
+        "path": "tests/vllm-model-migration/worker_capture/test_capture_session.py",
+        "statements": 7
+      },
+      "tests/vllm-model-migration/worker_capture/test_capture_session.py::SessionTests.test_lease_survives_cli_boundary_and_refuses_duplicate_arm": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 30,
+        "path": "tests/vllm-model-migration/worker_capture/test_capture_session.py",
+        "statements": 27
+      },
+      "tests/vllm-model-migration/worker_capture/test_capture_session.py::SessionTests.test_public_plan_has_no_effects": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 20,
+        "path": "tests/vllm-model-migration/worker_capture/test_capture_session.py",
+        "statements": 5
+      },
+      "tests/vllm-model-migration/worker_capture/test_frontend.py::FrontendTests.test_actual_request_and_response_ids": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 16,
+        "path": "tests/vllm-model-migration/worker_capture/test_frontend.py",
+        "statements": 17
+      },
+      "tests/vllm-model-migration/worker_capture/test_preparation.py::CaptureTests.assert_unavailable": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 191,
+        "path": "tests/vllm-model-migration/worker_capture/test_preparation.py",
+        "statements": 8
+      },
+      "tests/vllm-model-migration/worker_capture/test_preparation.py::CaptureTests.bound_capture": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 111,
+        "path": "tests/vllm-model-migration/worker_capture/test_preparation.py",
+        "statements": 8
+      },
+      "tests/vllm-model-migration/worker_capture/test_preparation.py::CaptureTests.public": {
+        "branches": 4,
+        "complexity": 3,
+        "line": 67,
+        "path": "tests/vllm-model-migration/worker_capture/test_preparation.py",
+        "statements": 7
+      },
+      "tests/vllm-model-migration/worker_capture/test_preparation.py::CaptureTests.request": {
+        "branches": 3,
+        "complexity": 3,
+        "line": 50,
+        "path": "tests/vllm-model-migration/worker_capture/test_preparation.py",
+        "statements": 11
+      },
+      "tests/vllm-model-migration/worker_capture/test_preparation.py::CaptureTests.run_service": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 84,
+        "path": "tests/vllm-model-migration/worker_capture/test_preparation.py",
+        "statements": 21
+      },
+      "tests/vllm-model-migration/worker_capture/test_preparation.py::CaptureTests.run_service.snapshot": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 86,
+        "path": "tests/vllm-model-migration/worker_capture/test_preparation.py",
+        "statements": 3
+      },
+      "tests/vllm-model-migration/worker_capture/test_preparation.py::CaptureTests.setUp": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 21,
+        "path": "tests/vllm-model-migration/worker_capture/test_preparation.py",
+        "statements": 21
+      },
+      "tests/vllm-model-migration/worker_capture/test_preparation.py::CaptureTests.target_probe": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 77,
+        "path": "tests/vllm-model-migration/worker_capture/test_preparation.py",
+        "statements": 4
+      },
+      "tests/vllm-model-migration/worker_capture/test_preparation.py::CaptureTests.test_attempts_are_independent_and_tampering_is_detected": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 160,
+        "path": "tests/vllm-model-migration/worker_capture/test_preparation.py",
+        "statements": 12
+      },
+      "tests/vllm-model-migration/worker_capture/test_preparation.py::CaptureTests.test_docker_and_process_config_and_final_receipt": {
+        "branches": 4,
+        "complexity": 4,
+        "line": 132,
+        "path": "tests/vllm-model-migration/worker_capture/test_preparation.py",
+        "statements": 25
+      },
+      "tests/vllm-model-migration/worker_capture/test_preparation.py::CaptureTests.test_incompatible_native_config_and_environment_parallelism": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 257,
+        "path": "tests/vllm-model-migration/worker_capture/test_preparation.py",
+        "statements": 6
+      },
+      "tests/vllm-model-migration/worker_capture/test_preparation.py::CaptureTests.test_incomplete_final_worker_verification_only_reports_preparation": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 296,
+        "path": "tests/vllm-model-migration/worker_capture/test_preparation.py",
+        "statements": 5
+      },
+      "tests/vllm-model-migration/worker_capture/test_preparation.py::CaptureTests.test_ineligible_and_conflicting_service_modes": {
+        "branches": 1,
+        "complexity": 2,
+        "line": 201,
+        "path": "tests/vllm-model-migration/worker_capture/test_preparation.py",
+        "statements": 15
+      },
+      "tests/vllm-model-migration/worker_capture/test_preparation.py::CaptureTests.test_missing_host_readback_isolated": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 265,
+        "path": "tests/vllm-model-migration/worker_capture/test_preparation.py",
+        "statements": 4
+      },
+      "tests/vllm-model-migration/worker_capture/test_preparation.py::CaptureTests.test_missing_host_readback_isolated.lost_marker": {
+        "branches": 1,
+        "complexity": 2,
+        "line": 267,
+        "path": "tests/vllm-model-migration/worker_capture/test_preparation.py",
+        "statements": 4
+      },
+      "tests/vllm-model-migration/worker_capture/test_preparation.py::CaptureTests.test_missing_readonly_and_shadowed_mounts": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 219,
+        "path": "tests/vllm-model-migration/worker_capture/test_preparation.py",
+        "statements": 11
+      },
+      "tests/vllm-model-migration/worker_capture/test_preparation.py::CaptureTests.test_non_directory_or_protected_output_keeps_deployment": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 240,
+        "path": "tests/vllm-model-migration/worker_capture/test_preparation.py",
+        "statements": 7
+      },
+      "tests/vllm-model-migration/worker_capture/test_preparation.py::CaptureTests.test_plan_accepts_optional_request_and_rejects_invalid_shapes_without_output": {
+        "branches": 1,
+        "complexity": 2,
+        "line": 121,
+        "path": "tests/vllm-model-migration/worker_capture/test_preparation.py",
+        "statements": 7
+      },
+      "tests/vllm-model-migration/worker_capture/test_preparation.py::CaptureTests.test_prepared_does_not_mask_functional_failure": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 249,
+        "path": "tests/vllm-model-migration/worker_capture/test_preparation.py",
+        "statements": 6
+      },
+      "tests/vllm-model-migration/worker_capture/test_preparation.py::CaptureTests.test_probe_cancellation_stops_owned_service": {
+        "branches": 0,
+        "complexity": 2,
+        "line": 275,
+        "path": "tests/vllm-model-migration/worker_capture/test_preparation.py",
+        "statements": 10
+      },
+      "tests/vllm-model-migration/worker_capture/test_preparation.py::CaptureTests.test_probe_cancellation_stops_owned_service.cancelled": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 276,
+        "path": "tests/vllm-model-migration/worker_capture/test_preparation.py",
+        "statements": 1
+      },
+      "tests/vllm-model-migration/worker_capture/test_preparation.py::CaptureTests.test_probe_version_failure_keeps_observations_and_preparation_local": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 232,
+        "path": "tests/vllm-model-migration/worker_capture/test_preparation.py",
+        "statements": 6
+      },
+      "tests/vllm-model-migration/worker_capture/test_preparation.py::CaptureTests.test_receipt_write_failure_preserves_resource_cleanup": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 288,
+        "path": "tests/vllm-model-migration/worker_capture/test_preparation.py",
+        "statements": 6
+      },
+      "tests/vllm-model-migration/worker_capture/test_preparation.py::CaptureTests.test_unrelated_submount_does_not_shadow_attempt": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 303,
+        "path": "tests/vllm-model-migration/worker_capture/test_preparation.py",
+        "statements": 6
+      },
+      "tests/vllm-model-migration/worker_capture/test_preparation.py::CaptureTests.test_unrequested_and_prerequisite_blocked": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 174,
+        "path": "tests/vllm-model-migration/worker_capture/test_preparation.py",
+        "statements": 15
+      },
+      "tests/vllm-model-migration/worker_capture/test_runtime_closure.py::RuntimeClosure.invoke": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 69,
+        "path": "tests/vllm-model-migration/worker_capture/test_runtime_closure.py",
+        "statements": 10
+      },
+      "tests/vllm-model-migration/worker_capture/test_runtime_closure.py::RuntimeClosure.operation": {
+        "branches": 0,
+        "complexity": 2,
+        "line": 64,
+        "path": "tests/vllm-model-migration/worker_capture/test_runtime_closure.py",
+        "statements": 3
+      },
+      "tests/vllm-model-migration/worker_capture/test_runtime_closure.py::RuntimeClosure.read": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 84,
+        "path": "tests/vllm-model-migration/worker_capture/test_runtime_closure.py",
+        "statements": 1
+      },
+      "tests/vllm-model-migration/worker_capture/test_runtime_closure.py::RuntimeClosure.setUp": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 21,
+        "path": "tests/vllm-model-migration/worker_capture/test_runtime_closure.py",
+        "statements": 3
+      },
+      "tests/vllm-model-migration/worker_capture/test_runtime_closure.py::RuntimeClosure.start": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 37,
+        "path": "tests/vllm-model-migration/worker_capture/test_runtime_closure.py",
+        "statements": 13
+      },
+      "tests/vllm-model-migration/worker_capture/test_runtime_closure.py::RuntimeClosure.start.Model.do_POST": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 42,
+        "path": "tests/vllm-model-migration/worker_capture/test_runtime_closure.py",
+        "statements": 7
+      },
+      "tests/vllm-model-migration/worker_capture/test_runtime_closure.py::RuntimeClosure.start.Model.log_message": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 51,
+        "path": "tests/vllm-model-migration/worker_capture/test_runtime_closure.py",
+        "statements": 1
+      },
+      "tests/vllm-model-migration/worker_capture/test_runtime_closure.py::RuntimeClosure.test_changed_http_and_tensor_evidence_are_rejected": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 130,
+        "path": "tests/vllm-model-migration/worker_capture/test_runtime_closure.py",
+        "statements": 11
+      },
+      "tests/vllm-model-migration/worker_capture/test_runtime_closure.py::RuntimeClosure.test_early_eos_seals_actual_count_and_missing_second_token_fails": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 144,
+        "path": "tests/vllm-model-migration/worker_capture/test_runtime_closure.py",
+        "statements": 7
+      },
+      "tests/vllm-model-migration/worker_capture/test_runtime_closure.py::RuntimeClosure.test_end_does_not_release_inflight_request": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 189,
+        "path": "tests/vllm-model-migration/worker_capture/test_runtime_closure.py",
+        "statements": 7
+      },
+      "tests/vllm-model-migration/worker_capture/test_runtime_closure.py::RuntimeClosure.test_missing_call_blocks_seal_and_preserves_lease": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 117,
+        "path": "tests/vllm-model-migration/worker_capture/test_runtime_closure.py",
+        "statements": 11
+      },
+      "tests/vllm-model-migration/worker_capture/test_runtime_closure.py::RuntimeClosure.test_nonproducing_forward_is_sealed_and_rechecked": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 171,
+        "path": "tests/vllm-model-migration/worker_capture/test_runtime_closure.py",
+        "statements": 14
+      },
+      "tests/vllm-model-migration/worker_capture/test_runtime_closure.py::RuntimeClosure.test_preparation_config_and_deployment_binding_are_required": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 154,
+        "path": "tests/vllm-model-migration/worker_capture/test_runtime_closure.py",
+        "statements": 5
+      },
+      "tests/vllm-model-migration/worker_capture/test_runtime_closure.py::RuntimeClosure.test_public_http_session_second_token_and_offline_read": {
+        "branches": 2,
+        "complexity": 4,
+        "line": 88,
+        "path": "tests/vllm-model-migration/worker_capture/test_runtime_closure.py",
+        "statements": 26
+      },
+      "tests/vllm-model-migration/worker_capture/test_runtime_closure.py::RuntimeClosure.test_repeated_token_ids_keep_output_positions": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 161,
+        "path": "tests/vllm-model-migration/worker_capture/test_runtime_closure.py",
+        "statements": 8
+      },
+      "tests/vllm-model-migration/worker_capture/test_runtime_closure.py::RuntimeClosure.test_session_public_plan_without_baseline_or_sdk": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 26,
+        "path": "tests/vllm-model-migration/worker_capture/test_runtime_closure.py",
+        "statements": 7
+      },
+      "tests/vllm-model-migration/worker_capture/test_worker_events.py::Events.setUp": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 61,
+        "path": "tests/vllm-model-migration/worker_capture/test_worker_events.py",
+        "statements": 15
+      },
+      "tests/vllm-model-migration/worker_capture/test_worker_events.py::Events.test_chunks_repeated_tokens_and_inplace_scores": {
+        "branches": 1,
+        "complexity": 3,
+        "line": 79,
+        "path": "tests/vllm-model-migration/worker_capture/test_worker_events.py",
+        "statements": 31
+      },
+      "tests/vllm-model-migration/worker_capture/test_worker_events.py::Events.test_chunks_repeated_tokens_and_inplace_scores.save": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 99,
+        "path": "tests/vllm-model-migration/worker_capture/test_worker_events.py",
+        "statements": 2
+      },
+      "tests/vllm-model-migration/worker_capture/test_worker_events.py::Events.test_chunks_repeated_tokens_and_inplace_scores.start": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 91,
+        "path": "tests/vllm-model-migration/worker_capture/test_worker_events.py",
+        "statements": 2
+      },
+      "tests/vllm-model-migration/worker_capture/test_worker_events.py::Events.test_dump_scope_includes_compute_logits": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 125,
+        "path": "tests/vllm-model-migration/worker_capture/test_worker_events.py",
+        "statements": 12
+      },
+      "tests/vllm-model-migration/worker_capture/test_worker_events.py::Events.test_mixed_request_rejected": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 118,
+        "path": "tests/vllm-model-migration/worker_capture/test_worker_events.py",
+        "statements": 5
+      },
+      "tests/vllm-model-migration/worker_capture/test_worker_events.py::Inputs.assign_request_id": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 18,
+        "path": "tests/vllm-model-migration/worker_capture/test_worker_events.py",
+        "statements": 2
+      },
+      "tests/vllm-model-migration/worker_capture/test_worker_events.py::Result.__init__": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 33,
+        "path": "tests/vllm-model-migration/worker_capture/test_worker_events.py",
+        "statements": 1
+      },
+      "tests/vllm-model-migration/worker_capture/test_worker_events.py::Result.item": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 36,
+        "path": "tests/vllm-model-migration/worker_capture/test_worker_events.py",
+        "statements": 1
+      },
+      "tests/vllm-model-migration/worker_capture/test_worker_events.py::Runner._model_forward": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 49,
+        "path": "tests/vllm-model-migration/worker_capture/test_worker_events.py",
+        "statements": 1
+      },
+      "tests/vllm-model-migration/worker_capture/test_worker_events.py::Runner.execute_model": {
+        "branches": 2,
+        "complexity": 2,
+        "line": 44,
+        "path": "tests/vllm-model-migration/worker_capture/test_worker_events.py",
+        "statements": 3
+      },
+      "tests/vllm-model-migration/worker_capture/test_worker_events.py::Runner.load_model": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 41,
+        "path": "tests/vllm-model-migration/worker_capture/test_worker_events.py",
+        "statements": 1
+      },
+      "tests/vllm-model-migration/worker_capture/test_worker_events.py::Runner.sample_tokens": {
+        "branches": 2,
+        "complexity": 2,
+        "line": 52,
+        "path": "tests/vllm-model-migration/worker_capture/test_worker_events.py",
+        "statements": 5
+      },
+      "tests/vllm-model-migration/worker_capture/test_worker_events.py::Scheduled.__init__": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 24,
+        "path": "tests/vllm-model-migration/worker_capture/test_worker_events.py",
+        "statements": 1
+      },
+      "tests/vllm-model-migration/worker_capture/test_worker_events.py::Scheduled._update_request_with_output": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 27,
+        "path": "tests/vllm-model-migration/worker_capture/test_worker_events.py",
+        "statements": 2
       }
     }
   },
