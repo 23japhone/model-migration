@@ -164,8 +164,8 @@ skills/vllm-model-migration/
     ├── vllm-migration-prepare/skills/vllm-dataset-prepare/
     │   └── scripts/prepare.py                    准备数据集，固定版本、split 和实际样本
     ├── vllm-migration-execute/skills/verify-agent/
-    │   ├── scripts/verify.py                     部署、功能验证及服务生命周期
-    │   └── scripts/verification/runtime/         拟扩展：在实际模型 worker 接入采集点
+    │   ├── scripts/verify.py                     部署、功能验证、服务生命周期及独立采集入口
+    │   └── scripts/verification/runtime/capture/ 已实现：Eager worker 采集、会话封存及 Token 反查
     └── vllm-precision-align/
         ├── references/                           精度阶段请求与交接契约
         ├── scripts/precision.py                  精度阶段公开入口
@@ -178,12 +178,10 @@ skills/vllm-model-migration/
 
 ##### 拟新增目录与模块
 
-下图标出两个现有父目录。其下的 `capture/`、`vllm-precision-compare/`、`vllm-precision-diagnose/` 及所列内容均拟新增。两个新增任务各有 `SKILL.md`、公开 CLI 和文件契约。比较算法与诊断方法是任务内部模块，可以按证据范围单独选用。
+`verify-agent` 的 `runtime/capture/` 已实现，见上图。下图仅列精度阶段拟新增的两个任务，各自规划 `SKILL.md`、公开 CLI 和文件契约。比较算法与诊断方法是任务内部模块，可以按证据范围单独选用。
 
 ```text
 skills/vllm-model-migration/skills/
-├── vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/  现有父目录
-│   └── capture/                                  实际 worker 的采集配置、挂接和记录
 └── vllm-precision-align/skills/                   现有父目录
     ├── vllm-precision-compare/
     │   ├── SKILL.md
@@ -296,7 +294,7 @@ skills/vllm-model-migration/skills/
 
 ### 6.2 评测期间采集逐层数据的可行性
 
-截至 2026-11-17，`verify-agent-plus` 的原评测入口保持不变；本次独立拆出 `verify-agent` 的 msProbe 运行时工具，可消费部署交接，通过会话采集单请求并按 Token 查询前向、实际模块和注册 API。工具不依赖 GPU 基线或 EvalScope，离线证据与实机边界见[采集记录](MSPROBE_RUNTIME_CAPTURE.md)。全题评测接入和 mindie-debugger 尚未纳入本提交。原精度测量契约继续有效，见[契约](../skills/vllm-model-migration/skills/vllm-precision-align/skills/verify-agent-plus/references/contract.md#结果与生命周期)。
+截至 2026-11-17，`verify-agent-plus` 的原评测入口保持不变；`verify-agent` 的独立 msProbe 运行时工具已合入，可消费部署交接，通过会话串行采集请求并按每个输出 Token 查询前向、实际模块和注册 API。工具不依赖 GPU 基线或 EvalScope，固定环境的 Qwen3.5-27B 真实 NPU 闭环已通过，证据见[采集记录](MSPROBE_RUNTIME_CAPTURE.md)。GPU 基线解析、按基线复测、全题评测集成和 mindie-debugger 均未纳入当前实现；原精度测量契约继续有效，见[契约](../skills/vllm-model-migration/skills/vllm-precision-align/skills/verify-agent-plus/references/contract.md#结果与生命周期)。
 
 若要比对 GPU 与 NPU 上每一步的模块及受支持 API 的输入输出，建议用 msprobe 采集张量。`task=tensor` 保存采集范围内的真实张量，`statistics` 保存统计信息。固定提交 `7ae8857` 的接入说明列出 GPU 原生 vLLM 的 Eager 采集，以及 NPU vLLM-Ascend 的 Eager、ACLGraph 采集。GPU CUDA Graph 在该版本的支持范围之外，切到 Eager 后取得的数据只验证 Eager 路径。[msprobe 的 vLLM 支持表](https://github.com/Ascend/msprobe/blob/7ae8857f16ced36aca1a7138de21c09a4c6e9925/docs/zh/user_guide/dump/vllm_dump_instruct.md)
 
@@ -311,9 +309,9 @@ Eager 在每次前向中调用模块和 API。图重放则一次提交已经捕�
 | [模块调用前后对照](https://github.com/mindie-agent/debugger/blob/831e03d64de24bda35a90f88e7b7dc8fe531e014/mindie_debugger/precision/lockstep_diff.py#L1) | 在模块调用前后记录输入、输出和可达状态，按模块、调用序号和 rank 对照基线 | 快照读取会同步设备。启用 healing 会用基线状态或输出替换现场值，适用于独立诊断 |
 | [单次算子或函数调用](https://github.com/mindie-agent/debugger/blob/831e03d64de24bda35a90f88e7b7dc8fe531e014/mindie_debugger/precision/call_repro.py#L94) | 包装选定调用，保存实参、返回值、可达状态的前后快照及 RNG 信息，供复现 | 采集粒度由调用边界决定。融合 kernel 内部中间值需要单独的可观察点 |
 
-若后续接入，部署侧需在执行模型的 worker 安装采集点。评测侧需把样本和评分关联到服务请求、rank、前向步、批内有效 token 位置及对应的张量文件。当前 HTTP 记录器只转发 `Content-Type`、`Accept` 和 `User-Agent` 三种传入请求头，采用上游按 `X-Request-ID` 筛选的方案时还需贯通请求标识。见[记录器实现](../skills/vllm-model-migration/skills/vllm-precision-align/skills/verify-agent-plus/scripts/precision/runtime/capture.py)。
+后续评测集成可复用已实现的 worker 采集点及 `capture-session`。调用方需提供样本标识、按序执行 arm/发送/seal，并将评分关联到采集回执；工具再关联实际请求 ID、rank、前向和张量。当前评测 HTTP 记录器只转发 `Content-Type`、`Accept` 和 `User-Agent` 三种传入请求头，尚未贯通会话要求的 `X-Precision-Trace`，不能视为正式评测已接入。见[记录器实现](../skills/vllm-model-migration/skills/vllm-precision-align/skills/verify-agent-plus/scripts/precision/runtime/capture.py)。
 
-全量采集的验收应先列明预期样本、rank、步和采集点，再逐项核对张量文件是否落盘，记录跳过、截断、覆盖和写入失败。使用环形缓冲区时，需在槽位复用前导出快照。两端实际部署模式下的覆盖、样本归属，以及开关采集前后的输出、延迟和设备内存占用仍待实机验证。
+全量采集的验收应先列明预期样本、rank、步和采集点，再逐项核对张量文件是否落盘，记录跳过、截断、覆盖和写入失败。固定 NPU Eager 请求已有模块/API 覆盖、逐 Token 关联及采集开关输出一致性的实测；GPU 侧、其他执行模式、正式评测样本归属及延迟/设备内存开销仍须独立验证。后续若使用环形缓冲区，还需在槽位复用前导出快照。
 
 ## 7. 当前迁入状态与验证边界
 
