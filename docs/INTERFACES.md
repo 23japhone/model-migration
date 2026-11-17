@@ -22,7 +22,7 @@
 | [vllm-model-precheck](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/vllm-model-precheck/references/contract.md) | `scripts/precheck.py` | 静态支持候选和路线；客户新部署先转换镜像来源，再调用 `--plan` 校验请求，返回 `not_run` 不表示支持通过，见[转换与提前校验](../skills/vllm-model-migration/references/customer-observations.md#镜像来源转换与提前校验) |
 | [adapt-agent](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/adapt-agent/reference/contract.md) | `scripts/adapt.py` | `--action capture/check`，不自动生成适配代码 |
 | [vllm-model-register](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/vllm-model-register/references/contract.md) | `scripts/register.py`、`scripts/check.py` | 注册与只读载体复验 |
-| [verify-agent](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/contract.md) | `scripts/verify.py` | `--action verify/review/stop/inspect-devices`；inspect-devices只读验证映射及全部设备进程归属 |
+| [verify-agent](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/contract.md) | `scripts/verify.py` | `--action verify/review/stop/inspect-devices/capture-one/capture-session/capture-read`；采集会话消费部署报告并交付独立采集回执，见[输入输出](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/runtime-capture.md) |
 | [vllm-precision-align](../skills/vllm-model-migration/skills/vllm-precision-align/references/contract.md) | `scripts/precision.py` | `--action run/analyze` |
 | [verify-agent-plus](../skills/vllm-model-migration/skills/vllm-precision-align/skills/verify-agent-plus/references/contract.md) | `scripts/validator.py` | `--action run/analyze/preflight`；preflight 仅原生本地数据核验，兼容参数按契约约束 |
 

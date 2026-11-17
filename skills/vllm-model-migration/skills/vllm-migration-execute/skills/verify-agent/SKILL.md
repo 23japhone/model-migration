@@ -32,6 +32,8 @@ python3 /实际技能目录/scripts/verify.py \
 
 公开入口另支持 --action review、--action stop 和只读 --action inspect-devices，沿用相同四个参数。详见契约及[输入模板](assets/request.example.json)。计划不读目标资产、构建镜像、启动服务或创建运行目录。实际执行的每次尝试写入独立目录。
 
+需要为后续精度采集准备 msProbe 时，在同一 verify 请求声明可选的 `worker_capture`。从最终部署交接核对准备回执、配置摘要及服务终态，见[采集准备契约](references/contract.md#msprobe-采集准备)。对有真实进程就绪证据的 retained 服务，用 `capture-one` 采集单条文本请求，再用 `capture-read` 按输出序号回查全部解码层。见[Eager 采集与回查](references/contract.md#eager-单请求采集与回查)。
+
 ## 证据与失败边界
 
 - 共同结果 schema_version=1.0，保留 success、summary、detailed_report、report_path。success 来自本次所有必需检查；协议失败或语义待复核时不能为 true。
@@ -41,3 +43,9 @@ python3 /实际技能目录/scripts/verify.py \
 - 最终报告写入失败不能报告成功；输出诊断并保留已有证据。失败不自动换模型、升级环境或进入异常修复链。
 - 无效usage归档为单用例失败；SSE实际用量参与prompt覆盖判断。三种操作均保护完整安装资源根。停止期间取消仅恢复一次有界清理，保存failed终态与真实资源结果，borrowed不停止。
 - 本实现核验单机 Linux /proc 与 host network 的端口归属；其他网络方式先明确适用方法，不能绕过检查。正式数据集精度、性能、多机、音频/视频及其他未经实测组合分别保留为未验证。
+
+## 正式评测请求的采集会话
+
+`--action capture-session` 提供 begin/arm/seal/end/status，独立于 capture-one。调用方持有绑定控制进程启动身份的持久租约；每道正式请求在转发前 arm，响应后 seal，采集侧不发对照或额外请求。实际前端观察请求/响应 ID，worker 覆盖到 compute_logits，按调度器接受结果建立 Token 索引。来源不明、控制进程变化或活动请求未结束时保留现场并拒绝覆盖。结束会话不停止模型服务；详见[契约](references/contract.md#正式评测采集会话)。
+
+调用方也可直接控制单条请求，不需要 GPU 基线或评测器；准备依赖、会话请求形状、输出引用与第二个 Token 的查询方法见[运行时采集工具](references/runtime-capture.md)。

@@ -8,6 +8,7 @@ from urllib.parse import urlsplit
 
 from .inputs import HANDOFF_TASKS
 from . import outputs
+from .runtime.capture import contract as capture_contract
 
 HASH = re.compile(r'[0-9a-f]{64}')
 SECRET = re.compile(r'(?i)(?:^|[-_])(?:token|password|secret|api[_-]?key|authorization)(?:$|[=_-])')
@@ -208,7 +209,7 @@ def semantic_fields(value):
 def load(path):
     request = json.loads(Path(path).read_text(encoding='utf-8'))
     fields(request, ['schema_version', 'model', 'runtime', 'service', 'registration', 'npu',
-                     'required_features', 'cases'], ['build', 'handoffs', 'api_key_env'])
+                     'required_features', 'cases'], ['build', 'handoffs', 'api_key_env', 'worker_capture'])
     if request['schema_version'] != '1.0':raise ValueError('仅支持 schema_version=1.0')
     model_fields(request['model']);runtime_fields(request['runtime'])
     service_fields(request['service'], request['runtime']['kind'])
@@ -228,6 +229,7 @@ def load(path):
         raise ValueError('必须显式选择唯一的物理 NPU 编号')
     execution_identity(request)
     optional_fields(request)
+    capture_contract.validate(request)
     return request
 
 
