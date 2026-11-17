@@ -16,6 +16,7 @@
 - **使用原生评测**：新测量默认 EvalScope，兼容显式 AISBench；保留原生模板、评分和数据身份，分别判断测量有效性、GPU/NPU 可比性和目标达标情况。
 - **共用环境与证据**：客户 EvalScope 每次有效正式准备调用原版安装脚本，续接继承环境并核对实际绑定；性能启动前另行核验 Python、venv、CLI、版本和当前 PATH，实际两端共用须有进程证据。
 - **交付可核验配置**：完整 EvalScope 客户流程联合校验、整体发布三个 JSON，保留独立导出回执、文件路径和 SHA256。
+- **独立采集运行数据**：`verify-agent` 在受支持的单 rank 同步 Eager 服务中采集请求、逐输出 Token 的预测及实际模块/API 输入输出，支持离线反查；无需 GPU 基线或评测 SDK，见[运行时采集工具](skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/runtime-capture.md)。
 
 本仓交付的是包含指令、脚本、契约和模板的 Skills。Agent 负责需求理解、资料核对、源码适配与语义复核；脚本负责确定性执行和证据记录。使用本项目无需启动 MoFix 后端。
 
@@ -105,7 +106,7 @@ flowchart TD
 | 准备阶段 | `vllm-migration-prepare` | 委托资产准备、核验身份和准备交接 |
 | ↳ 准备任务 | `vllm-model-prepare`、`vllm-image-prepare`、`vllm-dataset-prepare` | 分别准备模型、镜像和数据 |
 | 迁移阶段 | `vllm-migration-execute` | 按支持路线组织适配、注册和部署验证 |
-| ↳ 迁移任务 | `vllm-model-precheck`、`adapt-agent`、`vllm-model-register`、`verify-agent` | 分别负责预检、源码适配、框架注册、部署功能验收 |
+| ↳ 迁移任务 | `vllm-model-precheck`、`adapt-agent`、`vllm-model-register`、`verify-agent` | 分别负责预检、源码适配、框架注册、部署功能验收；verify-agent 另提供可选运行时采集 |
 | 精度阶段 | `vllm-precision-align` | 组织测量或历史分析，汇总比较与目标结论 |
 | ↳ 精度任务 | `verify-agent-plus` | 原生精度评测和已有结果分析 |
 
