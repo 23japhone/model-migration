@@ -10,6 +10,8 @@ VERIFY = next((Path(__file__).resolve().parents[3] / 'skills').rglob('verify-age
 sys.path.insert(0, str(VERIFY))
 from verification.runtime.capture import index
 from verification.runtime.capture.tensors import file_ref
+from verification.runtime.capture.tensors import inventory
+from verification.runtime.capture.adapters.coverage import verify
 
 
 class Rows(unittest.TestCase):
@@ -89,3 +91,26 @@ class Rows(unittest.TestCase):
         self.save(p, {**json.loads(p.read_text()), 'forward_id': 'prefill'})
         with self.assertRaisesRegex(ValueError, '身份不符'):
             self.receipt()
+
+    def test_native_none_and_empty_returns_are_explicit_values(self):
+        data = json.loads((self.dump/'dump.json').read_text())
+        names = list(data['data'])
+        observed = {'calls': {'input': names, 'output': names},
+                    'modules': {'begin': [self.layer], 'end': [self.layer]}, 'scope': 'registered'}
+        for output, expected in [([None], None), (None, None), ([], []), ({}, {})]:
+            with self.subTest(output=output):
+                data['data'][self.apis[0]]['output'] = output
+                self.save(self.dump/'dump.json', data)
+                calls = inventory(self.dump, [self.layer], 0, [3])
+                values = [v['value'] for v in calls[1]['values'] if v['argument'][0] == 'output']
+                self.assertEqual(values, [expected])
+                self.assertEqual(verify(observed, calls)['status'], 'complete_within_scope')
+
+    def test_missing_output_is_not_hidden_by_input_literals(self):
+        data = json.loads((self.dump/'dump.json').read_text())
+        call = data['data'][self.apis[0]]
+        del call['output']
+        call['input_args'].append({'type': 'slice', 'value': [None, 1, None]})
+        self.save(self.dump/'dump.json', data)
+        with self.assertRaisesRegex(ValueError, '输入输出'):
+            inventory(self.dump, [self.layer], 0, [3])

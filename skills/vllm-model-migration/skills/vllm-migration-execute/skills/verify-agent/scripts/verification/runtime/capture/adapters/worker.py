@@ -6,6 +6,7 @@ import uuid
 
 from . import state
 from .coverage import Coverage
+from .eager_calls import EagerCalls
 
 
 def save_vector(path, tensor, size):
@@ -38,9 +39,11 @@ class Recorder:
         if rank != 0:
             raise ValueError('实际 rank 非 0')
         self.install_sampler()
+        self.direct_calls = EagerCalls(model, self)
         self.coverage = Coverage(self, model)
         state.ready('worker', rank=rank, mode='eager', synchronous=True, vocab_size=self.size, layers=layers,
-                    modules=self.modules, coverage_capability='modules_and_registered_apis',
+                    modules=self.modules, direct_eager_modules=self.direct_calls.paths,
+                    coverage_capability='modules_and_registered_apis',
                     hooks=['_model_forward', 'compute_logits', 'sample_tokens', 'greedy_sample'])
 
     def install_sampler(self):
@@ -96,6 +99,7 @@ class Recorder:
                      logits_indices=runner.logits_indices.tolist(),
                      output_index=len(runner.requests[frame['internal_id']].output_token_ids))
         if self.debugger is None:
+            self.direct_calls.validate()
             self.debugger = PrecisionDebugger(str(state.root() / 'capture-config.json'))
             self.coverage.attach(self.debugger)
         self.coverage.start()

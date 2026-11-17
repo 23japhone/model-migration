@@ -48,18 +48,24 @@ def configure(root, prep):
     return file_ref(path, root)
 
 
+def probe_directory(target, declared):
+    outputs.check(target, outputs.protected_roots(declared))
+    folder = target / uuid.uuid4().hex
+    folder.mkdir(parents=True, exist_ok=False)
+    return folder
+
+
 def begin(request, target, run_id):
     declared, handoff, prep = deployment(request['source'])
-    outputs.check(target, outputs.protected_roots(declared))
     root = Path(prep['config']['path']).parent
     with locked(root):
         no_lease(root)
         owner = identity(request['owner_pid'])
         if owner['pid'] not in (os.getpid(), os.getppid()): raise ValueError('控制进程不是调用方')
-        ready = live(handoff, prep, target)
+        folder = probe_directory(target, declared)
+        ready = live(handoff, prep, folder)
         if ready.get('coverage_capability') != 'modules_and_registered_apis':
             raise ValueError('旧 worker 缺少完整调用清单能力，请使用新适配器部署')
-        folder = target / uuid.uuid4().hex; folder.mkdir(parents=True, exist_ok=False)
         authority = {'schema_version': '1.0', 'source': request['source'], 'root': str(root), 'owner': owner,
                      'nonce': uuid.uuid4().hex, 'run_id': run_id, 'derived_config': configure(root, prep)}
         path = folder / 'capture-session.json'; write_json(path, authority); reference = file_ref(path, folder)
@@ -94,7 +100,7 @@ def operate(request, target):
             write_json(Path(request['source']['path']).parent / 'session-end.json', lease)
             (root / 'lease.json').unlink()
             return {'status': 'completed', 'sealed': lease['sealed'], 'previous_state': lease['state']}
-        ready = live(handoff, prep, target)
+        ready = live(handoff, prep, probe_directory(target, declared))
         if request['operation'] == 'arm': return arm(request, root, lease, ready)
         if request['operation'] == 'seal':
             from .session_receipt import seal

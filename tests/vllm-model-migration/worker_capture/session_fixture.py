@@ -32,6 +32,8 @@ def isolated_bundle(root):
         stream.write('''
 # TEST ONLY: no Linux process/device exists in this offline fixture.
 def live(handoff, preparation, attempt):
+    from verification.evidence import write_json
+    write_json(attempt / 'current-container.command.json', ['fixture-inspect'])
     read_bound(preparation['config'])
     root = Path(preparation['config']['path']).parent
     for role in ('worker', 'engine', 'frontend'):

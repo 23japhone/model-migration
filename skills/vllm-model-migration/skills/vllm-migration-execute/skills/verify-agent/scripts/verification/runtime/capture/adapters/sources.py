@@ -1,5 +1,8 @@
 """已核对的 vLLM 与 Ascend runner、sampler、调度器和请求协议。"""
-SOURCES = {'vllm.entrypoints.openai.chat_completion.serving': ('7c19fe3fc8e6951ebdcaf088695c2351939aea80726630974783ef066c062141',),
+SOURCES = {'vllm.compilation.decorators': ('09d05a7ffd3f3e7692b331bd01dbbede404eab2b0e787b1d45fd51c74fbe63c0',
+                                        '831c598343da2cb1bec159f799ec3f93c8da155f14888af97728f8c840371e13'),
+ 'vllm.entrypoints.openai.chat_completion.serving': ('7c19fe3fc8e6951ebdcaf088695c2351939aea80726630974783ef066c062141',
+                                                            '8c41af967ef813bf6fd2e2f16b8eedbbf6098d78c971639a58b6297d1c217c02'),
  'vllm.entrypoints.openai.completion.serving': ('b8f4665d728b76ce1e8e37655d57260554fc1550ded25c4f8cabf24a2bd0c067',
                                                 'ffb08a4e5113ed2bf2f23b5389f4f01f1b3393a7b3a5028e26e4c91ce3831bc5'),
  'vllm.v1.core.sched.scheduler': ('dd5dd6e7668a2f76ee0e1df92b972196485f2d515acc81d91993e9614f70608f',

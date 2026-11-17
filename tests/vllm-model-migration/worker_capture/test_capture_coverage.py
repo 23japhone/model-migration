@@ -25,6 +25,11 @@ class CoverageTests(unittest.TestCase):
         observed,calls=self.fixture();observed['modules']['end']=[]
         with self.assertRaisesRegex(ValueError,'模块前向'):verify(observed,calls)
 
+    def test_missing_container_module_is_incomplete(self):
+        observed,calls=self.fixture()
+        for side in ('begin','end'): observed['modules'][side].append('language_model.model')
+        with self.assertRaisesRegex(ValueError,'实际模块调用'): verify(observed,calls)
+
     def test_complete_scope_does_not_claim_device_kernel_coverage(self):
         observed,calls=self.fixture();result=verify(observed,calls)
         self.assertEqual(result['calls'],3)

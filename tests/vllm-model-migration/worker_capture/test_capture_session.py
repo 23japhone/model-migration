@@ -62,3 +62,20 @@ class SessionTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, '租约'):
                 session.no_lease(self.root)
         self.assertTrue(lease.exists())
+
+    def test_live_failure_keeps_attempt_evidence_without_creating_lease(self):
+        from verification.runtime.capture import session
+        from verification.evidence import write_json
+        from verification.runtime.capture.tensors import file_ref
+        config = self.root/'config.json'; write_json(config, {})
+        prep = {'config': file_ref(config, self.root)}
+        def fail_live(handoff, preparation, attempt):
+            write_json(attempt/'probe.json', {'error': 'worker replaced'})
+            raise ValueError('worker replaced')
+        with patch.object(session, 'deployment', return_value=({}, {}, prep)), patch.object(session, 'live', fail_live):
+            for _ in range(2):
+                with self.assertRaisesRegex(ValueError, 'worker replaced'):
+                    session.run({'operation':'begin','source':prep['config'],'owner_pid':os.getpid()},
+                                self.root/'fresh/out', 'fresh')
+        self.assertEqual(len(list((self.root/'fresh/out').glob('*/probe.json'))), 2)
+        self.assertFalse((self.root/'lease.json').exists())

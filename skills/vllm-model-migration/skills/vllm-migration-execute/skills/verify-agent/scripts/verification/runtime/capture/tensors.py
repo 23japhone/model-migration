@@ -13,7 +13,9 @@ def file_ref(path, root):
 
 
 def arguments(value, location, folder, token_row, module_layer):
-    if isinstance(value, list):
+    if value is None or isinstance(value, (str, int, float, bool)) or value in ([], {}):
+        yield {'argument': location, 'type': type(value).__name__, 'value': value}
+    elif isinstance(value, list):
         for i, item in enumerate(value):
             yield from arguments(item, [*location, i], folder, token_row, module_layer)
     elif isinstance(value, dict) and 'data_name' in value:
@@ -92,6 +94,16 @@ def linear_slices(tensors, row, positions):
             v['slice'] = {'axis': 0, 'index': row}
 
 
+def call_arguments(call, data, folder, row, module_layer):
+    if 'output' not in data or not ({'input_args', 'input_kwargs'} & data.keys()):
+        raise ValueError('调用输入输出字段缺失：' + call)
+    result = {side: list(arguments(data[side], [side], folder, row, module_layer)) if side in data else []
+              for side in ('input_args', 'input_kwargs', 'output')}
+    if not (result['input_args'] or result['input_kwargs']) or not result['output']:
+        raise ValueError('调用输入输出无法解析：' + call)
+    return result
+
+
 def inventory(folder, layers, row, positions=()):
     dump = read(folder / 'dump.json')['data']
     parents = read(folder / 'construct.json')
@@ -100,8 +112,7 @@ def inventory(folder, layers, row, positions=()):
     for call, data in dump.items():
         layer = owner(call, parents, layers)
         module = module_path(call)
-        tensors = {side: list(arguments(data.get(side), [side], folder, row, layer is not None and module == layer))
-                   for side in ('input_args', 'input_kwargs', 'output')}
+        tensors = call_arguments(call, data, folder, row, layer is not None and module == layer)
         if layer and module == layer:
             if not has_io(tensors):
                 raise ValueError(f'层输入或输出未落盘 {call}')

@@ -52,6 +52,8 @@ seal 不重发推理。成功后用相同 session 调用 `operation=end`；多�
 
 不传 layer/api 时返回该前向的全部已索引调用；layer 可选择实际模块名，包括 embedding、norm 和 lm_head。同层同 API 多次调用用零基 occurrence 区分。每个调用保留父调用、参数位置、shape、dtype、张量文件和 SHA256；布局可确定时记录 Token 切片，否则引用完整张量。共享权重按完整张量引用。原生 .pt 文件可在具有 PyTorch 的读取环境用 `torch.load(path, map_location="cpu", weights_only=True)` 打开；反查工具自身只校验张量文件字节及元数据，不加载张量 SDK。
 
+原生记录中的 `None`、空列表和空字典按实际参数位置保存在 `values`；赋值或 kernel 启动 API 可以没有张量返回值。这些记录不提供额外的写回后张量。缺少输出字段或输出结构无法解析仍报错，输入侧的标量值不能代替输出证据。
+
 每个已开启前向都有 begin/end，分段 prefill 未输出 Token 的前向也核对文件覆盖。全部层指本次文本路径实际执行的模块；算子范围为 msProbe 注册且实际调用的 API，不包含未执行视觉分支、未注册扩展内部或设备 kernel 内部。覆盖清单只能证明这一范围完整。
 
 离线反查不要求服务在线，但必须保留回执引用的配置、角色就绪记录、HTTP 原件、向量、原生元数据及张量文件原路径与原字节。修改部署准备、配置、采集回执、预测向量或张量后不得沿用旧摘要。提前 EOS 可以封存实际短输出；缺少第二个 Token 时查询失败，不制造预测。
@@ -59,3 +61,14 @@ seal 不重发推理。成功后用相同 session 调用 `operation=end`；多�
 ## 验收边界
 
 独立离线测试覆盖公开 CLI、部署摘要交接、本机 HTTP 请求、会话租约、逐 Token 封存和离线反查，并以显式替身代替 Linux 设备观察及 worker 推理。测试使用两层合成模型、完整合成词表和合成张量字节，不是模型实测。真实目标镜像仍需核对源码、挂点和进程身份；在真实 NPU 上重新打开 msProbe 张量、核对开关采集的输出及开销后，才能报告该环境实机通过。
+
+
+## 启动隔离与目标源码核验
+
+适配器 bootstrap 在主进程及 spawn 重放时移除自身脚本目录的顶层搜索入口，只保留包根；内部的 `adapters.coverage` 不应被第三方 `import coverage` 误认。不需要调用方设置 `PYTHONSAFEPATH` 或额外挂载注册源码来规避同名依赖。
+
+begin 在第一次身份观察写日志之前创建独立尝试目录。arm、seal 和 status 的身份观察也各自使用新的目录，允许调用方使用尚不存在的 work-root/run-id；失败的观察日志保留，不创建成功租约或覆盖旧尝试。--plan 保持零写入。
+
+Chat 前端另审核了源文件 SHA256 `8c41af967ef813bf6fd2e2f16b8eedbbf6098d78c971639a58b6297d1c217c02`：`create_chat_completion(request, raw_request)` 的非流式路径从 `raw_request` 读取 trace，调用 `engine_client.generate(engine_input, sampling_params, sub_request_id, ...)` 并等待最终响应。适配器继续读取实际 generate 参数和响应 ID，不自行重建 chatcmpl ID。离线回归使用该版本真实挂点协议摘录检验位置参数、关键字参数和最终输出绑定；未登记的源码字节仍拒绝。流式、beam、多请求和非 greedy 采集不在此范围。目标实机结果仍必须由该次部署、采集回执和张量读取证据证明。
+
+部分 vLLM 模型的编译装饰器在 `do_not_compile=True` 时直接调用 `forward()`，绕过 PyTorch 模块 hook。适配器核验装饰器源码摘要后，仅在采集活动期间将目标实例的这一分支接到 PyTorch 标准模块调用，确保外层模型容器也产生 msProbe 输入输出；关闭采集和其他实例保留原调用。就绪记录的 `direct_eager_modules` 列出这些模块。已有局部或全局用户 hook、未知源码或执行模式变化会阻塞该适配，不删减缺失模块来宣称覆盖完整。
