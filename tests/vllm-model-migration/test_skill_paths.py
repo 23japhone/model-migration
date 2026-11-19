@@ -23,9 +23,9 @@ class SkillPathsTests(unittest.TestCase):
     def setUp(self):
         self.paths = load_paths()
 
-    def test_layout_resolves_all_twelve_skills_and_public_entries(self):
+    def test_layout_resolves_all_thirteen_skills_and_public_entries(self):
         layout = self.paths.read_index('skill-layout.json')
-        self.assertEqual(len(layout['skills']), 12)
+        self.assertEqual(len(layout['skills']), 13)
         self.assertEqual(self.paths.skill_root(layout['root']), ROOT)
         for name, row in layout['skills'].items():
             with self.subTest(skill=name):
