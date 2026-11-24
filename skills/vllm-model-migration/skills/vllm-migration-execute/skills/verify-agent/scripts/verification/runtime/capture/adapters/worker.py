@@ -180,7 +180,11 @@ def install(cls):
         result = load(self, *args, **kwargs)
         self._verify_recorder = None
         try:
-            self._verify_recorder = Recorder(self)
+            if (state.root() / 'graph.json').is_file():
+                from .aclgraph.worker import GraphRecorder
+                self._verify_recorder = GraphRecorder(self)
+            else:
+                self._verify_recorder = Recorder(self)
         except Exception as error:
             state.fail(state.root(), error)
         return result
@@ -203,7 +207,8 @@ def install(cls):
         if not rec or not rec.frame:
             return forward(self, num_tokens_padded, input_ids, positions, *args, **kwargs)
         rec.observe(rec.start, input_ids, positions)
-        with observe_decode(rec):
+        window = rec.observing(num_tokens_padded) if hasattr(rec, 'observing') else observe_decode(rec)
+        with window:
             return forward(self, num_tokens_padded, input_ids, positions, *args, **kwargs)
     def sampled(self, *args, **kwargs):
         rec = getattr(self, '_verify_recorder', None)
@@ -217,5 +222,7 @@ def install(cls):
             return result
         finally:
             if rec:
+                if hasattr(rec, 'disarm'):
+                    rec.observe(rec.disarm)
                 rec.frame = rec.pending = None
     cls.load_model, cls.execute_model, cls._model_forward, cls.sample_tokens = loaded, scheduled, invoked, sampled

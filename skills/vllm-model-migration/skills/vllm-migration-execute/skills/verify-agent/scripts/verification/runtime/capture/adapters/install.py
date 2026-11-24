@@ -15,7 +15,10 @@ def attach(module):
         actual = hashlib.sha256(Path(module.__file__).read_bytes()).hexdigest()
         if actual not in SOURCES[name]:
             raise ValueError('未适配的目标源码 ' + name + ' ' + actual)
-        if name == parallel.EXECUTOR:
+        if name == 'vllm_ascend.compilation.acl_graph':
+            from .aclgraph import hooks
+            hooks.install(module)
+        elif name == parallel.EXECUTOR:
             parallel.executor(module.MultiprocExecutor)
         elif name.endswith('.scheduler'):
             engine.scheduler(module.Scheduler)
@@ -23,6 +26,9 @@ def attach(module):
             engine.input_processor(module.InputProcessor)
         elif name.endswith('.model_runner_v1'):
             worker.install(module.NPUModelRunner)
+            if (state.root() / 'graph.json').is_file():
+                from .aclgraph.hooks import install_calibration
+                install_calibration(module.NPUModelRunner)
         elif name == 'vllm.entrypoints.openai.completion.serving':
             frontend.install(module.OpenAIServingCompletion, 'create_completion')
         elif name == 'vllm.entrypoints.openai.chat_completion.serving':
@@ -49,6 +55,9 @@ class Hooks:
 def enable():
     if any(isinstance(entry, Hooks) for entry in sys.meta_path):
         return
+    if (state.root() / 'graph.json').is_file():
+        from .aclgraph.hooks import MODULE, DIGEST
+        SOURCES[MODULE] = (DIGEST,)
     if (state.root() / 'parallel.json').is_file():
         SOURCES[parallel.EXECUTOR] = (parallel.EXECUTOR_SHA,)
     sys.meta_path.insert(0, Hooks())

@@ -97,6 +97,8 @@ def capture(request, declared, handoff, prep, attempt):
     root = Path(prep['config']['path']).parent
     with exclusive(root):
         ready = live(handoff, prep, attempt)
+        if ready.get('mode') == 'aclgraph':
+            raise ValueError('ACLGraph 使用 capture-session 完整请求入口')
         if 'rank_workers' in ready:
             raise ValueError('TP=2 使用 capture-session 完整请求入口')
         folder = root / ('request-' + uuid.uuid4().hex)
@@ -164,6 +166,9 @@ def run(request, target, run_id):
 
 def lookup(request, target, run_id):
     receipt = read_bound(request['source'])
+    if receipt.get('mode') == 'aclgraph':
+        from .aclgraph.reader import lookup as graph_lookup
+        return 0, graph_lookup(receipt, request)
     if receipt.get('tensor_parallel_size') == 2:
         from .parallel.reader import lookup as parallel_lookup
         return 0, parallel_lookup(receipt, request)

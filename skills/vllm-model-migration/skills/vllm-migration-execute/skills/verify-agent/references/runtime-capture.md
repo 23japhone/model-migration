@@ -156,3 +156,19 @@ Chat 前端另审核了源文件 SHA256 `8c41af967ef813bf6fd2e2f16b8eedbbf6098d7
 SSE 保留重复 Token、空内容和独立用量事件。完成需要终止原因和 [DONE]。随机采样复用服务的实际抽样，要求显式 seed、正温度和 Ascend 全词表同步分支（关闭 enable_reduce_sample、enable_async_exponential）。封存核对概率与分数、候选概率及引擎接受 ID。
 
 图片索引绑定 HTTP 原始字节及摘要、处理器标识和图像占位位置。视觉快照包括 pixels、grid、embedding、fusion.source、fusion.result，以及视觉块、patch_embed 和 merger 的 input/output。每卡保留实际多轴位置与一维 prompt 绝对位置。启用 full_request 时，图文快照共享本卡的单前向和请求预算，msProbe 单独计量。
+
+## 单卡 ACLGraph 文本请求
+
+`worker_capture.adapter="msprobe_pytorch_aclgraph"` 适用于已核对源码的 Ascend Model Runner V1。服务参数指定 BF16、同步调度、关闭前缀缓存、单请求、单卡，以及编译配置中的 `cudagraph_mode="FULL"` 或 `"PIECEWISE"`。目标解释器的准备回执记录 msProbe 版本与源码摘要。探测失败的部署在采集状态中给出原因。模型实测以对应请求的回执为准。
+
+| 服务配置 | arm 设置 | 回执内容 |
+|---|---|---|
+| `native_dump=false` | 常规 arm | 调度、有效输入、接受结果、实际图重放 |
+| `native_dump=true`（默认） | 常规 arm | 增加各前向的 msProbe 原生 Tensor 文件、层归属和完整词表 |
+| `native_dump=true` 并声明 `decode_cache` | 加入 `cache_capture={"mode":"full_request","max_request_snapshot_bytes":...}` | 增加文本层输入输出、普通注意力 K/V 或 GDN 状态，以及每份快照的来源 |
+
+部署时确定采集点。做三组生成对照时，为每种配置准备独立的图实例、编译缓存和采集输出目录。`decode_cache.max_snapshot_bytes` 约束单前向导出的原始快照，`max_device_snapshot_bytes` 约束观察器的设备快照分配，缺省取前者。请求预算跨前向累计。msProbe 原生文件单独计量。
+
+`capture-read` 使用 `view="timeline"` 查看无输出的 prefill 块、产生首个输出的最后一块、以及每次 decode。按 `output_index`、`forward_id` 或 `prompt_position` 选择前向。`replays` 列出该前向的图实例、wrapper、批次描述符和重放序号。`layer_index` 选择文本层，`native_files` 列出可检查的原生 Tensor 文件。Qwen 的第二个输出使用 `output_index=1`，第 3 层可查 `key.input`、`value.input`、`key.after`、`value.after`，第 0 层可查 `conv.before`、`conv.after`、`ssm.before`、`ssm.after`。读取层记录中的 `plan` 可查有效槽位或状态行，`sources` 标明图内重放或图外调用。推理结果见 `inference_status`，单前向重放见 `graph_status`，联合证据缺项见 `cache_errors`。
+
+msProbe 原生文件按实际 step、rank、调用名、调用序号与输入输出标识归档。例如 `Module.model.layers.3.…` 可直接归到第 3 层，独立的 `Aten.…` 调用保留在前向级文件索引中。模块融合后的内部层次只在原生记录提供对应名称时归属到层。`api` 与 `occurrence` 可选择该步的具体原生调用。mindie-debugger 的层边界快照保存有效 Token 上的 hidden states。

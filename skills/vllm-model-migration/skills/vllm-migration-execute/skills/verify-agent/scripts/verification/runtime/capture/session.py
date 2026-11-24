@@ -61,6 +61,8 @@ def validate_operation(request):
 
 
 def configure(root, prep):
+    if prep.get('graph'):
+        return prep['config']
     native = {**read_bound(prep['config']), 'dump_path': str(Path(prep['dump']['runtime_path']) / 'native'), 'dump_enable': True}
     path = root / 'capture-config.json'
     if path.exists() and read(path) != native: raise ValueError('派生采集配置冲突')
@@ -84,7 +86,7 @@ def begin(request, target, run_id):
         if owner['pid'] not in (os.getpid(), os.getppid()): raise ValueError('控制进程不是调用方')
         folder = probe_directory(target, declared)
         ready = live(handoff, prep, folder)
-        if ready.get('coverage_capability') != 'modules_and_registered_apis':
+        if ready.get('coverage_capability') not in ('modules_and_registered_apis', 'graph_replay'):
             raise ValueError('旧 worker 缺少完整调用清单能力，请使用新适配器部署')
         authority = {'schema_version': '1.0', 'source': request['source'], 'root': str(root), 'owner': owner,
                      'nonce': uuid.uuid4().hex, 'run_id': run_id, 'derived_config': configure(root, prep)}
@@ -93,9 +95,10 @@ def begin(request, target, run_id):
         return 0, {'status': 'completed', 'session': reference}
 
 
-def arm(request, root, lease, ready, preparation):
-    if lease['state'] != 'idle' or (root / 'active.json').exists(): raise ValueError('已有活动请求')
-    if any(row['trace_id'] == request['trace_id'] for row in lease['sealed']): raise ValueError('trace_id 已使用')
+def verify_arm(request, root, ready, preparation):
+    if ready.get('mode') == 'aclgraph':
+        if ('cache_capture' in request) != ready['graph']['observe_cache'] or 'cache_output_index' in request:
+            raise ValueError('图采集的全程观测范围须匹配捕图时的配置')
     if 'cache_capture' in request and not ready.get('decode_cache', {}).get('full_request'):
         raise ValueError('实际 worker 缺少全层 full_request 能力')
     if 'cache_output_index' in request or 'cache_capture' in request:
@@ -104,11 +107,20 @@ def arm(request, root, lease, ready, preparation):
             check_ready(root, worker, preparation)
     if 'rank_workers' in ready and 'cache_output_index' in request:
         raise ValueError('TP=2 缓存采集要求 full_request')
+
+
+def arm(request, root, lease, ready, preparation):
+    if lease['state'] != 'idle' or (root / 'active.json').exists(): raise ValueError('已有活动请求')
+    if any(row['trace_id'] == request['trace_id'] for row in lease['sealed']): raise ValueError('trace_id 已使用')
+    verify_arm(request, root, ready, preparation)
     folder = root / ('request-' + uuid.uuid4().hex); folder.mkdir(mode=0o700)
     write_json(folder / 'intent.json', {**request, 'request_id': request['trace_id'], 'session_mode': True})
     if 'rank_workers' in ready:
         from .parallel.topology import bind_at_arm
         lease['members'] = bind_at_arm(folder, ready)
+    if ready.get('mode') == 'aclgraph':
+        from .aclgraph.receipt import bind_worker
+        lease['graph_worker'] = bind_worker(folder, ready)
     lease.update(state='armed', directory=folder.name, trace_id=request['trace_id'])
     write_json(root / 'lease.json', lease)
     write_json(root / 'active.json', {'directory': folder.name})
@@ -132,7 +144,10 @@ def operate(request, target):
             (root / 'lease.json').unlink()
             return {'status': 'completed', 'sealed': lease['sealed'], 'previous_state': lease['state']}
         attempt = probe_directory(target, declared)
-        if request['operation'] == 'seal' and 'members' in lease:
+        if request['operation'] == 'seal' and 'graph_worker' in lease:
+            from .aclgraph.receipt import seal_worker
+            ready = seal_worker(lease['graph_worker'], lambda: live(handoff, prep, attempt))
+        elif request['operation'] == 'seal' and 'members' in lease:
             from .parallel.topology import seal_members
             ready = seal_members(root / lease['directory'], lease['members'], lambda: live(handoff, prep, attempt))
         else:
@@ -142,6 +157,7 @@ def operate(request, target):
             from .session_receipt import seal
             result = seal(request, authority, handoff, root, lease, ready)
             lease.pop('members', None)
+            lease.pop('graph_worker', None)
             lease['sealed'].append(result); lease.update(state='idle')
             write_json(root / 'lease.json', lease)
             (root / 'active.json').unlink()

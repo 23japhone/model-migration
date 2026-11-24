@@ -80,7 +80,7 @@ def step_position(output, internal, folder):
 
 def prepare_scheduler(cls):
     path = state.root() / 'decode-cache.json'
-    parallel = (state.root() / 'parallel.json').is_file()
+    parallel = any((state.root() / file).is_file() for file in ('parallel.json', 'graph.json'))
     if parallel:
         install_schedule(cls, parallel=True)
     if not path.is_file():

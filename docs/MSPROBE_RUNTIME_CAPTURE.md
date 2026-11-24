@@ -1,5 +1,22 @@
 # msProbe 运行时采集交付
 
+## 单卡 ACLGraph 纯文本生成
+
+在 Ascend 910B2 上使用 Model Runner V1、BF16、同步调度、greedy 和冷前缀。每个用例分别使用原生图、图上开启 msProbe、图上开启 msProbe 与缓存观测三套配置，独立编译和捕图。12 次正式请求的实际输入、调度分块、逐步前文和输出 Token ID 均按用例核对一致。
+
+| 模型 | 实际 prefill | 三组一致的输出 Token ID | 每个前向的实际重放 | 联合采集每个前向的状态覆盖 |
+|---|---|---|---|---|
+| Llama-3-8B-Instruct | 9 | `[19,11,220]` | 1 次整图 | 32 层注意力 |
+| Llama-3-8B-Instruct | 32+1 | `[18,11,220]` | 1 次整图 | 32 层注意力 |
+| Qwen3.5-27B | 9 | `[19,11,220]` | 65 次子图 | 16 层注意力、48 层 GDN |
+| Qwen3.5-27B | 32+2 | `[11,220,16]` | 65 次子图 | 16 层注意力、48 层 GDN |
+
+整段输入经过三个前向，分块输入经过四个。第一个分块按 prompt 位置可查，最后一个分块产生第一个输出。两次连续 decode 复用同一整图或同一组子图，重放序号递增。两模型均通过首末层 msProbe 原件回读、形状与摘要核对。
+
+Qwen 分块用例中，按 `output_index=1` 查到的 decode 消费 Token `11`，产生 `220`。第 3 层 FIA 使用分页 K/V，有效长度 35，后端页号 108，写入物理槽 13858。K 和 V 的待写值与各自写后值逐字节一致，形状均为 `[1,4,256]`。同一前向的第 0 层在状态行 1 更新卷积状态（BF16，`[3,10240]`）和递归状态（FP32，`[48,128,128]`）。层输入输出来自子图重放，这两类缓存更新来自前向内的图外算子。两块 prefill 之间，48 层 GDN 共 96 份状态的首块终值摘要和下一块初值摘要一致。
+
+Qwen 联合采集的整段请求分别写入约 150.18 GiB 的 msProbe 原件和 1184 MiB 的快照，分块请求分别约为 202.10 GiB 和 1800 MiB。两次 decode 均完成后重读较早的一份快照，摘要一致。在回执副本中移除第 3 层的 `key.after`，公开查询返回 `incomplete`，并保留同一前向的 `value.after`。部署参数、查询选择器和字段见[单卡图采集契约](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/runtime-capture.md#单卡-aclgraph-文本请求)。
+
 ## 双卡图文、流式和固定 seed 生成
 
 2026-11-24 在两张 Ascend 910B2 上使用 Model Runner V1、BF16、同步 Eager 和 msProbe。验收按实际封存的 5 次正式请求收口。用户接受本次交付，实机覆盖见下表。查询方法见[图文和生成事件契约](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/runtime-capture.md#双卡图文流式与固定-seed-采样)。

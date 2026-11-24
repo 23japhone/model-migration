@@ -77,7 +77,15 @@ def verify_sources(root, preparation):
     for name, digest in preparation['adapter_files'].items():
         if sha256(root / 'adapters' / name) != digest:
             raise ValueError('已部署的适配器源码变化 ' + name)
-    for name, allowed in SOURCES.items():
+    allowed_sources = SOURCES
+    if preparation.get('graph'):
+        from .adapters.aclgraph.hooks import MODULE, DIGEST
+        if preparation['probe']['graph'].get(MODULE) != DIGEST or state.read(root/'graph.json') != preparation['graph']:
+            raise ValueError('图模式准备配置或 wrapper 身份不同')
+        if state.read(root/'worker.json')['graph'] != preparation['graph']:
+            raise ValueError('实际图 worker 配置与部署不同')
+        allowed_sources = {**SOURCES, MODULE: (DIGEST,)}
+    for name, allowed in allowed_sources.items():
         if state.read(root / ('hook-' + name + '.json'))['sha256'] not in allowed:
             raise ValueError('目标源码身份不符 ' + name)
 

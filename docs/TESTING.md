@@ -4,6 +4,10 @@
 
 ## 当前验证基准
 
+### 2026-11-24 单卡 ACLGraph
+
+全量离线回归 592 项、独立 `source_contract` 52 项通过。图模式用例位于 `worker_capture/graph_cases`。单卡实机覆盖 Llama 整图、Qwen 分段图，以及两种模型的整段 prefill、分块 prefill 和连续 decode。正式请求的 Token 对照、重放次数和缓存原值核验见[单卡 ACLGraph 实测记录](MSPROBE_RUNTIME_CAPTURE.md#单卡-aclgraph-纯文本生成)。
+
 ### 2026-11-24 双卡图文、SSE 与固定 seed 采样
 
 完整离线回归 539 项、独立 source_contract 52 项通过。新增 13 项覆盖图像占位及融合掩码、跨块图像来源、双 rank 多轴位置一致性、流式事件与输出序号对应、客户端断流、随机采样元数据及实际非最大概率候选、图像摘要与失败写盘的预算记账。测试位于 `worker_capture/generation_cases`，随本页的 unittest discovery 执行。两种采集工具的分工和公开查询参数见[双卡生成采集契约](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/runtime-capture.md#双卡图文流式与固定-seed-采样)。

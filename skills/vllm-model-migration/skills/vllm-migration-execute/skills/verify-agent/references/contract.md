@@ -33,7 +33,7 @@
 
 ## msProbe 采集准备
 
-使用[采集请求示例](../assets/worker-capture.request.example.json)在 verify 输入中声明可选的 `worker_capture`。必需 `adapter="msprobe_pytorch_eager"` 和宿主绝对路径 `output_root`，可选 `expected_msprobe_version` 精确匹配目标解释器安装的 `mindstudio-probe` 分发包版本。未知字段、非法类型和相对路径按输入无效处理。普通部署可省略整个对象。可选 `decode_cache={"max_snapshot_bytes":16777216}` 设置一次前向内所有快照共用的字节预算。可选 layer_scope=all（缺省）或 legacy_pair，完整模型应按实际数据量设置预算。迁移阶段照常引用该请求文件及其 SHA256，公开的 `--plan` 只检查请求形状。
+使用[采集请求示例](../assets/worker-capture.request.example.json)在 verify 输入中声明可选的 `worker_capture`。Eager 服务使用 `adapter="msprobe_pytorch_eager"`。单卡图服务使用 `adapter="msprobe_pytorch_aclgraph"`，部署选项和会话范围见[图模式采集](runtime-capture.md#单卡-aclgraph-文本请求)。两种适配器均须声明宿主绝对路径 `output_root`，可选 `expected_msprobe_version` 精确匹配目标解释器安装的 `mindstudio-probe` 分发包版本。未知字段、非法类型和相对路径按输入无效处理。普通部署可省略整个对象。可选 `decode_cache={"max_snapshot_bytes":16777216}` 设置一次前向内所有快照共用的字节预算。可选 layer_scope=all（缺省）或 legacy_pair，完整模型应按实际数据量设置预算。迁移阶段照常引用该请求文件及其 SHA256，公开的 `--plan` 只检查请求形状。
 
 服务须为自有、显式 `--enforce-eager`、单 NPU 或单机双 NPU 纯 TP=2。按声明及目标环境核对并行设置。已有 `--additional-config` 指定的 `dump_config_path` 或目标环境的 `MSPROBE_CONFIG_PATH` 会产生配置冲突。Docker 请求须在创建容器前显式声明可写 bind mount；`output_root` 可为挂载源或其子目录，覆盖本次尝试的映射须唯一、未被其他目标挂载遮蔽。Linux process 使用同一宿主路径。输出根须在 Skill、注册资源、模型和构建输入之外。
 
