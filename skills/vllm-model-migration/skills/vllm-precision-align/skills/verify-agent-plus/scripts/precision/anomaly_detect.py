@@ -10,6 +10,7 @@ detect(profiles, request, response) -> list[str]：返回命中的异常类型�
 
 from collections import Counter
 
+from .anomalies import sample as _anomaly_sample
 from .evidence import load as _load_json
 
 
@@ -98,3 +99,17 @@ def detect(profiles, request, response):
         if detector is not None and detector(rule.get('detect', {}), request, response):
             hits.append(rule['type'])
     return hits
+
+
+def collect_anomalies(profiles, samples, service):
+    """把命中的异常样本整理成清单（评测后写进 manifest.anomalies 用）。
+
+    samples: [(sample_id, request, response), ...]，request/response 结构与 detect 一致；
+    service: {'endpoint': ..., 'model': ...}。
+    返回：[{sample_id, anomaly_type, request, service}, ...]。
+    """
+    result = []
+    for sample_id, request, response in samples:
+        for anomaly_type in detect(profiles, request, response):
+            result.append(_anomaly_sample(sample_id, anomaly_type, request, service))
+    return result
