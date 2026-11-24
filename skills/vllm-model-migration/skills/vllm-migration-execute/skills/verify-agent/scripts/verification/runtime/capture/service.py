@@ -57,22 +57,19 @@ def live(handoff, preparation, attempt):
     errors = list(root.glob('error-*.json'))
     if errors:
         raise ValueError(state.read(errors[0])['error'])
-    roles = ['worker', 'engine']
-    if state.read(root/'worker.json').get('coverage_capability'): roles.append('frontend')
-    for role in roles:
-        path = root / (role + '.json')
-        if not path.exists():
-            raise ValueError(f'准备完成，实际 {role} 缺少就绪记录')
-        record = state.read(path)
-        if record['adapter_files'] != preparation.get('adapter_files'):
-            raise ValueError(f'{role} 适配器文件摘要不同')
-        paths = ([Path('/proc', str(row['pid'])) for row in workers['npu_processes']]
-                 if role == 'worker' else Path('/proc').glob('[0-9]*'))
-        found = [path for path in paths if process_matches(path, record)]
-        if len(found) != 1 or not inspection.same_owner(int(found[0].name), handoff['resource']):
-            raise ValueError(f'{role} 的部署身份已变化')
+    topology = read_bound(preparation['parallel']) if 'parallel' in preparation else None
+    worker_roles = ['worker-rank0', 'worker-rank1'] if topology else ['worker']
+    roles = [*worker_roles, 'engine']
+    if topology:
+        roles.extend(['executor', 'frontend'])
+    elif state.read(root/'worker.json').get('coverage_capability'):
+        roles.append('frontend')
+    identities = {role: verified_role(root, handoff, preparation, role, worker_roles) for role in roles}
     verify_sources(root, preparation)
     read_bound(preparation['config'])
+    if topology:
+        from .parallel.topology import validate_members
+        return validate_members(topology, identities)
     return state.read(root / 'worker.json')
 
 
@@ -83,3 +80,26 @@ def verify_sources(root, preparation):
     for name, allowed in SOURCES.items():
         if state.read(root / ('hook-' + name + '.json'))['sha256'] not in allowed:
             raise ValueError('目标源码身份不符 ' + name)
+
+
+
+def verified_role(root, handoff, preparation, role, worker_roles):
+    path = root / (role + '.json')
+    if not path.exists():
+        raise ValueError(f'准备完成，实际 {role} 缺少就绪记录')
+    record = state.read(path)
+    if record['adapter_files'] != preparation.get('adapter_files'):
+        raise ValueError(f'{role} 适配器文件摘要不同')
+    if role in worker_roles:
+        processes = handoff['workers']['npu_processes']
+        if 'physical_id' in record:
+            processes = [row for row in processes if row['device'] == record['physical_id']]
+        paths = {Path('/proc', str(row['pid'])) for row in processes}
+    else:
+        paths = Path('/proc').glob('[0-9]*')
+    found = [path for path in paths if process_matches(path, record)]
+    if len(found) != 1 or not inspection.same_owner(int(found[0].name), handoff['resource']):
+        raise ValueError(f'{role} 的部署身份已变化')
+    if role.startswith('worker-rank'):
+        record['host_pid'] = int(found[0].name)
+    return record

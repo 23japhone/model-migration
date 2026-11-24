@@ -13,17 +13,37 @@ from .tensors import file_ref
 
 
 def validate(request):
-    schema.fields(request, ['operation', 'source'], ['owner_pid', 'sample_key', 'native_id', 'trace_id', 'http'])
+    schema.fields(request, ['operation', 'source'], ['owner_pid', 'sample_key', 'native_id', 'trace_id', 'http', 'cache_output_index', 'cache_capture'])
     schema.fields(request['source'], ['path', 'sha256']); schema.absolute(request['source']['path'])
     if not schema.HASH.fullmatch(str(request['source']['sha256'])): raise ValueError('来源摘要无效')
     op = request['operation']
     permitted = {'begin': {'owner_pid'}, 'arm': {'sample_key', 'native_id', 'trace_id'},
                  'seal': {'trace_id', 'http'}, 'end': set(), 'status': set()}
+    if 'cache_output_index' in request:
+        validate_cache_selection(request)
+        permitted['arm'].add('cache_output_index')
+    if 'cache_capture' in request:
+        validate_full_request(request)
+        permitted['arm'].add('cache_capture')
     if op not in permitted or set(request) - {'operation', 'source'} != permitted[op]:
         raise ValueError('采集会话操作字段不一致')
     if op == 'begin' and (type(request['owner_pid']) is not int or request['owner_pid'] <= 0):
         raise ValueError('owner_pid 无效')
     validate_operation(request)
+
+
+def validate_cache_selection(request):
+    if request['operation'] != 'arm' or type(request['cache_output_index']) is not int or request['cache_output_index'] < 1:
+        raise ValueError('cache_output_index 须为 arm 的正整数输出序号（decode）')
+
+
+def validate_full_request(request):
+    value = request['cache_capture']
+    schema.fields(value, ['mode', 'max_request_snapshot_bytes'])
+    budget = value['max_request_snapshot_bytes']
+    if (request['operation'] != 'arm' or 'cache_output_index' in request or value['mode'] != 'full_request'
+            or type(budget) is not int or budget <= 0):
+        raise ValueError('全程采集需要独立的 arm 选择和正整数请求预算')
 
 
 def validate_operation(request):
@@ -73,11 +93,22 @@ def begin(request, target, run_id):
         return 0, {'status': 'completed', 'session': reference}
 
 
-def arm(request, root, lease, ready):
+def arm(request, root, lease, ready, preparation):
     if lease['state'] != 'idle' or (root / 'active.json').exists(): raise ValueError('已有活动请求')
     if any(row['trace_id'] == request['trace_id'] for row in lease['sealed']): raise ValueError('trace_id 已使用')
+    if 'cache_capture' in request and not ready.get('decode_cache', {}).get('full_request'):
+        raise ValueError('实际 worker 缺少全层 full_request 能力')
+    if 'cache_output_index' in request or 'cache_capture' in request:
+        from .cache_evidence import check_ready
+        for worker in ready.get('rank_workers', [ready]):
+            check_ready(root, worker, preparation)
+    if 'rank_workers' in ready and 'cache_output_index' in request:
+        raise ValueError('TP=2 缓存采集要求 full_request')
     folder = root / ('request-' + uuid.uuid4().hex); folder.mkdir(mode=0o700)
     write_json(folder / 'intent.json', {**request, 'request_id': request['trace_id'], 'session_mode': True})
+    if 'rank_workers' in ready:
+        from .parallel.topology import bind_at_arm
+        lease['members'] = bind_at_arm(folder, ready)
     lease.update(state='armed', directory=folder.name, trace_id=request['trace_id'])
     write_json(root / 'lease.json', lease)
     write_json(root / 'active.json', {'directory': folder.name})
@@ -100,11 +131,17 @@ def operate(request, target):
             write_json(Path(request['source']['path']).parent / 'session-end.json', lease)
             (root / 'lease.json').unlink()
             return {'status': 'completed', 'sealed': lease['sealed'], 'previous_state': lease['state']}
-        ready = live(handoff, prep, probe_directory(target, declared))
-        if request['operation'] == 'arm': return arm(request, root, lease, ready)
+        attempt = probe_directory(target, declared)
+        if request['operation'] == 'seal' and 'members' in lease:
+            from .parallel.topology import seal_members
+            ready = seal_members(root / lease['directory'], lease['members'], lambda: live(handoff, prep, attempt))
+        else:
+            ready = live(handoff, prep, attempt)
+        if request['operation'] == 'arm': return arm(request, root, lease, ready, prep)
         if request['operation'] == 'seal':
             from .session_receipt import seal
             result = seal(request, authority, handoff, root, lease, ready)
+            lease.pop('members', None)
             lease['sealed'].append(result); lease.update(state='idle')
             write_json(root / 'lease.json', lease)
             (root / 'active.json').unlink()
@@ -115,4 +152,5 @@ def operate(request, target):
 def run(request, target, run_id):
     validate(request)
     if request['operation'] == 'begin': return begin(request, target, run_id)
-    return 0, operate(request, target)
+    result = operate(request, target)
+    return int(result['status'] in ('incomplete', 'failed')), result

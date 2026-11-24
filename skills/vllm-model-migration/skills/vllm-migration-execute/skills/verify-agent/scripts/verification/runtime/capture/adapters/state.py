@@ -42,7 +42,7 @@ def mapped():
 
 def ready(role, **values):
     src = Path(__file__).parent
-    files = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in src.glob('*.py')}
+    files = {p.relative_to(src).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in src.rglob('*.py')}
     write(root() / (role + '.json'), {**values, 'adapter_files': files, 'pid': os.getpid(),
           'namespace': os.readlink('/proc/self/ns/pid'),
           'start_ticks': Path('/proc/self/stat').read_text().rsplit(')', 1)[1].split()[19]})

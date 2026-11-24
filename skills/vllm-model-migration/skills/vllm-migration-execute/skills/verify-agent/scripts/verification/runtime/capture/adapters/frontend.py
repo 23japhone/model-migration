@@ -2,8 +2,12 @@
 from contextvars import ContextVar
 from functools import wraps
 import inspect
+import hashlib
+import json
+from time import monotonic
 
 from . import state
+from .streaming import engine_event, traced_stream
 
 CURRENT = ContextVar('verify_precision_request', default=None)
 
@@ -21,15 +25,13 @@ def wrap_client(client):
             external = bound.arguments['request_id']
             if (folder/'frontend.json').exists(): raise ValueError('一道题出现多次或并行引擎请求')
             state.write(folder/'frontend.json', {'trace_id': trace, 'external_id': external})
+            params = bound.arguments.get('sampling_params')
+            delta = getattr(getattr(params, 'output_kind', None), 'name', '') == 'DELTA'
+            tokens, prompt = [], []
         async for result in original(*args, **kwargs):
-            if target and result.finished:
+            if target:
                 try:
-                    if len(result.outputs) != 1 or result.request_id != external:
-                        raise ValueError('正式引擎输出的请求或生成数变化')
-                    output, = result.outputs
-                    state.write(folder/'engine-output.json', {'external_id': external,
-                                'prompt_ids': list(result.prompt_token_ids), 'token_ids': list(output.token_ids),
-                                'finish_reason': str(output.finish_reason)})
+                    engine_event(folder, result, external, tokens, delta, prompt)
                 except Exception as error: state.fail(folder, error)
             yield result
     client.generate = generate
@@ -43,7 +45,7 @@ def install(cls, method):
     def init(self, *args, **kwargs):
         initialize(self, *args, **kwargs)
         wrap_client(self.engine_client)
-        state.ready('frontend', hooks=[method, 'engine_client.generate'])
+        state.ready('frontend', generation_contract=1, hooks=[method, 'engine_client.generate'])
     @wraps(original)
     async def invoked(self, *args, **kwargs):
         bound = signature.bind(self, *args, **kwargs)
@@ -56,8 +58,18 @@ def install(cls, method):
             state.fail(folder, '前端 trace 与采集租约不一致')
             return await original(self, *args, **kwargs)
         token = CURRENT.set((folder, trace))
+        started = monotonic()
+        streaming = False
         try:
+            if hasattr(raw, 'json'):
+                payload = await raw.json()
+                canonical = json.dumps(payload, sort_keys=True, ensure_ascii=False).encode()
+                state.write(folder/'frontend-payload-digest.json', {'sha256': hashlib.sha256(canonical).hexdigest(),
+                            'http_sha256': hashlib.sha256(await raw.body()).hexdigest()})
             response = await original(self, *args, **kwargs)
+            if hasattr(response, '__aiter__'):
+                streaming = True
+                return traced_stream(response, (folder, trace), CURRENT, started)
             mapped = state.read(folder/'frontend.json')
             state.write(folder/'frontend.json', {**mapped, 'response_id': response.id})
             return response
@@ -65,7 +77,8 @@ def install(cls, method):
             state.fail(folder, error)
             raise
         finally:
-            state.write(folder/'frontend-end.json', {'trace_id': trace})
+            if not streaming:
+                state.write(folder/'frontend-end.json', {'trace_id': trace, 'request_wall_seconds': monotonic() - started})
             CURRENT.reset(token)
     cls.__init__ = init
     setattr(cls, method, invoked)

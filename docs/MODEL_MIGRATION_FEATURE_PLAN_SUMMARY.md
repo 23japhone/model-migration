@@ -108,7 +108,7 @@ SGLang 迁移与注册、框架自动选择、完整的运行异常分类诊断�
 | 准备工作 | 评测条件确认 | — | 已有基础，待完善 | 核对模型与权重版本、基线使用的 benchmark、数据集版本和样本范围，以及提示模板、生成参数和评分配置。 | 列出 GPU 基线与 NPU 评测条件的一致项、差异项和未知项，明确哪些成绩可以直接比较、哪些需要按基线条件重新评测。 | 1 |
 | 准备工作 | 对比基线准备 | — | 已有基础，待扩展 | 核验开源任务分数的版本和设备来源，接入 GPU 的 Token 预测、层与算子数据，以及对应的 CPU 高精度参考。 | 逐层列出基线来源、可用数据范围、缺项和比较标准。任务分数注明指标、单位、方向和精度目标，数值比较注明适用的误差指标及阈值。 | 1 |
 | 精度测试 | 数据集评测 | — | 已有基础，待扩展 | 按迁移任务指定的 benchmark、数据集及配置取得 NPU 成绩。若本次指定的就是开源基线的评测任务，沿用其评测条件。 | 已有 NPU 结果满足本次评测条件时可复用，否则运行本次指定的 benchmark，交付原生分数、实际样本范围及评分依据。任务质量对齐另按 GPU 基线选择评测。 | 1 |
-| 精度测试 | 运行数据采集 | — | 已有 Eager 单请求工具，评测集成待开发 | verify-agent 已提供可选 msProbe 准备、真实 worker 挂点、会话采集和 Token 反查；当前限制单 rank、同步文本 greedy。全题评测、其他执行模式及缓存读写状态尚待接入。 | 独立工具验收见[采集记录](MSPROBE_RUNTIME_CAPTURE.md)；正式评测仍须将样本和生成位置关联到 rank、前向步、调用及文件，并核对实际覆盖。 | 1 |
+| 精度测试 | 运行数据采集 | — | 已有 Eager 单请求工具，评测集成待开发 | verify-agent 提供 msProbe 采集、按输出 Token 反查与可选的 mindie-debugger 全文本解码层观测。已实现普通注意力和 GDN 状态后端，其他后端逐层记录缺口。单卡和单机 TP=2 均支持 V1 同步 Eager 的完整文本生成。双卡另有单图、流式和固定 seed 采样适配，实测覆盖见采集记录。 | 独立工具验收见[采集记录](MSPROBE_RUNTIME_CAPTURE.md)。正式评测仍须将样本和生成位置关联到 rank、前向步、调用及文件，并核对实际覆盖。 | 1 |
 | 精度对齐 | 精度比较 | 任务质量对齐 | 已有基础，待扩展 | 依照基线实际使用的 benchmark 独立取得可比的 NPU 成绩。现有原生评测与结果核验可复用，其他 benchmark 的执行能力待开发。记录公开成绩的评测者和设备来源，设备未披露时注明未知。 | 分别给出测量有效性、基线可比性和目标达标结论。按基线公开范围比较总分、分项分数或逐题、逐检查项的判定。同轮完整回答和评分规则齐备时，可逐题复核。 | 1 |
 | 精度对齐 | 精度比较 | Token 预测对齐 | 待开发 | 按题目和生成位置匹配 GPU、NPU 的记录。在前文 Token ID 序列相同的条件下，比较每一步全部候选 Token 的原始 logits、应用选词规则后的分数或概率，以及实际选中的下一 Token。结合相同前文下的 CPU 高精度预测分数核验。 | 定位预测分数首次超出约定偏差的位置，另行报告实际选词是否发生变化及首次变化的位置。附题目标识、前文、生成位置、两端预测、选词规则、实际 Token 和停止原因。覆盖范围内未发现差异时，注明已比较到哪一步。 | 1 |
 | 精度对齐 | 精度比较 | 张量与算子对齐 | 待开发 | 按题目、Token 位置、模型层或算子、调用序号和多卡 rank 匹配完整输入输出张量。核对形状、布局和数据类型，在相同输入、权重及缓存等运行状态下，对照 CPU 高精度结果，分别评估 GPU 和 NPU 的数值误差。 | 按约定的误差指标和阈值报告已比较的调用、超限位置及对应的输入输出张量。列出漏采、截断或无法匹配的调用，使读者能复查结论覆盖了哪些计算。 | 1 |
@@ -295,6 +295,10 @@ skills/vllm-model-migration/skills/
 ### 6.2 评测期间采集逐层数据的可行性
 
 截至 2026-11-17，`verify-agent-plus` 的原评测入口保持不变；`verify-agent` 的独立 msProbe 运行时工具已合入，可消费部署交接，通过会话串行采集请求并按每个输出 Token 查询前向、实际模块和注册 API。工具不依赖 GPU 基线或 EvalScope，固定环境的 Qwen3.5-27B 真实 NPU 闭环已通过，证据见[采集记录](MSPROBE_RUNTIME_CAPTURE.md)。GPU 基线解析、按基线复测、全题评测集成和 mindie-debugger 均未纳入当前实现；原精度测量契约继续有效，见[契约](../skills/vllm-model-migration/skills/vllm-precision-align/skills/verify-agent-plus/references/contract.md#结果与生命周期)。
+
+2026-11-21 的开发分支为 V1 单请求 decode 接入了可选的 mindie-debugger 观察。按一个输出序号可关联第 3 层的 K/V 地址与写后数值、第 0 层的卷积和递归状态更新以及同前向的 msProbe 调用。已验证范围和实机边界见[运行时采集工具](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/runtime-capture.md#从一次-decode-回查层缓存)。
+
+在全层结构识别基础上，第四步新增 V1 冷前缀单请求的普通 prefill、分块 prefill 及连续 decode 采集。调用方显式选择全程模式后，时间线保留无输出的前向、有效输入与输出归属。逐层状态、请求预算和公开查询见[完整请求契约](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/runtime-capture.md#从完整请求回查每次前向)。
 
 若要比对 GPU 与 NPU 上每一步的模块及受支持 API 的输入输出，建议用 msprobe 采集张量。`task=tensor` 保存采集范围内的真实张量，`statistics` 保存统计信息。固定提交 `7ae8857` 的接入说明列出 GPU 原生 vLLM 的 Eager 采集，以及 NPU vLLM-Ascend 的 Eager、ACLGraph 采集。GPU CUDA Graph 在该版本的支持范围之外，切到 Eager 后取得的数据只验证 Eager 路径。[msprobe 的 vLLM 支持表](https://github.com/Ascend/msprobe/blob/7ae8857f16ced36aca1a7138de21c09a4c6e9925/docs/zh/user_guide/dump/vllm_dump_instruct.md)
 

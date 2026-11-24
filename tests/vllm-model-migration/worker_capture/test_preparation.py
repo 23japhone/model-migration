@@ -262,6 +262,38 @@ class CaptureTests(unittest.TestCase):
         self.parser.write_text('def parse_json_config(path, task): raise ValueError("unsupported config")\n')
         self.assert_unavailable(request, 'unsupported config')
 
+    def test_optional_sdk_probe_uses_target_interpreter(self):
+        request = self.request('process')
+        request['worker_capture']['decode_cache'] = {'max_snapshot_bytes': 4096}
+        for relative, content in {
+            'mindie_debugger-0.1.4.dist-info/METADATA': 'Name: mindie-debugger\nVersion: 0.1.4\n',
+            'mindie_debugger/precision.py': 'class MemoryWatchpoint:\n    watch = check = lambda self: None\n',
+            'msprobe/core/dump/hook_manager.py': 'class BaseHookManager: inner_switch = {}\n',
+        }.items():
+            path = self.root / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(content)
+        (self.root / 'mindie_debugger/__init__.py').touch()
+        code, report = self.run_service(request)
+        self.assertEqual(code, 0)
+        _, receipt = self.bound_capture(report)
+        self.assertEqual(read_bound(receipt['decode_cache']),
+                         {'status': 'available', 'version': '0.1.4', 'max_snapshot_bytes': 4096})
+
+    def test_missing_optional_sdk_keeps_msprobe_prepared(self):
+        request = self.request('process')
+        request['worker_capture']['decode_cache'] = {'max_snapshot_bytes': 16777216}
+        # 目标解释器显式遮蔽 SDK，宿主已安装时也覆盖缺依赖分支。
+        (self.root / 'mindie_debugger.py').write_text('raise ImportError("fixture unavailable")')
+        code, report = self.run_service(request)
+        self.assertEqual(code, 0)
+        _, receipt = self.bound_capture(report)
+        config = read_bound(receipt['decode_cache'])
+        self.assertEqual((receipt['status'], config['status']), ('prepared', 'unavailable'))
+        self.assertEqual(config['max_snapshot_bytes'], 16777216)
+        self.assertIn('fixture unavailable', config['reason'])
+        self.assertIn('decode_cache/hooks.py', receipt['adapter_files'])
+
     def test_missing_host_readback_isolated(self):
         original = self.target_probe
         def lost_marker(prefix, argv, log, **kwargs):

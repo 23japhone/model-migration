@@ -76,17 +76,24 @@ def device_handoff(root, endpoint):
         'final_service': {'state': 'retained'}}
 
 
-def deployment(root, endpoint):
+def deployment(root, endpoint, cache=False):
     runtime = root / 'runtime'
     config = write(runtime / 'msprobe.json', {'task': 'tensor', 'level': 'mix', 'risk_level': 'ALL',
         'dump_enable': False, 'dump_path': str(runtime / 'dump'), 'tensor': {'data_mode': ['forward']}})
-    prep = write(root / 'attempt' / 'worker-capture-preparation.json', {'run_id': 'fixture',
+    extra = {}
+    if cache:
+        extra['decode_cache'] = write(runtime / 'decode-cache.json', {'status': 'available', 'version': '0.1.4',
+                                                                      'max_snapshot_bytes': 65536})
+    prep = write(root / 'attempt' / 'worker-capture-preparation.json', {**extra, 'run_id': 'fixture',
         'attempt_id': 'attempt', 'status': 'prepared', 'config': config, 'adapter_files': {'fixture': 'synthetic'},
         'dump': {'path': str(runtime / 'dump'), 'runtime_path': str(runtime / 'dump')}})
     ready = {'rank': 0, 'vocab_size': 100, 'layers': ['model.layers.0', 'model.layers.1'],
              'adapter_files': {'fixture': 'synthetic'}, 'coverage_capability': 'modules_and_registered_apis'}
     for role in ('worker', 'engine', 'frontend'):
-        write(runtime / (role + '.json'), ready)
+        record = dict(ready)
+        if cache and role in ('engine', 'worker'):
+            record['decode_cache'] = {'status': 'ready', 'config_sha256': extra['decode_cache']['sha256']}
+        write(runtime / (role + '.json'), record)
     declared, handoff = device_handoff(root, endpoint)
     capture = {'status': 'prepared', 'receipt': prep}
     bound_handoff = write(root / 'attempt' / 'deployment-handoff.json', {**handoff, 'worker_capture': capture})

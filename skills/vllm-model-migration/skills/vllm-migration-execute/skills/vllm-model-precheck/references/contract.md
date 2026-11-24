@@ -27,7 +27,7 @@ platform_support 还须声明 architectures、tasks、modalities、dtypes、quan
 
 ## 静态核对范围
 
-保留原始 config 和嵌套 *_config，根 architectures 是候选入口；不把 text_config 中骨干架构当作完整多模态模型。量化检查包括嵌套配置，无法识别时阻塞。chat_template 接受准备任务已经支持的 tokenizer/processor/chat_template JSON、Jinja 文件或 additional_chat_templates；多模态请求要求 processor/preprocessor 配置。资料存在不证明模板渲染或 processor 可运行。
+保留原始 config 和嵌套 *_config，details.model.declared_stacks 逐栈保留明确声明的层数、类型序列及数量冲突，缺少类型时留待 worker 核对。根 architectures 是候选入口；不把 text_config 中骨干架构当作完整多模态模型。量化检查包括嵌套配置，无法识别时阻塞。chat_template 接受准备任务已经支持的 tokenizer/processor/chat_template JSON、Jinja 文件或 additional_chat_templates；多模态请求要求 processor/preprocessor 配置。资料存在不证明模板渲染或 processor 可运行。
 
 内置注册解析支持常量 dict、命名 dict 合并、dict 展开、| 合并，以及遍历常量 dict.items() 的单层 dict 推导式（常量元组解构、单项相等/不等条件）。未知动态表达式、动态修改或无法定位 class 时保留具体原因。尚未运行 out-of-tree plugin 发现和 import，所以 missing 内置映射不能表述为“运行环境没有任何注册”。实际安装/运行映射由后续注册检查负责。
 
