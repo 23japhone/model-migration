@@ -104,7 +104,7 @@ def call_arguments(call, data, folder, row, module_layer):
     return result
 
 
-def inventory(folder, layers, row, positions=()):
+def inventory(folder, layers, row, positions=(), *, require_layer_api=True):
     dump = read(folder / 'dump.json')['data']
     parents = read(folder / 'construct.json')
     result = []
@@ -128,6 +128,6 @@ def inventory(folder, layers, row, positions=()):
         result.append({'call': call, 'module': module, 'layer': layer, 'parent': parents.get(call),
                        'api': api, 'occurrence': occurrence, 'tensors': tensor_only(tensors),
                        'values': literals(tensors)})
-    if set(layers) != covered or set(layers) != apis:
+    if set(layers) != covered or (require_layer_api and set(layers) != apis):
         raise ValueError(f'缺少层输入输出 {sorted(set(layers)-covered)} 或层内 API {sorted(set(layers)-apis)}')
     return result

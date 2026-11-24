@@ -58,6 +58,11 @@ def prepare_files(request, attempt, receipt):
     folder = host / attempt.name
     runtime = runtime_root(folder, request)
     folder.mkdir(mode=0o700, parents=True, exist_ok=False)
+    if len(request['npu']['devices']) == 2:
+        mapping = request['_device_state']['devices']
+        parallel = folder / 'parallel.json'
+        write_json(parallel, {'world_size': 2, 'devices': mapping})
+        receipt['parallel'] = {'path': str(parallel), 'sha256': sha256(parallel)}
     dump = folder / 'dump'
     dump.mkdir(mode=0o700)
     config = folder / 'msprobe.json'
@@ -66,15 +71,28 @@ def prepare_files(request, attempt, receipt):
     receipt['dump'] = {'path': str(dump), 'runtime_path': str(runtime / 'dump')}
 
 
+def record_cache_config(receipt, cache, observation):
+    path = Path(receipt['config']['path']).with_name('decode-cache.json')
+    result = observation.get('decode_cache', {'status': 'unavailable', 'reason': '缺少目标能力回执'})
+    write_json(path, {**cache, **result})
+    receipt['decode_cache'] = {'path': str(path), 'sha256': sha256(path)}
+
+
 def verify_files(request, resource, attempt, receipt, executable):
     config = receipt['config']
     marker = '.verify-' + uuid.uuid4().hex
     challenge = uuid.uuid4().hex
     payload = {'config': config['runtime_path'], 'config_sha256': config['sha256'],
                'dump_path': receipt['dump']['runtime_path'],
-               'marker': marker, 'challenge': challenge,
+               'marker': marker, 'challenge': challenge, 'world_size': len(request['npu']['devices']),
                'expected_msprobe_version': request['worker_capture'].get('expected_msprobe_version')}
-    observation = check_target(request, resource, attempt, payload)
+    cache = request['worker_capture'].get('decode_cache')
+    observation = check_target(request, resource, attempt, {**payload, 'decode_cache': bool(cache)})
+    if cache:
+        try:
+            record_cache_config(receipt, cache, observation)
+        except OSError as error:
+            observation['decode_cache'] = {'status': 'unavailable', 'reason': safe_text(error)}
     receipt['probe'] = observation
     if 'error' in observation:
         observation['error'] = safe_text(observation['error'])

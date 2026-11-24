@@ -4,6 +4,34 @@
 
 ## 当前验证基准
 
+### 2026-11-24 双卡图文、SSE 与固定 seed 采样
+
+完整离线回归 539 项、独立 source_contract 52 项通过。新增 13 项覆盖图像占位及融合掩码、跨块图像来源、双 rank 多轴位置一致性、流式事件与输出序号对应、客户端断流、随机采样元数据及实际非最大概率候选、图像摘要与失败写盘的预算记账。测试位于 `worker_capture/generation_cases`，随本页的 unittest discovery 执行。两种采集工具的分工和公开查询参数见[双卡生成采集契约](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/runtime-capture.md#双卡图文流式与固定-seed-采样)。
+
+实机验收封存了 Llama 的两组开关对照和 Qwen 红图的关闭观测请求。各组输出、按层回查结果及收口时的覆盖范围见[双卡生成实测记录](MSPROBE_RUNTIME_CAPTURE.md#双卡图文流式和固定-seed-生成)。
+
+### 单机双卡 TP=2
+
+本次实现已运行本页全量离线回归（526 项）和独立 source_contract 专项（52 项），均通过。结构审计为 0 个错误、222 个软提示。
+
+双卡专项覆盖跨进程实际传递同一前向标识、重复 Token、无输出分块、非输出 rank 的实际张量、错绑目录、缺 rank、错位输入、损坏快照、整数预算分配和观测失败隔离。使用本页全量 unittest discovery 和独立 source_contract 入口。单机双卡的设备证据及采集范围见[运行时实测记录](MSPROBE_RUNTIME_CAPTURE.md#单机双卡张量并行)。
+
+### 2026-11-23 架构识别和联合采集
+
+全量离线回归包含 505 项。新增回归覆盖配置和加载实例层数核对、64 层混合栈、另一种模块路径、共享实例或歧义、同前向按层查询、预算不足和快照摘要错误。目标镜像中另外使用真实 msProbe 和 mindie-debugger，在小宽度随机权重的 Transformers Qwen3.5、Llama 和 GPT-2 上核对逐层输入输出、缓存状态及关闭/开启观测的 logits。CPU 用例分别执行 64、4、3 层，设备算子的槽位验证另按 NPU 实机结果记录。
+
+真实 NPU 对照使用 Qwen3.5-27B 和 Llama-3-8B-Instruct 原始权重、单 rank、BF16、同步 Eager、Model Runner V1。对同一模型的两个请求都开启 msProbe，并使用相同的 Chat 输入和 greedy 参数。两模型在开启与关闭缓存观测时各自输出的 Token ID 都为 `[19, 11]`，其第二个输出的联合采集分别覆盖 64 和 32 个文本层。数据范围见[采集记录](MSPROBE_RUNTIME_CAPTURE.md#按实际层结构联合采集)。
+
+### 2026-11-23 冷前缀完整请求
+
+用 `python3 -B -m unittest discover -s tests/vllm-model-migration -p 'test_*.py' -q` 运行 515 项完整离线回归，另行执行的 52 项 source_contract 通过。新增会话用例覆盖无输出分块、长度为一的最后一块、首个输出、连续 decode、重复 Token ID、提前 EOS、查询选择器和原生数据摘要变化。CPU 张量用例核对跨页 K/V、写错槽、GDN 清零或续块、物理状态更新、单前向和请求总预算。实机验收应同时记录实际调度、逐前向层覆盖、公开入口能读回的原值、msProbe 与缓存分别落盘的字节及相同输入的输出序列。[查询与预算契约](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/runtime-capture.md#从完整请求回查每次前向)。
+
+### 2026-11-21 V1 decode 缓存采集
+
+使用 Python 3.12 和 CPU PyTorch，按本页的 unittest discovery 运行全量 498 项、worker_capture 64 项、source_contract 52 项，全部通过。公开 `capture-session` 和 `capture-read` 覆盖单次 HTTP、指定输出序号、两层共六份写后或前后数值、计划错位和部分失败封存。使用上游 Python 方法原文和真实 MemoryWatchpoint 的复核范围见[采集记录](MSPROBE_RUNTIME_CAPTURE.md#v1-单次-decode-的缓存采集)。本轮未运行目标 NPU。
+
+结构审计 0 errors、196 warnings，开发基线为 194 warnings。新增两处软提示分别来自缓存观测摘要交叉校验和原始数值文件解码，两者复杂度均为 11。生产数据读取仍校验普通文件、SHA256、长度和数值类型。已用原生成器登记资源，策略和硬阈值保持原值。
+
 ### 2026-11-17 msProbe 实机闭环修复
 
 修复启动导入遮蔽、新会话目录写入顺序和目标 chat serving 适配，并补齐编译装饰器直接 Eager 调用的模块采集及原生 None/空容器返回值解析。采集专项 52 项、全量 486 项、source_contract 52 项通过；结构审计 0 errors、194 warnings。RED/GREEN、范围与实机边界见[修复记录](MSPROBE_RUNTIME_CAPTURE.md#2026-11-17-实机闭环修复)。

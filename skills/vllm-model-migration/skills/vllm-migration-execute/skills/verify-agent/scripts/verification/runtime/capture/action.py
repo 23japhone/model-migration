@@ -10,6 +10,7 @@ from ... import outputs, request as schema
 from ...evidence import begin, finish, read_bound, safe_text, write_json
 from ...protocol.http import exchange
 from .adapters.state import read
+from .cache_evidence import validate_snapshot
 from .index import prediction, query, selected
 from .service import deployment, live
 from .tensors import file_ref
@@ -18,7 +19,7 @@ from .tensors import file_ref
 def validate(request, action):
     keys = ['source', 'request_id']
     schema.fields(request, keys + (['prompt'] if action == 'capture-one' else []),
-                  ['output_index', 'max_tokens', 'allowed_token_ids'] if action == 'capture-one' else ['output_index', 'layer', 'api', 'occurrence'])
+                  ['output_index', 'max_tokens', 'allowed_token_ids'] if action == 'capture-one' else ['output_index', 'layer', 'layer_index', 'api', 'occurrence', 'cache_snapshot', 'view', 'forward_id', 'prompt_position', 'rank', 'event_index', 'image_index', 'stack', 'image_snapshot'])
     ref = request['source']
     schema.fields(ref, ['path', 'sha256'])
     schema.absolute(ref['path'])
@@ -28,6 +29,11 @@ def validate(request, action):
     if type(index) is not int or index < 0:
         raise ValueError('输出序号须为非负整数')
     if action == 'capture-read':
+        from .generation.query import validate as generation_selectors
+        generation_selectors(request)
+        validate_forward_selector(request)
+        validate_snapshot(request)
+        validate_layer_index(request)
         for field in ('layer', 'api'):
             if field in request and (not isinstance(request[field], str) or not request[field]):
                 raise ValueError('层路径与 API 名称须为非空字符串')
@@ -35,6 +41,24 @@ def validate(request, action):
             raise ValueError('API 调用序号须为非负整数')
     if action == 'capture-one':
         validate_generation(request, index)
+
+
+def validate_forward_selector(request):
+    if 'rank' in request and (type(request['rank']) is not int or request['rank'] not in (0, 1)):
+        raise ValueError('rank 须为 0 或 1')
+    if len(set(request) & {'view', 'forward_id', 'prompt_position', 'output_index'}) > 1:
+        raise ValueError('只能使用一个前向选择条件')
+    if 'view' in request and (request['view'] != 'timeline' or set(request) - {'view', 'source', 'request_id', 'rank'}):
+        raise ValueError('timeline 视图仅返回请求时间线')
+    if 'forward_id' in request and not re.fullmatch('[a-f0-9]{32}', str(request['forward_id'])):
+        raise ValueError('forward_id 无效')
+    if 'prompt_position' in request and (type(request['prompt_position']) is not int or request['prompt_position'] < 0):
+        raise ValueError('prompt_position 必须是非负整数')
+
+
+def validate_layer_index(request):
+    if 'layer_index' in request and ('layer' in request or type(request['layer_index']) is not int or request['layer_index'] < 0):
+        raise ValueError('layer_index 须为非负整数，不能同时指定 layer')
 
 
 def validate_generation(request, index):
@@ -73,6 +97,8 @@ def capture(request, declared, handoff, prep, attempt):
     root = Path(prep['config']['path']).parent
     with exclusive(root):
         ready = live(handoff, prep, attempt)
+        if 'rank_workers' in ready:
+            raise ValueError('TP=2 使用 capture-session 完整请求入口')
         folder = root / ('request-' + uuid.uuid4().hex)
         folder.mkdir(mode=0o700)
         write_json(attempt / 'capture-session.json', {'path': str(folder), 'request_id': request['request_id']})
@@ -137,5 +163,16 @@ def run(request, target, run_id):
 
 
 def lookup(request, target, run_id):
+    receipt = read_bound(request['source'])
+    if receipt.get('tensor_parallel_size') == 2:
+        from .parallel.reader import lookup as parallel_lookup
+        return 0, parallel_lookup(receipt, request)
+    if set(request) & {'event_index', 'image_index', 'image_snapshot', 'stack'}:
+        raise ValueError('生成扩展选择器要求双卡回执')
+    if request.get('rank', 0) != 0:
+        raise ValueError('单卡回执缺少所选 rank')
+    if set(request) & {'view', 'forward_id', 'prompt_position'}:
+        from .index import query_forward
+        return 0, query_forward(request)
     row = query(request['source'], request['request_id'], request.get('output_index', 1))
     return 0, selected(row, request)

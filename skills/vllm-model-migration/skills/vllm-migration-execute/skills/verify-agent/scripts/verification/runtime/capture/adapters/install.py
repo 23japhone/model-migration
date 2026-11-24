@@ -6,6 +6,7 @@ import sys
 
 from . import engine, state, worker, frontend
 from .sources import SOURCES
+from . import parallel
 
 
 def attach(module):
@@ -14,7 +15,9 @@ def attach(module):
         actual = hashlib.sha256(Path(module.__file__).read_bytes()).hexdigest()
         if actual not in SOURCES[name]:
             raise ValueError('未适配的目标源码 ' + name + ' ' + actual)
-        if name.endswith('.scheduler'):
+        if name == parallel.EXECUTOR:
+            parallel.executor(module.MultiprocExecutor)
+        elif name.endswith('.scheduler'):
             engine.scheduler(module.Scheduler)
         elif name.endswith('.input_processor'):
             engine.input_processor(module.InputProcessor)
@@ -46,6 +49,8 @@ class Hooks:
 def enable():
     if any(isinstance(entry, Hooks) for entry in sys.meta_path):
         return
+    if (state.root() / 'parallel.json').is_file():
+        SOURCES[parallel.EXECUTOR] = (parallel.EXECUTOR_SHA,)
     sys.meta_path.insert(0, Hooks())
     for name in SOURCES.keys() & sys.modules.keys():
         attach(sys.modules[name])

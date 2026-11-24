@@ -17,6 +17,18 @@ def checked_dump(payload):
     return Path(common.dump_path)
 
 
+def inspect_cache():
+    try:
+        from mindie_debugger.precision import MemoryWatchpoint
+        from msprobe.core.dump.hook_manager import BaseHookManager
+        version = metadata.version('mindie-debugger')
+        if version != '0.1.4' or not all(callable(getattr(MemoryWatchpoint, name)) for name in ('watch', 'check')) or not hasattr(BaseHookManager, 'inner_switch'):
+            raise ValueError('需要 mindie-debugger 0.1.4 和兼容的 msProbe 线程内采集开关')
+        return {'status': 'available', 'version': version}
+    except Exception as error:
+        return {'status': 'unavailable', 'reason': str(error)}
+
+
 def inspect(payload):
     result = {'executable': sys.executable, 'executable_realpath': str(Path(sys.executable).resolve())}
     try:
@@ -28,7 +40,8 @@ def inspect(payload):
         if not callable(PrecisionDebugger):
             raise ValueError('缺少可用的 msprobe.pytorch.PrecisionDebugger 入口')
         for key in ('WORLD_SIZE', 'LOCAL_WORLD_SIZE', 'VLLM_DP_SIZE'):
-            if os.environ.get(key, '1') != '1':
+            allowed = ['1'] if key == 'VLLM_DP_SIZE' else ['1', str(payload.get('world_size', 1))]
+            if os.environ.get(key, '1') not in allowed:
                 raise ValueError('目标环境不是单 rank：' + key)
         if os.environ.get('MSPROBE_CONFIG_PATH'):
             raise ValueError('目标环境已有 MSPROBE_CONFIG_PATH')
@@ -37,6 +50,8 @@ def inspect(payload):
         if result['config_sha256'] != payload['config_sha256']:
             raise ValueError('目标配置 SHA256 与宿主机不一致')
         dump = checked_dump(payload)
+        if payload.get('decode_cache'):
+            result['decode_cache'] = inspect_cache()
         with (dump / payload['marker']).open('x', encoding='ascii') as stream:
             stream.write(payload['challenge'])
     except Exception as error:

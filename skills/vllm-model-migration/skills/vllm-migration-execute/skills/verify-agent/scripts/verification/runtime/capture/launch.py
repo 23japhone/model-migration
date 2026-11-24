@@ -11,10 +11,12 @@ def stage(receipt):
     source = Path(__file__).with_name('adapters')
     folder.mkdir()
     files = {}
-    for path in sorted(source.glob('*.py')):
-        dest = folder / path.name
+    for path in sorted(source.rglob('*.py')):
+        name = path.relative_to(source).as_posix()
+        dest = folder / name
+        dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(path, dest)
-        files[path.name] = sha256(dest)
+        files[name] = sha256(dest)
     receipt['adapter_files'] = files
 
 

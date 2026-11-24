@@ -13,8 +13,13 @@ def input_processor(cls):
                 expected = (state.read(folder / 'frontend.json')['external_id'] if intent.get('session_mode')
                             else 'cmpl-' + intent['request_id'] + '-0')
                 if request.external_req_id == expected:
-                    state.write(folder / 'request.json', {'internal_id': request.request_id,
-                                'external_id': request.external_req_id, 'prompt_ids': list(request.prompt_token_ids)})
+                    record = {'internal_id': request.request_id, 'external_id': request.external_req_id,
+                              'prompt_ids': list(request.prompt_token_ids)}
+                    features = getattr(request, 'mm_features', None)
+                    if features:
+                        from .image_capture import feature_info
+                        record['mm_features'] = [feature_info(feature) for feature in features]
+                    state.write(folder / 'request.json', record)
             except Exception as error:
                 state.fail(folder, error)
         return result
@@ -22,18 +27,20 @@ def input_processor(cls):
 
 
 def scheduler(cls):
+    from .decode_cache.plan import prepare_scheduler
+    cache = prepare_scheduler(cls)
     init, update = cls.__init__, cls._update_request_with_output
     def initialize(self, *args, **kwargs):
         init(self, *args, **kwargs)
-        state.ready('engine', hooks=['Scheduler._update_request_with_output'])
+        state.ready('engine', **cache, hooks=['Scheduler._update_request_with_output'])
     def accept(self, request, new_token_ids):
         result = update(self, request, new_token_ids)
         folder, internal = state.mapped()
         if request.request_id == internal and result[0]:
             try:
                 index = request.num_output_tokens - 1
-                pred = state.read(folder / f'prediction-{index}.json')
-                if len(result[0]) != 1 or pred['internal_id'] != internal:
+                pred = getattr(self, '_verify_dispatch', None) or state.read(folder / f'prediction-{index}.json')
+                if len(result[0]) != 1 or pred['internal_id'] != internal or pred['output_index'] != index:
                     raise ValueError('调度器采样身份不一致')
                 state.write(folder / f'accepted-{index}.json', {'internal_id': internal, 'output_index': index,
                             'forward_id': pred['forward_id'], 'token_id': result[0][0],

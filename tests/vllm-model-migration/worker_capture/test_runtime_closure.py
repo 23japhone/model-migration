@@ -34,7 +34,7 @@ class RuntimeClosure(unittest.TestCase):
             self.assertEqual(result.returncode,0,result.stderr)
             self.assertFalse((root/'out').exists())
 
-    def start(self):
+    def start(self, cache=False):
         self.verify = isolated_bundle(self.root)
         self.calls = []
         fixture = self
@@ -58,7 +58,7 @@ class RuntimeClosure(unittest.TestCase):
         self.addCleanup(self.server.server_close)
         self.addCleanup(self.server.shutdown)
         self.tokens = [71, 92]
-        self.report, self.runtime = deployment(self.root, f'http://127.0.0.1:{self.server.server_port}')
+        self.report, self.runtime = deployment(self.root, f'http://127.0.0.1:{self.server.server_port}', cache=cache)
         self.session = self.operation({'operation': 'begin', 'source': self.report, 'owner_pid': os.getpid()})['session']
 
     def operation(self, request, expected=0, action='capture-session'):
@@ -66,9 +66,9 @@ class RuntimeClosure(unittest.TestCase):
         self.assertEqual(result.returncode, expected, result.stderr or result.stdout)
         return value
 
-    def invoke(self, trace='sample-37'):
+    def invoke(self, trace='sample-37', **selection):
         arm = self.operation({'operation': 'arm', 'source': self.session, 'sample_key': 'q-37',
-                              'native_id': 37, 'trace_id': trace})
+                              'native_id': 37, 'trace_id': trace, **selection})
         folder = self.runtime / arm['directory']
         payload = {'model': 'synthetic-model', 'prompt': 'synthetic question', 'temperature': 0, 'max_tokens': 2}
         request = write(self.root / 'request.raw', payload)
