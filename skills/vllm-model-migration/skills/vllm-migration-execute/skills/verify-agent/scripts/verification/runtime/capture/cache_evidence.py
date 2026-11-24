@@ -5,6 +5,7 @@ import re
 from ...evidence import read_bound
 from .adapters.state import read
 from .adapters.parallel import request_folder
+from .adapters.decode_cache.backends import STATE_SNAPSHOTS
 from .adapters.decode_cache.runtime import EXPECTED_OPS
 from .tensors import file_ref
 
@@ -17,7 +18,7 @@ WIDTH = {'torch.bfloat16': 2, 'torch.float16': 2, 'torch.float32': 4, 'torch.flo
 def validate_snapshot(request):
     if 'cache_snapshot' in request:
         name = request['cache_snapshot']
-        if not isinstance(name, str) or name not in REQUIRED | OPTIONAL | {'input', 'output', 'ssm.initial'}:
+        if not isinstance(name, str) or name not in STATE_SNAPSHOTS | OPTIONAL | {'input', 'output'}:
             raise ValueError('cache_snapshot 须为已定义的缓存数值名称')
 
 

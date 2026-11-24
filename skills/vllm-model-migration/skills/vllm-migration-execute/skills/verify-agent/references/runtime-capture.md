@@ -95,6 +95,21 @@ seal 不重发推理。成功后用相同 session 调用 `operation=end`；多�
 
 时间线中的 `capture_totals` 汇总原生 msProbe step 目录的文件字节、缓存原始快照字节、msProbe 活跃窗口秒数和缓存观察秒数。msProbe 活跃窗口包含模型计算和缓存观察，两段时间会重叠。原生 msProbe 文件、索引、HTTP 和其他元数据另占空间。超预算或缺少已适配挂点时，查看 `cache_status=incomplete` 和前向的 `errors`。`missing_layers` 列出没有记录调用的层；部分采集的调用以 `missing_boundary` 和 `states[].missing_snapshots` 列出缺少的数值。已保存的部分和独立 msProbe 证据仍可回查。定点查询复验所选前向的原始文件，某一前向的损坏不会阻断其他完好前向的数值查询。
 
+
+### 单卡同步 Eager 的 MLA 缓存
+
+全层模式按实际加载的缓存实现选择普通注意力、GDN 或 MLA 的观察点。每个状态有调度地址 `address`、持有缓存的已加载模块 `module`、后端类 `backend`。MLA 的 `msprobe_module` 指向实际调用融合实现的外层模块。未识别的后端或未通过源码检查的层在回执中保留原因及其可读的边界证据。
+
+Ascend MLA 目前支持未量化 BF16、PA 布局、128 Token 物理块、单卡 V1 Eager。沿用 `cache_capture.mode=full_request` 和现有请求预算，按 `output_index`、`forward_id` 或 `prompt_position` 选择本次前向，再指定 `layer_index` 与以下快照名称。
+
+| 快照 | 取值位置 |
+|---|---|
+| `mla.projection.input` | 融合写入算子的原始联合输入，保留归一化与位置旋转前的值 |
+| `mla.latent.after`、`mla.rope.after` | 按实际槽号从物理缓存取回的压缩 KV 和位置分量，每行对应本前向的一个有效输入位置 |
+| `mla.latent.output`、`mla.rope.output` | prefill 融合写入算子显式返回的两种分量，可逐字节与同位置写后值核对 |
+
+例如 DeepSeek 第二个输出可用 `output_index=1,layer_index=0,cache_snapshot=mla.latent.after`。同一层调用下的 `event` 给出调度预期写槽、元数据槽号及融合算子实收槽号。`backend_path=prefill` 时，`current` 记录本块 FIA 的有效长度和因果掩码，`history` 分次记录已有缓存的起点、长度、物理块和对应 FIA 调用。冷启动时历史列表为空。`backend_path=decode` 时，`decode` 记录分页注意力实收的块表、块长和有效 KV 长度。完整层回执的 `read_ranges` 给出按实参还原的逻辑半开区间。读取物理缓存时同时列出每页有效槽区间，读取本块输入时列出每行的因果截止位置。原始数值文件来自写入边界。指定层和 MLA 快照时，`native_recheck` 报告本次复核的 msProbe 模块、状态及缺失调用。某一分量或原生文件损坏时，仍可查询本层完整的缓存分量。
+
 ## 单机 TP=2 联合采集
 
 在自有服务上声明两张物理 NPU、`--tensor-parallel-size 2` 和本机 `mp` executor。其余并行维度均为 1。使用 `capture-session`，两次请求均启用 msProbe，按需在 `arm` 加入已有的 `cache_capture.mode=full_request`。服务准备和会话需要两名真实 worker 的 TP 组、进程与可见设备回执。服务记录唯一的 executor 输出 rank，最终输出以引擎接受结果为准。

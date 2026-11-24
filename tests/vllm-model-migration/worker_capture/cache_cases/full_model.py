@@ -64,8 +64,9 @@ class Decoder(nn.Module):
 
 
 def inspect(model):
-    with patch.object(architecture, 'ATTENTION', architecture.class_name(ops.Full())), patch.object(
-            architecture, 'GDN', GDN.__module__ + '.GDN'):
+    from verification.runtime.capture.adapters.decode_cache.backends import BY_KIND
+    replacements = {architecture.class_name(ops.Full()): BY_KIND['attention'], GDN.__module__ + '.GDN': BY_KIND['gdn']}
+    with patch.dict(architecture.BY_CLASS, replacements):
         return architecture.discover(model, model.config)
 
 

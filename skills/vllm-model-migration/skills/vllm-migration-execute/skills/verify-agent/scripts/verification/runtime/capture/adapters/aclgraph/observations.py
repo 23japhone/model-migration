@@ -51,6 +51,7 @@ class GraphObservations:
         self.scopes = ExitStack()
         self.updated_types = set()
         self.cache_layers = {}
+        self.unsupported = []
         self.block_sizes = {}
         modules = dict(model.named_modules())
         register()
@@ -62,14 +63,18 @@ class GraphObservations:
             block.register_forward_hook(partial(edge, idx, 'output', position), with_kwargs=True)
             for target in layer['states']:
                 module = modules[target['module']]
-                validate_backend(module, target['kind'])
+                try:
+                    validate_backend(module, target['kind'], mode='aclgraph')
+                except (ValueError, AttributeError, ImportError, OSError) as error:
+                    self.unsupported.append(f"{idx}/{target['backend']}: {error}")
+                    continue
                 install_state(self.scopes, module, idx, target, self)
 
     def start(self, folder, frame):
         if folder != self.folder:
             self.remaining = state.read(folder / 'intent.json')['cache_capture']['max_request_snapshot_bytes']
         self.folder, self.frame = folder, frame
-        self.direct = {'buffers': {}, 'errors': [], 'read_sources': {}}
+        self.direct = {'buffers': {}, 'errors': list(self.unsupported), 'read_sources': {}}
         self.pending = []
         self.used = set()
         self.read_calls = []

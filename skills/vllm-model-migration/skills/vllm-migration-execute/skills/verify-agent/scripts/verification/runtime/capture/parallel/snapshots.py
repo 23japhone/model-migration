@@ -1,8 +1,9 @@
 """对已绑定 rank 的快照逐文件检查，保留同层中其他可读原值。"""
-from ..cache_evidence import REQUIRED, OPTIONAL, verify_files
+from ..adapters.decode_cache.backends import STATE_SNAPSHOTS
+from ..cache_evidence import OPTIONAL, verify_files
 from ..layer_evidence import BOUNDARY
 
-ALLOWED = REQUIRED | OPTIONAL | {'ssm.initial'}
+ALLOWED = STATE_SNAPSHOTS | OPTIONAL
 
 
 def inspect_group(directory, snapshots, allowed):

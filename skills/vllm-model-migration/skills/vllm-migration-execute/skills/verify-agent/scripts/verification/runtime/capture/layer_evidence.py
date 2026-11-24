@@ -3,8 +3,10 @@ from .adapters.decode_cache.layer_capture import layer_errors
 from .adapters.decode_cache.prefill_attention import write_slots
 from .adapters.decode_cache.plan import attention_plan, slot_ranges, state_row
 
-STATE_FILES = {'attention': {'key.input', 'key.after', 'value.input', 'value.after'},
-               'gdn': {'conv.before', 'conv.after', 'ssm.before', 'ssm.after'}}
+from .adapters.decode_cache.backends import BY_KIND, MLA_OUTPUTS
+from .adapters.decode_cache.backends.mla_evidence import read_ranges, verify_components, verify_mla
+
+STATE_FILES = {kind: backend.files for kind, backend in BY_KIND.items()}
 BOUNDARY = {'input', 'output'}
 
 
@@ -30,6 +32,11 @@ def verify_plan(state, schedule):
         raise ValueError('分配块或页大小与调度不符')
     if event.get('observation') == 'prefill_kv':
         verify_prefill(event, group, schedule)
+    elif state['kind'] == 'mla':
+        verify_mla(event, group, schedule)
+        ranges = read_ranges(event, schedule)
+        if state.setdefault('read_ranges', ranges) != ranges:
+            raise ValueError('MLA 读取区间与已核对的后端实参不同')
     elif state['kind'] == 'attention':
         verify_attention(event, group, schedule['position'])
     else:
@@ -62,6 +69,8 @@ def verify_prefill(event, group, schedule):
 
 def required_snapshots(state):
     required = STATE_FILES.get(state['kind'], set())
+    if state['kind'] == 'mla' and state.get('event', {}).get('backend_path') == 'prefill':
+        return required | MLA_OUTPUTS
     if state.get('event', {}).get('observation') == 'prefill_gdn':
         return required | {'ssm.initial'}
     return required
@@ -85,6 +94,9 @@ def verify_state(state, descriptor, directory, schedule, complete):
         if not required or not required.issubset(files):
             raise ValueError('层状态张量文件缺失')
         verify_plan(state, schedule)
+        if state['kind'] == 'mla':
+            verify_components(state['event'], files, schedule.get('count', 1))
+            return
         names = ('key', 'value') if state['kind'] == 'attention' else ('conv', 'ssm')
         if state['event'].get('observation') == 'prefill_kv':
             for name in names:
@@ -127,7 +139,7 @@ def verify_layer(layer, descriptor, directory, row):
             raise ValueError('缺少层状态观察点')
         for i, state in enumerate(call['states']):
             verify_state(state, states[i], folder / f'state-{i}', schedule, complete)
-            matched = [c for c in row['calls'] if c['module'] == state['module']]
+            matched = [c for c in row['calls'] if c['module'] == state.get('msprobe_module', state['module'])]
             correlate_call(state, matched, ordinal, complete)
 
 
@@ -135,6 +147,8 @@ def plan_disagreements(layer):
     for invocation in layer['invocations']:
         for state in invocation['states']:
             event = state['event']
+            if state['kind'] == 'mla':
+                continue  # verify_mla 和 verify_components 已逐分量核对。
             if state['kind'] == 'attention':
                 ok = (event['read_plan_matches'] and event['write_plan_matches']
                       and event['key']['matches_input'] and event['value']['matches_input'])
@@ -142,6 +156,19 @@ def plan_disagreements(layer):
                 ok = all(event[key]['plan_matches'] and event[key]['metadata_matches'] for key in ('conv', 'ssm'))
             if not ok:
                 yield state['module'] + ' 实际读写与计划或待写数值不同'
+
+
+def recover_mla_files(directory, cache, layer, descriptor, row):
+    from .parallel.snapshots import isolate_files
+    if not any(s['kind'] == 'mla' for s in descriptor['states']):
+        return False
+    problems = isolate_files(directory, {'layers': [layer], 'errors': []})
+    if not problems:
+        return False
+    cache['errors'].extend(problems)
+    cache['status'] = 'incomplete'
+    verify_layer(layer, descriptor, directory / f"layer-{layer['index']}", row)
+    return True
 
 
 def verify_layers(directory, cache, row, *, sealing=False):
@@ -161,6 +188,8 @@ def verify_layers(directory, cache, row, *, sealing=False):
                     layer['status'] = cache['status'] = 'incomplete'
                     cache['errors'].extend(differences)
         except (OSError, ValueError, KeyError, IndexError, TypeError) as error:
+            if recover_mla_files(directory, cache, layer, desc, row):
+                continue
             if not sealing:
                 raise
             reason = f"{layer['path']} 层证据无效: {error}"
@@ -185,5 +214,6 @@ def select_snapshot(cache, name, layer, occurrence):
             if layer in (None, block['path'], state['module']) and name in state['snapshots']:
                 items.append(state['snapshots'][name])
     if len(items) != 1:
-        raise ValueError(f'缓存快照 {name} 匹配 {len(items)} 项，请指定唯一层与调用序号')
+        issues = [msg for block in cache['layers'] if layer in (None, block['path']) for msg in block['errors'] if name in msg]
+        raise ValueError(f'缓存快照 {name} 匹配 {len(items)} 项，请指定唯一层与调用序号 ' + ' '.join(issues))
     return items[0]

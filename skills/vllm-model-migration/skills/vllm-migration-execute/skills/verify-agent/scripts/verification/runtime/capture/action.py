@@ -179,5 +179,5 @@ def lookup(request, target, run_id):
     if set(request) & {'view', 'forward_id', 'prompt_position'}:
         from .index import query_forward
         return 0, query_forward(request)
-    row = query(request['source'], request['request_id'], request.get('output_index', 1))
+    row = query(request['source'], request['request_id'], request.get('output_index', 1), request)
     return 0, selected(row, request)
