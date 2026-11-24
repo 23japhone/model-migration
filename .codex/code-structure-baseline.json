@@ -209,7 +209,7 @@
         "files": 16,
         "kind": "test"
       },
-      "tests/vllm-model-migration/demarcation": {
+      "tests/vllm-model-migration/demarcation_cases": {
         "files": 4,
         "kind": "test"
       },
@@ -1579,19 +1579,19 @@
         "kind": "source",
         "lines": 10
       },
-      "tests/vllm-model-migration/demarcation/__init__.py": {
+      "tests/vllm-model-migration/demarcation_cases/__init__.py": {
         "kind": "test",
         "lines": 1
       },
-      "tests/vllm-model-migration/demarcation/test_capability.py": {
+      "tests/vllm-model-migration/demarcation_cases/test_capability.py": {
         "kind": "test",
         "lines": 105
       },
-      "tests/vllm-model-migration/demarcation/test_judge.py": {
+      "tests/vllm-model-migration/demarcation_cases/test_judge.py": {
         "kind": "test",
         "lines": 153
       },
-      "tests/vllm-model-migration/demarcation/test_runner.py": {
+      "tests/vllm-model-migration/demarcation_cases/test_runner.py": {
         "kind": "test",
         "lines": 144
       },
@@ -15020,375 +15020,375 @@
         "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/verify-agent-plus/scripts/precision/runtime/versioning.py",
         "statements": 15
       },
-      "tests/vllm-model-migration/demarcation/test_capability.py::ContractTests.test_new_render_is_object": {
+      "tests/vllm-model-migration/demarcation_cases/test_capability.py::ContractTests.test_new_render_is_object": {
         "branches": 0,
         "complexity": 1,
         "line": 35,
-        "path": "tests/vllm-model-migration/demarcation/test_capability.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_capability.py",
         "statements": 4
       },
-      "tests/vllm-model-migration/demarcation/test_capability.py::ContractTests.test_old_completions_drops_token_ids_field": {
+      "tests/vllm-model-migration/demarcation_cases/test_capability.py::ContractTests.test_old_completions_drops_token_ids_field": {
         "branches": 0,
         "complexity": 1,
         "line": 52,
-        "path": "tests/vllm-model-migration/demarcation/test_capability.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_capability.py",
         "statements": 2
       },
-      "tests/vllm-model-migration/demarcation/test_capability.py::ContractTests.test_old_render_is_list": {
+      "tests/vllm-model-migration/demarcation_cases/test_capability.py::ContractTests.test_old_render_is_list": {
         "branches": 0,
         "complexity": 1,
         "line": 28,
-        "path": "tests/vllm-model-migration/demarcation/test_capability.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_capability.py",
         "statements": 5
       },
-      "tests/vllm-model-migration/demarcation/test_capability.py::ContractTests.test_scale_out_required_from_030": {
+      "tests/vllm-model-migration/demarcation_cases/test_capability.py::ContractTests.test_scale_out_required_from_030": {
         "branches": 0,
         "complexity": 1,
         "line": 41,
-        "path": "tests/vllm-model-migration/demarcation/test_capability.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_capability.py",
         "statements": 2
       },
-      "tests/vllm-model-migration/demarcation/test_capability.py::ContractTests.test_unknown_version_is_liberal": {
+      "tests/vllm-model-migration/demarcation_cases/test_capability.py::ContractTests.test_unknown_version_is_liberal": {
         "branches": 0,
         "complexity": 1,
         "line": 45,
-        "path": "tests/vllm-model-migration/demarcation/test_capability.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_capability.py",
         "statements": 5
       },
-      "tests/vllm-model-migration/demarcation/test_capability.py::DetectVersionTests.test_detect": {
+      "tests/vllm-model-migration/demarcation_cases/test_capability.py::DetectVersionTests.test_detect": {
         "branches": 0,
         "complexity": 1,
         "line": 76,
-        "path": "tests/vllm-model-migration/demarcation/test_capability.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_capability.py",
         "statements": 2
       },
-      "tests/vllm-model-migration/demarcation/test_capability.py::DetectVersionTests.test_missing_returns_unknown": {
+      "tests/vllm-model-migration/demarcation_cases/test_capability.py::DetectVersionTests.test_missing_returns_unknown": {
         "branches": 0,
         "complexity": 1,
         "line": 80,
-        "path": "tests/vllm-model-migration/demarcation/test_capability.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_capability.py",
         "statements": 2
       },
-      "tests/vllm-model-migration/demarcation/test_capability.py::ParseVersionTests.test_invalid": {
+      "tests/vllm-model-migration/demarcation_cases/test_capability.py::ParseVersionTests.test_invalid": {
         "branches": 0,
         "complexity": 1,
         "line": 22,
-        "path": "tests/vllm-model-migration/demarcation/test_capability.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_capability.py",
         "statements": 2
       },
-      "tests/vllm-model-migration/demarcation/test_capability.py::ParseVersionTests.test_plain_version": {
+      "tests/vllm-model-migration/demarcation_cases/test_capability.py::ParseVersionTests.test_plain_version": {
         "branches": 0,
         "complexity": 1,
         "line": 13,
-        "path": "tests/vllm-model-migration/demarcation/test_capability.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_capability.py",
         "statements": 1
       },
-      "tests/vllm-model-migration/demarcation/test_capability.py::ParseVersionTests.test_rc_suffix": {
+      "tests/vllm-model-migration/demarcation_cases/test_capability.py::ParseVersionTests.test_rc_suffix": {
         "branches": 0,
         "complexity": 1,
         "line": 16,
-        "path": "tests/vllm-model-migration/demarcation/test_capability.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_capability.py",
         "statements": 1
       },
-      "tests/vllm-model-migration/demarcation/test_capability.py::ParseVersionTests.test_v_prefix": {
+      "tests/vllm-model-migration/demarcation_cases/test_capability.py::ParseVersionTests.test_v_prefix": {
         "branches": 0,
         "complexity": 1,
         "line": 19,
-        "path": "tests/vllm-model-migration/demarcation/test_capability.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_capability.py",
         "statements": 1
       },
-      "tests/vllm-model-migration/demarcation/test_capability.py::ProbeConventionTests.test_root_prefix_and_prompt_field": {
+      "tests/vllm-model-migration/demarcation_cases/test_capability.py::ProbeConventionTests.test_root_prefix_and_prompt_field": {
         "branches": 0,
         "complexity": 1,
         "line": 86,
-        "path": "tests/vllm-model-migration/demarcation/test_capability.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_capability.py",
         "statements": 3
       },
-      "tests/vllm-model-migration/demarcation/test_capability.py::ProbeConventionTests.test_v1_prefix_and_text_field": {
+      "tests/vllm-model-migration/demarcation_cases/test_capability.py::ProbeConventionTests.test_v1_prefix_and_text_field": {
         "branches": 0,
         "complexity": 1,
         "line": 94,
-        "path": "tests/vllm-model-migration/demarcation/test_capability.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_capability.py",
         "statements": 3
       },
-      "tests/vllm-model-migration/demarcation/test_capability.py::RootEndpointTests.test_with_v1_suffix": {
+      "tests/vllm-model-migration/demarcation_cases/test_capability.py::RootEndpointTests.test_with_v1_suffix": {
         "branches": 0,
         "complexity": 1,
         "line": 58,
-        "path": "tests/vllm-model-migration/demarcation/test_capability.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_capability.py",
         "statements": 1
       },
-      "tests/vllm-model-migration/demarcation/test_capability.py::RootEndpointTests.test_without_v1_suffix": {
+      "tests/vllm-model-migration/demarcation_cases/test_capability.py::RootEndpointTests.test_without_v1_suffix": {
         "branches": 0,
         "complexity": 1,
         "line": 61,
-        "path": "tests/vllm-model-migration/demarcation/test_capability.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_capability.py",
         "statements": 1
       },
-      "tests/vllm-model-migration/demarcation/test_capability.py::_FakeClient.__init__": {
+      "tests/vllm-model-migration/demarcation_cases/test_capability.py::_FakeClient.__init__": {
         "branches": 0,
         "complexity": 1,
         "line": 66,
-        "path": "tests/vllm-model-migration/demarcation/test_capability.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_capability.py",
         "statements": 2
       },
-      "tests/vllm-model-migration/demarcation/test_capability.py::_FakeClient.request": {
+      "tests/vllm-model-migration/demarcation_cases/test_capability.py::_FakeClient.request": {
         "branches": 0,
         "complexity": 1,
         "line": 70,
-        "path": "tests/vllm-model-migration/demarcation/test_capability.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_capability.py",
         "statements": 2
       },
-      "tests/vllm-model-migration/demarcation/test_judge.py::DecideTests.test_bad_render_is_chat_template": {
+      "tests/vllm-model-migration/demarcation_cases/test_judge.py::DecideTests.test_bad_render_is_chat_template": {
         "branches": 0,
         "complexity": 1,
         "line": 35,
-        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_judge.py",
         "statements": 2
       },
-      "tests/vllm-model-migration/demarcation/test_judge.py::DecideTests.test_closed_think_without_reasoning_is_thinking_parser": {
+      "tests/vllm-model-migration/demarcation_cases/test_judge.py::DecideTests.test_closed_think_without_reasoning_is_thinking_parser": {
         "branches": 0,
         "complexity": 1,
         "line": 60,
-        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_judge.py",
         "statements": 4
       },
-      "tests/vllm-model-migration/demarcation/test_judge.py::DecideTests.test_empty_raw_is_inconclusive": {
+      "tests/vllm-model-migration/demarcation_cases/test_judge.py::DecideTests.test_empty_raw_is_inconclusive": {
         "branches": 0,
         "complexity": 1,
         "line": 39,
-        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_judge.py",
         "statements": 3
       },
-      "tests/vllm-model-migration/demarcation/test_judge.py::DecideTests.test_fatal_request_is_request": {
+      "tests/vllm-model-migration/demarcation_cases/test_judge.py::DecideTests.test_fatal_request_is_request": {
         "branches": 0,
         "complexity": 1,
         "line": 26,
-        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_judge.py",
         "statements": 2
       },
-      "tests/vllm-model-migration/demarcation/test_judge.py::DecideTests.test_garbage_is_model_numeric": {
+      "tests/vllm-model-migration/demarcation_cases/test_judge.py::DecideTests.test_garbage_is_model_numeric": {
         "branches": 0,
         "complexity": 1,
         "line": 49,
-        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_judge.py",
         "statements": 3
       },
-      "tests/vllm-model-migration/demarcation/test_judge.py::DecideTests.test_nonfatal_request_keeps_request": {
+      "tests/vllm-model-migration/demarcation_cases/test_judge.py::DecideTests.test_nonfatal_request_keeps_request": {
         "branches": 0,
         "complexity": 1,
         "line": 30,
-        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_judge.py",
         "statements": 3
       },
-      "tests/vllm-model-migration/demarcation/test_judge.py::DecideTests.test_normal_chat_is_pass": {
+      "tests/vllm-model-migration/demarcation_cases/test_judge.py::DecideTests.test_normal_chat_is_pass": {
         "branches": 0,
         "complexity": 1,
         "line": 78,
-        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_judge.py",
         "statements": 4
       },
-      "tests/vllm-model-migration/demarcation/test_judge.py::DecideTests.test_only_thinking_is_model_incomplete": {
+      "tests/vllm-model-migration/demarcation_cases/test_judge.py::DecideTests.test_only_thinking_is_model_incomplete": {
         "branches": 0,
         "complexity": 1,
         "line": 44,
-        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_judge.py",
         "statements": 3
       },
-      "tests/vllm-model-migration/demarcation/test_judge.py::DecideTests.test_plain_answer_but_chat_empty_is_service_output": {
+      "tests/vllm-model-migration/demarcation_cases/test_judge.py::DecideTests.test_plain_answer_but_chat_empty_is_service_output": {
         "branches": 0,
         "complexity": 1,
         "line": 66,
-        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_judge.py",
         "statements": 4
       },
-      "tests/vllm-model-migration/demarcation/test_judge.py::DecideTests.test_toolcall_text_without_tool_calls_is_tool_parser": {
+      "tests/vllm-model-migration/demarcation_cases/test_judge.py::DecideTests.test_toolcall_text_without_tool_calls_is_tool_parser": {
         "branches": 0,
         "complexity": 1,
         "line": 54,
-        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_judge.py",
         "statements": 4
       },
-      "tests/vllm-model-migration/demarcation/test_judge.py::DecideTests.test_tools_without_toolcall_is_model_output": {
+      "tests/vllm-model-migration/demarcation_cases/test_judge.py::DecideTests.test_tools_without_toolcall_is_model_output": {
         "branches": 0,
         "complexity": 1,
         "line": 72,
-        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_judge.py",
         "statements": 4
       },
-      "tests/vllm-model-migration/demarcation/test_judge.py::GarbageTests.test_repetition_is_garbage": {
+      "tests/vllm-model-migration/demarcation_cases/test_judge.py::GarbageTests.test_repetition_is_garbage": {
         "branches": 0,
         "complexity": 1,
         "line": 111,
-        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_judge.py",
         "statements": 3
       },
-      "tests/vllm-model-migration/demarcation/test_judge.py::GarbageTests.test_short_text_is_skipped": {
+      "tests/vllm-model-migration/demarcation_cases/test_judge.py::GarbageTests.test_short_text_is_skipped": {
         "branches": 0,
         "complexity": 1,
         "line": 106,
-        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_judge.py",
         "statements": 3
       },
-      "tests/vllm-model-migration/demarcation/test_judge.py::GarbageTests.test_whitespace_only_is_garbage": {
+      "tests/vllm-model-migration/demarcation_cases/test_judge.py::GarbageTests.test_whitespace_only_is_garbage": {
         "branches": 0,
         "complexity": 1,
         "line": 102,
-        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_judge.py",
         "statements": 2
       },
-      "tests/vllm-model-migration/demarcation/test_judge.py::MarkerTests.test_think_close_and_content_after": {
+      "tests/vllm-model-migration/demarcation_cases/test_judge.py::MarkerTests.test_think_close_and_content_after": {
         "branches": 0,
         "complexity": 1,
         "line": 92,
-        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_judge.py",
         "statements": 6
       },
-      "tests/vllm-model-migration/demarcation/test_judge.py::MarkerTests.test_toolcall_and_think_detection": {
+      "tests/vllm-model-migration/demarcation_cases/test_judge.py::MarkerTests.test_toolcall_and_think_detection": {
         "branches": 0,
         "complexity": 1,
         "line": 86,
-        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_judge.py",
         "statements": 4
       },
-      "tests/vllm-model-migration/demarcation/test_judge.py::RenderCheckTests.test_message_with_newline_still_matches_after_normalization": {
+      "tests/vllm-model-migration/demarcation_cases/test_judge.py::RenderCheckTests.test_message_with_newline_still_matches_after_normalization": {
         "branches": 0,
         "complexity": 3,
         "line": 118,
-        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_judge.py",
         "statements": 5
       },
-      "tests/vllm-model-migration/demarcation/test_judge.py::RenderCheckTests.test_missing_message_is_fail": {
+      "tests/vllm-model-migration/demarcation_cases/test_judge.py::RenderCheckTests.test_missing_message_is_fail": {
         "branches": 0,
         "complexity": 3,
         "line": 125,
-        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_judge.py",
         "statements": 5
       },
-      "tests/vllm-model-migration/demarcation/test_judge.py::RequestCheckTests.test_bad_tool_structure_is_fail": {
+      "tests/vllm-model-migration/demarcation_cases/test_judge.py::RequestCheckTests.test_bad_tool_structure_is_fail": {
         "branches": 0,
         "complexity": 1,
         "line": 144,
-        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_judge.py",
         "statements": 4
       },
-      "tests/vllm-model-migration/demarcation/test_judge.py::RequestCheckTests.test_empty_messages_is_fatal": {
+      "tests/vllm-model-migration/demarcation_cases/test_judge.py::RequestCheckTests.test_empty_messages_is_fatal": {
         "branches": 0,
         "complexity": 1,
         "line": 140,
-        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_judge.py",
         "statements": 2
       },
-      "tests/vllm-model-migration/demarcation/test_judge.py::RequestCheckTests.test_valid_request_passes": {
+      "tests/vllm-model-migration/demarcation_cases/test_judge.py::RequestCheckTests.test_valid_request_passes": {
         "branches": 0,
         "complexity": 1,
         "line": 134,
-        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_judge.py",
         "statements": 4
       },
-      "tests/vllm-model-migration/demarcation/test_judge.py::_raw": {
+      "tests/vllm-model-migration/demarcation_cases/test_judge.py::_raw": {
         "branches": 0,
         "complexity": 1,
         "line": 19,
-        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_judge.py",
         "statements": 3
       },
-      "tests/vllm-model-migration/demarcation/test_runner.py::MockServer.__init__": {
+      "tests/vllm-model-migration/demarcation_cases/test_runner.py::MockServer.__init__": {
         "branches": 0,
         "complexity": 1,
         "line": 48,
-        "path": "tests/vllm-model-migration/demarcation/test_runner.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_runner.py",
         "statements": 4
       },
-      "tests/vllm-model-migration/demarcation/test_runner.py::MockServer.close": {
+      "tests/vllm-model-migration/demarcation_cases/test_runner.py::MockServer.close": {
         "branches": 0,
         "complexity": 1,
         "line": 59,
-        "path": "tests/vllm-model-migration/demarcation/test_runner.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_runner.py",
         "statements": 2
       },
-      "tests/vllm-model-migration/demarcation/test_runner.py::MockServer.endpoint": {
+      "tests/vllm-model-migration/demarcation_cases/test_runner.py::MockServer.endpoint": {
         "branches": 0,
         "complexity": 1,
         "line": 55,
-        "path": "tests/vllm-model-migration/demarcation/test_runner.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_runner.py",
         "statements": 2
       },
-      "tests/vllm-model-migration/demarcation/test_runner.py::RunnerTests._request": {
+      "tests/vllm-model-migration/demarcation_cases/test_runner.py::RunnerTests._request": {
         "branches": 0,
         "complexity": 1,
         "line": 71,
-        "path": "tests/vllm-model-migration/demarcation/test_runner.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_runner.py",
         "statements": 1
       },
-      "tests/vllm-model-migration/demarcation/test_runner.py::RunnerTests._routes": {
+      "tests/vllm-model-migration/demarcation_cases/test_runner.py::RunnerTests._routes": {
         "branches": 0,
         "complexity": 1,
         "line": 78,
-        "path": "tests/vllm-model-migration/demarcation/test_runner.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_runner.py",
         "statements": 1
       },
-      "tests/vllm-model-migration/demarcation/test_runner.py::RunnerTests.test_fatal_empty_messages_is_request_without_service": {
+      "tests/vllm-model-migration/demarcation_cases/test_runner.py::RunnerTests.test_fatal_empty_messages_is_request_without_service": {
         "branches": 0,
         "complexity": 1,
         "line": 102,
-        "path": "tests/vllm-model-migration/demarcation/test_runner.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_runner.py",
         "statements": 7
       },
-      "tests/vllm-model-migration/demarcation/test_runner.py::RunnerTests.test_full_run_produces_pass": {
+      "tests/vllm-model-migration/demarcation_cases/test_runner.py::RunnerTests.test_full_run_produces_pass": {
         "branches": 1,
         "complexity": 1,
         "line": 88,
-        "path": "tests/vllm-model-migration/demarcation/test_runner.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_runner.py",
         "statements": 11
       },
-      "tests/vllm-model-migration/demarcation/test_runner.py::RunnerTests.test_render_fallback_to_tokenize": {
+      "tests/vllm-model-migration/demarcation_cases/test_runner.py::RunnerTests.test_render_fallback_to_tokenize": {
         "branches": 1,
         "complexity": 1,
         "line": 111,
-        "path": "tests/vllm-model-migration/demarcation/test_runner.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_runner.py",
         "statements": 13
       },
-      "tests/vllm-model-migration/demarcation/test_runner.py::RunnerTests.test_step3_failure_is_inconclusive_without_retry": {
+      "tests/vllm-model-migration/demarcation_cases/test_runner.py::RunnerTests.test_step3_failure_is_inconclusive_without_retry": {
         "branches": 1,
         "complexity": 1,
         "line": 127,
-        "path": "tests/vllm-model-migration/demarcation/test_runner.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_runner.py",
         "statements": 12
       },
-      "tests/vllm-model-migration/demarcation/test_runner.py::_Handler._respond": {
+      "tests/vllm-model-migration/demarcation_cases/test_runner.py::_Handler._respond": {
         "branches": 7,
         "complexity": 5,
         "line": 20,
-        "path": "tests/vllm-model-migration/demarcation/test_runner.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_runner.py",
         "statements": 15
       },
-      "tests/vllm-model-migration/demarcation/test_runner.py::_Handler.do_GET": {
+      "tests/vllm-model-migration/demarcation_cases/test_runner.py::_Handler.do_GET": {
         "branches": 0,
         "complexity": 1,
         "line": 37,
-        "path": "tests/vllm-model-migration/demarcation/test_runner.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_runner.py",
         "statements": 1
       },
-      "tests/vllm-model-migration/demarcation/test_runner.py::_Handler.do_POST": {
+      "tests/vllm-model-migration/demarcation_cases/test_runner.py::_Handler.do_POST": {
         "branches": 0,
         "complexity": 1,
         "line": 40,
-        "path": "tests/vllm-model-migration/demarcation/test_runner.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_runner.py",
         "statements": 1
       },
-      "tests/vllm-model-migration/demarcation/test_runner.py::_Handler.log_message": {
+      "tests/vllm-model-migration/demarcation_cases/test_runner.py::_Handler.log_message": {
         "branches": 0,
         "complexity": 1,
         "line": 43,
-        "path": "tests/vllm-model-migration/demarcation/test_runner.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_runner.py",
         "statements": 1
       },
-      "tests/vllm-model-migration/demarcation/test_runner.py::_write_badcase": {
+      "tests/vllm-model-migration/demarcation_cases/test_runner.py::_write_badcase": {
         "branches": 0,
         "complexity": 1,
         "line": 64,
-        "path": "tests/vllm-model-migration/demarcation/test_runner.py",
+        "path": "tests/vllm-model-migration/demarcation_cases/test_runner.py",
         "statements": 3
       },
       "tests/vllm-model-migration/devices/fixtures.py::attach": {
@@ -21119,6 +21119,6 @@
       }
     }
   },
-  "policy_sha256": "70959c29ff5b200f33dbed69befc2e9246c5a84e1ae9e1e412d1a4b12036626c",
+  "policy_sha256": "6861bf1113133c31b889b5fbb99fe2d15ea8583ce78a8cfc098572ee91fbbd68",
   "version": 1
 }
