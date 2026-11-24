@@ -3,6 +3,8 @@ import json
 from pathlib import Path
 import re
 
+from .aclgraph import config as graph
+
 ADAPTER = 'msprobe_pytorch_eager'
 PARALLEL_FLAGS = {'--tensor-parallel-size', '-tp', '--pipeline-parallel-size', '-pp',
                   '--data-parallel-size', '-dp', '--prefill-context-parallel-size', '-pcp',
@@ -13,22 +15,30 @@ def validate(request):
     if 'worker_capture' not in request:
         return
     value = request['worker_capture']
-    if not isinstance(value, dict) or set(value) - {'adapter', 'output_root', 'expected_msprobe_version', 'decode_cache'}:
+    allowed = {'adapter', 'output_root', 'expected_msprobe_version', 'decode_cache'}
+    if isinstance(value, dict) and value.get('adapter') == graph.ADAPTER:
+        allowed.add('native_dump')
+    if not isinstance(value, dict) or set(value) - allowed:
         raise ValueError('worker_capture 须为已知字段的对象')
-    if value.get('adapter') != ADAPTER:
-        raise ValueError('worker_capture.adapter 须为 ' + ADAPTER)
+    if value.get('adapter') not in (ADAPTER, graph.ADAPTER):
+        raise ValueError(f'worker_capture.adapter 仅支持 {ADAPTER} 或 {graph.ADAPTER}')
     validate_root(value.get('output_root'))
     if 'decode_cache' in value:
-        validate_cache(value['decode_cache'])
+        validate_cache(value['decode_cache'], graph_mode=value.get('adapter') == graph.ADAPTER)
     if 'expected_msprobe_version' in value:
         version = value['expected_msprobe_version']
         if not isinstance(version, str) or not re.fullmatch(r'[0-9A-Za-z][0-9A-Za-z.!_+-]*', version):
             raise ValueError('expected_msprobe_version 须为准确的安装包版本字符串')
 
 
-def validate_cache(value):
-    if not isinstance(value, dict) or 'max_snapshot_bytes' not in value or set(value) - {'max_snapshot_bytes', 'layer_scope'}:
+def validate_cache(value, graph_mode=False):
+    fields = {'max_snapshot_bytes', 'layer_scope'}
+    if graph_mode:
+        fields.add('max_device_snapshot_bytes')
+    if not isinstance(value, dict) or 'max_snapshot_bytes' not in value or set(value) - fields:
         raise ValueError('decode_cache 需要 max_snapshot_bytes，可选 layer_scope')
+    if 'max_device_snapshot_bytes' in value and (type(value['max_device_snapshot_bytes']) != int or value['max_device_snapshot_bytes'] <= 0):
+        raise ValueError('图观察设备快照预算须为正整数')
     if value.get('layer_scope', 'all') not in ('all', 'legacy_pair'):
         raise ValueError('layer_scope 仅支持 all 或 legacy_pair')
     if type(value['max_snapshot_bytes']) is not int or value['max_snapshot_bytes'] <= 0:
@@ -83,7 +93,9 @@ def check_service(request):
         raise ValueError('borrowed 服务不支持准备新的 worker 采集配置')
     command = service['command']
     flags = [arg.replace('_', '-') for arg in command]
-    if '--enforce-eager' not in flags or '--no-enforce-eager' in flags:
+    if request.get('worker_capture', {}).get('adapter') == graph.ADAPTER:
+        graph.settings(request)
+    elif '--enforce-eager' not in flags or '--no-enforce-eager' in flags:
         raise ValueError('采集准备要求服务显式启用 Eager')
     devices = request['npu']['devices']
     if len(devices) not in (1, 2) or len(set(devices)) != len(devices):

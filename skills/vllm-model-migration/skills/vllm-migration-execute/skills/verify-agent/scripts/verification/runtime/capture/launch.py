@@ -26,6 +26,8 @@ def command(request):
     if receipt.get('status') != 'prepared':
         return original
     root = Path(receipt['config']['runtime_path']).parent
+    if receipt.get('graph', {}).get('native'):
+        original = [*original, '--additional-config.dump_config_path', receipt['config']['runtime_path']]
     shim = [request['runtime']['python'], str(root / 'adapters' / 'bootstrap.py')]
     if Path(original[0]).name == 'vllm' and original[1:2] == ['serve']:
         return [*shim, 'cli', *original[1:]]

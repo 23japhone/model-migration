@@ -9078,11 +9078,11 @@
         "statements": 6
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/session.py::arm": {
-        "branches": 7,
-        "complexity": 13,
+        "branches": 3,
+        "complexity": 6,
         "line": 96,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/session.py",
-        "statements": 22
+        "statements": 15
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/session.py::begin": {
         "branches": 2,

@@ -23,6 +23,14 @@ def seal(request, authority, handoff, root, lease, ready):
     if lease['state'] != 'armed' or lease['trace_id'] != request['trace_id']:
         raise ValueError('没有匹配的活动请求')
     folder = root / lease['directory']; intent = read(folder / 'intent.json')
+    if ready.get('mode') == 'aclgraph':
+        response = http_json(request['http']['response'])
+        if 'error' in response:
+            from .parallel.failure import inference_failed
+            http_json(request['http']['request'])
+            return inference_failed(request, folder, intent, response, graph=True)
+        from .aclgraph.receipt import seal as seal_graph
+        return seal_graph(request, authority, handoff, root, folder, intent, ready)
     if 'rank_workers' in ready:
         from .parallel.receipt import seal_parallel
         from .generation.delivery import load_response

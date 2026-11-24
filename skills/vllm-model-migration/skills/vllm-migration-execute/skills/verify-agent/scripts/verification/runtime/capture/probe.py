@@ -29,6 +29,28 @@ def inspect_cache():
         return {'status': 'unavailable', 'reason': str(error)}
 
 
+def inspect_graph(payload, config):
+    from importlib.util import find_spec
+    expected = Path(payload['dump_path']) / 'native'
+    if config['task'] != 'tensor' or Path(config['dump_path']) != expected:
+        raise ValueError('图采集需要独立的原生张量目录')
+    if payload['graph']['native']:
+        from msprobe.pytorch import AclGraphDumper
+        if not callable(AclGraphDumper):
+            raise ValueError('目标 msProbe 缺少 AclGraphDumper 或 aclgraph_dump 扩展')
+        from msprobe.pytorch.aclgraph_dump import acl_tensor_save
+    names = ['vllm_ascend.compilation.acl_graph', 'vllm_ascend.worker.model_runner_v1',
+             'vllm_ascend.attention.attention_v1', 'vllm_ascend.ops.gdn']
+    if payload['graph']['native']:
+        names.extend([AclGraphDumper.__module__, acl_tensor_save.__module__])
+        from msprobe.lib import aclgraph_dump_ext
+        names.append(aclgraph_dump_ext.__name__)
+    if payload['decode_cache']:
+        from mindie_debugger.aclgraph import ACLGraphAddressTracker
+        names.append('mindie_debugger.aclgraph')
+    return {name: hashlib.sha256(Path(find_spec(name).origin).read_bytes()).hexdigest() for name in names}
+
+
 def inspect(payload):
     result = {'executable': sys.executable, 'executable_realpath': str(Path(sys.executable).resolve())}
     try:
@@ -49,7 +71,13 @@ def inspect(payload):
         result['config_sha256'] = hashlib.sha256(data).hexdigest()
         if result['config_sha256'] != payload['config_sha256']:
             raise ValueError('目标配置 SHA256 与宿主机不一致')
-        dump = checked_dump(payload)
+        if payload.get('graph'):
+            dump = Path(payload['dump_path'])
+            result['graph'] = inspect_graph(payload, json.loads(data))
+            result['graph_versions'] = {name: metadata.version(name) for name in (
+                'torch', 'torch-npu', 'vllm', 'vllm-ascend')}
+        else:
+            dump = checked_dump(payload)
         if payload.get('decode_cache'):
             result['decode_cache'] = inspect_cache()
         with (dump / payload['marker']).open('x', encoding='ascii') as stream:

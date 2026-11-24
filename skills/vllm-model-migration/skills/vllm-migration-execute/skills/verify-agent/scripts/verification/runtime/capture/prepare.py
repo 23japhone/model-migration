@@ -66,7 +66,13 @@ def prepare_files(request, attempt, receipt):
     dump = folder / 'dump'
     dump.mkdir(mode=0o700)
     config = folder / 'msprobe.json'
-    write_json(config, native_config(runtime / 'dump'))
+    from .aclgraph import config as graph
+    if request['worker_capture']['adapter'] == graph.ADAPTER:
+        receipt['graph'] = graph.settings(request)
+        write_json(folder / 'graph.json', receipt['graph'])
+        write_json(config, graph.native_config(runtime / 'dump' / 'native'))
+    else:
+        write_json(config, native_config(runtime / 'dump'))
     receipt['config'] = {'path': str(config), 'runtime_path': str(runtime / config.name), 'sha256': sha256(config)}
     receipt['dump'] = {'path': str(dump), 'runtime_path': str(runtime / 'dump')}
 
@@ -87,7 +93,7 @@ def verify_files(request, resource, attempt, receipt, executable):
                'marker': marker, 'challenge': challenge, 'world_size': len(request['npu']['devices']),
                'expected_msprobe_version': request['worker_capture'].get('expected_msprobe_version')}
     cache = request['worker_capture'].get('decode_cache')
-    observation = check_target(request, resource, attempt, {**payload, 'decode_cache': bool(cache)})
+    observation = check_target(request, resource, attempt, {**payload, 'decode_cache': bool(cache), 'graph': receipt.get('graph')})
     if cache:
         try:
             record_cache_config(receipt, cache, observation)

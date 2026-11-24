@@ -52,4 +52,6 @@ python3 /实际技能目录/scripts/verify.py \
 
 单机双卡张量并行的运行时采集使用 `capture-session`。按 Token 查询本地分片时使用 `capture-read` 的 `rank` 字段，见[双卡采集契约](references/runtime-capture.md#单机-tp2-联合采集)。
 
+单卡 ACLGraph 文本服务使用 `msprobe_pytorch_aclgraph` 适配器。通过 `capture-read` 回查每个前向的实际图重放、msProbe 原件和全层状态快照。部署模式、预算与查询字段见[图模式采集契约](references/runtime-capture.md#单卡-aclgraph-文本请求)。
+
 双卡图文、流式与固定 seed 的请求共用上述会话。按 SSE 事件、图像、视觉或文本层回查的方法见[双卡生成契约](references/runtime-capture.md#双卡图文流式与固定-seed-采样)。
