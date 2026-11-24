@@ -46,7 +46,7 @@ python3 /实际技能目录/scripts/verify.py \
 
 ## 正式评测请求的采集会话
 
-`--action capture-session` 提供 begin/arm/seal/end/status，独立于 capture-one。调用方持有绑定控制进程启动身份的持久租约；每道正式请求在转发前 arm，响应后 seal，采集侧不发对照或额外请求。实际前端观察请求/响应 ID，worker 覆盖到 compute_logits，按调度器接受结果建立 Token 索引。来源不明、控制进程变化或活动请求未结束时保留现场并拒绝覆盖。V1 单 Token decode 可以选取一个输出序号，按自动识别的文本层清单回查各层边界、普通注意力 K/V 和 GDN 两种状态，见[缓存观测](references/runtime-capture.md#从一次-decode-回查层缓存)。单请求冷前缀下可在 arm 选择 `cache_capture.mode=full_request`，从时间线按 prompt 位置、前向或输出 Token 查询每层数值，包括无输出的分块。见[完整请求回查](references/runtime-capture.md#从完整请求回查每次前向)。结束会话不停止模型服务；详见[契约](references/contract.md#正式评测采集会话)。
+`--action capture-session` 提供 begin/arm/seal/end/status，独立于 capture-one。调用方持有绑定控制进程启动身份的持久租约；每道正式请求在转发前 arm，响应后 seal，采集侧不发对照或额外请求。实际前端观察请求/响应 ID，worker 覆盖到 compute_logits，按调度器接受结果建立 Token 索引。来源不明、控制进程变化或活动请求未结束时保留现场并拒绝覆盖。V1 单 Token decode 可以选取一个输出序号，按自动识别的文本层清单回查各层边界、普通注意力 K/V 和 GDN 两种状态，见[缓存观测](references/runtime-capture.md#从一次-decode-回查层缓存)。单请求冷前缀下可在 arm 选择 `cache_capture.mode=full_request`，从时间线按 prompt 位置、前向或输出 Token 查询每层数值，包括无输出的分块。见[完整请求回查](references/runtime-capture.md#从完整请求回查每次前向)。单卡 Eager 的 MLA 层可分别查询压缩 KV、位置分量及融合算子输入，见[MLA 缓存字段](references/runtime-capture.md#单卡同步-eager-的-mla-缓存)。结束会话不停止模型服务；详见[契约](references/contract.md#正式评测采集会话)。
 
 调用方也可直接控制单条请求，不需要 GPU 基线或评测器；准备依赖、会话请求形状、输出引用与第二个 Token 的查询方法见[运行时采集工具](references/runtime-capture.md)。
 

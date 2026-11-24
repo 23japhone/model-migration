@@ -2,14 +2,9 @@
 from contextlib import ExitStack
 from functools import wraps
 
-from .events import Attention, GDN, group_for
-from .hooks import bind_attention, bind_gdn
+from .backends import BY_KIND
+from .events import group_for
 from .snapshots import observer_only, Snapshots, SnapshotBudget
-from .prefill_attention import PrefillAttention
-from .prefill_gdn import bind_prefill_gdn, PrefillGDN, PREFILL_OPS
-
-OPS = {'attention': ['reshape_and_cache', 'fia'],
-       'gdn': ['npu_causal_conv1d_custom', 'npu_recurrent_gated_delta_rule']}
 
 
 def floating_tensor(values):
@@ -43,32 +38,10 @@ def watch_state(stack, rec, plan, metas, descriptor, store, result):
     module = rec.layer_modules[descriptor['module']]
     meta = metas[name]
     group = group_for(plan, rec.runner, name)
-    prefill = plan.get('phase') == 'prefill'
-    if kind == 'attention':
-        size = rec.runner.input_batch.block_table[group['group_id']].block_size
-        backend = meta.attn_state.name
-        if meta.num_actual_tokens != plan.get('count', 1):
-            raise ValueError('普通注意力有效 Token 数与调度不符')
-        if prefill:
-            capture = PrefillAttention(store, group, plan, size, backend)
-        elif backend == 'DecodeOnly':
-            capture = Attention(store, group, plan['position'], size)
-        else:
-            raise ValueError('普通注意力未进入单 Token decode')
-        bind_attention(stack, module.impl, capture, result['ops'], result['errors'])
-    elif kind == 'gdn':
-        mode = rec.runner.cache_config.mamba_cache_mode
-        counts = meta.num_decodes, meta.num_prefills, meta.num_spec_decodes
-        if prefill and counts == (0, 1, 0):
-            capture = PrefillGDN(store, group, plan, mode, meta, module.kv_cache)
-            bind_prefill_gdn(stack, module, capture, result['ops'], result['errors'])
-        elif counts == (1, 0, 0) and plan.get('count', 1) == 1:
-            capture = GDN(store, group, plan['position'], mode, meta, module.kv_cache)
-            bind_gdn(stack, module, capture, result['ops'], result['errors'])
-        else:
-            raise ValueError('GDN 后端实际阶段与调度区间不符')
-    else:
+    spec = BY_KIND.get(kind)
+    if spec is None:
         raise ValueError('未适配的状态后端 ' + descriptor['backend'])
+    capture = spec.bind(stack, rec, module, group, plan, meta, store, result)
     result['event'] = capture.event
 
 
@@ -175,7 +148,7 @@ def layer_errors(layer):
             errors.append('层输入输出快照不完整')
         for state in call['states']:
             errors.extend(state['errors'])
-            expected = PREFILL_OPS if state.get('event', {}).get('observation') == 'prefill_gdn' else OPS.get(state['kind'])
-            if state['ops'] != expected:
+            backend = BY_KIND.get(state['kind'])
+            if backend is None or state['ops'] != backend.operations(state.get('event', {})):
                 errors.append('层状态更新算子缺失或顺序不符 ' + state['module'])
     return errors

@@ -1,8 +1,7 @@
 """由配置和已加载的解码器生成可查询的结构清单；辅助栈另行登记。"""
 from collections import Counter
 
-ATTENTION = 'vllm_ascend.attention.attention_v1.AscendAttentionBackendImpl'
-GDN = 'vllm_ascend.ops.gdn.AscendGatedDeltaNetAttention'
+from .decode_cache.backends import BY_CLASS
 
 
 def class_name(instance):
@@ -14,19 +13,26 @@ def cache_component(path, module):
     impl = getattr(module, 'impl', None)
     if impl is not None and hasattr(module, 'layer_name'):
         backend = class_name(impl)
+        spec = BY_CLASS.get(backend)
         return {'module': path, 'address': module.layer_name, 'backend': backend,
-                'kind': 'attention' if backend == ATTENTION else 'unsupported'}
-    if class_name(module) == GDN:
-        return {'module': path, 'address': module.prefix, 'backend': GDN, 'kind': 'gdn'}
+                'kind': spec.kind if spec else 'unsupported'}
+    backend = class_name(module)
+    spec = BY_CLASS.get(backend)
+    if spec and spec.direct_address:
+        return {'module': path, 'address': getattr(module, spec.direct_address), 'backend': backend, 'kind': spec.kind}
     return None
 
 
 def describe_block(stack, index, block, declared):
     path = f'{stack}.{index}'
     states = []
-    for local, module in block.named_modules():
+    modules = dict(block.named_modules())
+    for local, module in modules.items():
         component = cache_component(path + '.' + local if local else path, module)
         if component:
+            parent = modules.get(local.rpartition('.')[0])
+            if component['kind'] == 'mla' and getattr(parent, 'mla_attn', None) is module:
+                component['msprobe_module'] = path + '.' + local.rpartition('.')[0] if parent is not block else path
             states.append(component)
     children = {name: class_name(child) for name, child in block.named_children()}
     inferred = 'attention' if any('Attention' in cls for cls in children.values()) else 'unclassified'

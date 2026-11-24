@@ -6,6 +6,7 @@ from pathlib import Path
 
 from .. import state
 from ..parallel import request_folder, share
+from .backends import BY_KIND, MLA
 from .events import Attention, GDN, group_for
 from .hooks import bind_attention, bind_gdn
 from .layer_capture import install_layers, layer_errors
@@ -16,6 +17,11 @@ SOURCES = {
     'vllm_ascend.attention.attention_v1': '2b39ed5cf22b41640c4182129873613c4be7701e8084fcb8ed6077361b82704d',
     'vllm_ascend.ops.gdn': '8a655beb465863fe1858bbb28b0caf01ad5566f39179c17d53d934da991e5e42',
     'vllm_ascend.device.device_op': '0a6eb5da6c04b7f77dd343a66f2fa8ecdd03d040d1dbbf908ebd39b6c92c02d0',
+}
+BACKEND_SOURCES = {
+    **SOURCES,
+    'vllm_ascend.ops.mla': '9453b3a62904dfd0d696af019fe4fb97d24cc5a2a68c1a35946c636ed6159b53',
+    'vllm_ascend.attention.mla_v1': 'fe9d7de289cbfa6429f9335fd3f164ebe74a7fc8695f9f95e81de1db152b0fea',
 }
 EXPECTED_OPS = ['npu_causal_conv1d_custom', 'npu_recurrent_gated_delta_rule', 'reshape_and_cache', 'fia']
 
@@ -68,30 +74,39 @@ def prepare_worker(rec, model):
 def all_ready(rec, model, ready, config):
     rec.layer_modules = dict(model.named_modules())
     rec.backend_errors = {}
+    verified_sources = {}
     for row in rec.architecture['layers']:
         for target in row['states']:
             try:
-                validate_backend(rec.layer_modules[target['module']], target['kind'])
+                sources = validate_backend(rec.layer_modules[target['module']], target['kind'],
+                                           world_size=getattr(rec, 'world_size', 1))
+                verified_sources[target['backend']] = sources
             except Exception as error:
-                rec.backend_errors[target['module']] = str(error)
+                rec.backend_errors[target['module']] = f"{target['backend']}: {error}"
     ready.update(status='ready', version=config['version'], layer_scope='all', full_request=True,
                  layers=[r['path'] for r in rec.architecture['layers']], backend_errors=rec.backend_errors,
-                 max_snapshot_bytes=rec.cache_budget)
+                 sources=verified_sources, max_snapshot_bytes=rec.cache_budget)
     return {'decode_cache': ready}
 
 
-def validate_backend(module, kind):
-    if kind == 'attention':
-        sources = ('vllm_ascend.attention.attention_v1', 'vllm_ascend.device.device_op')
-        check_methods(module.impl, ('reshape_and_cache', 'forward_fused_infer_attention'))
-    elif kind == 'gdn':
-        sources = ('vllm_ascend.ops.gdn',)
-        check_methods(module, ('_forward_core',))
-    else:
-        raise ValueError('未知缓存后端')
-    for name in sources:
-        if hashlib.sha256(Path(import_module(name).__file__).read_bytes()).hexdigest() != SOURCES[name]:
+def validate_backend(module, kind, *, mode='eager', world_size=1):
+    spec = BY_KIND.get(kind)
+    if spec is None:
+        raise ValueError('未知缓存后端 ' + kind)
+    owner = module if spec.direct_address else module.impl
+    if spec == MLA:
+        if mode != 'eager' or world_size != 1:
+            raise ValueError('MLA 缓存仅适配单卡 Eager')
+        if owner.vllm_config.kv_transfer_config is not None:
+            raise ValueError('MLA 状态观察要求本地缓存，当前配置启用 KV 传输')
+        if owner.enable_kv_nz or owner.enable_mlapo or owner.fa_quant_layer:
+            raise ValueError('MLA 缓存要求未量化 PA 布局和普通预处理路径')
+    check_methods(owner, spec.methods)
+    names = (spec.implementation.rsplit('.', 1)[0], *spec.dependencies)
+    for name in names:
+        if hashlib.sha256(Path(import_module(name).__file__).read_bytes()).hexdigest() != BACKEND_SOURCES[name]:
             raise ValueError('缓存后端源码与已核验实现不同 ' + name)
+    return {name: BACKEND_SOURCES[name] for name in names}
 
 
 def check_methods(owner, names):

@@ -4,6 +4,10 @@
 
 ## 当前验证基准
 
+### 2026-11-25 单卡 Eager 的 MLA 缓存
+
+全量离线回归 599 项，独立 `source_contract` 52 项通过。`worker_capture/cache_cases/test_mla*.py` 覆盖后端识别、跨页写槽、历史加载、分量错绑、预算不足和已封存文件损坏。公开查询验证同一次前向仍能读取完好分量。字段与模式范围见[MLA 采集契约](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/runtime-capture.md#单卡同步-eager-的-mla-缓存)。
+
 ### 2026-11-24 单卡 ACLGraph
 
 全量离线回归 592 项、独立 `source_contract` 52 项通过。图模式用例位于 `worker_capture/graph_cases`。单卡实机覆盖 Llama 整图、Qwen 分段图，以及两种模型的整段 prefill、分块 prefill 和连续 decode。正式请求的 Token 对照、重放次数和缓存原值核验见[单卡 ACLGraph 实测记录](MSPROBE_RUNTIME_CAPTURE.md#单卡-aclgraph-纯文本生成)。
