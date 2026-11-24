@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0",
+  "service": {
+    "endpoint": "http://127.0.0.1:8000",
+    "model": null
+  },
+  "badcase": {
+    "path": "/tmp/badcase.json",
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "render_mode": "auto",
+  "timeout_seconds": 60
+}

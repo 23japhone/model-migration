@@ -4,7 +4,7 @@
 
 ## 公开入口
 
-下表脚本相对于对应 Skill 目录；每行链接指向权威契约。12 个主入口保留 --request --work-root --run-id 和 --plan；总入口另有互斥 --task。8 个辅助入口不计为新 Skill；resolve.py 使用 --model/--request；原版 install_evalscope.py 使用自身安装参数和 --dry-run/--help，其他参数按各自契约读取。
+下表脚本相对于对应 Skill 目录；每行链接指向权威契约。13 个主入口保留 --request --work-root --run-id 和 --plan；总入口另有互斥 --task。8 个辅助入口不计为新 Skill；resolve.py 使用 --model/--request；原版 install_evalscope.py 使用自身安装参数和 --dry-run/--help，其他参数按各自契约读取。
 
 | Skill / 契约 | 公开脚本 | 操作或职责 |
 | --- | --- | --- |
@@ -25,6 +25,7 @@
 | [verify-agent](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/contract.md) | `scripts/verify.py` | `--action verify/review/stop/inspect-devices/capture-one/capture-session/capture-read`；采集会话消费部署报告并交付独立采集回执，见[输入输出](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/runtime-capture.md) |
 | [vllm-precision-align](../skills/vllm-model-migration/skills/vllm-precision-align/references/contract.md) | `scripts/precision.py` | `--action run/analyze` |
 | [verify-agent-plus](../skills/vllm-model-migration/skills/vllm-precision-align/skills/verify-agent-plus/references/contract.md) | `scripts/validator.py` | `--action run/analyze/preflight`；preflight 仅原生本地数据核验，兼容参数按契约约束 |
+| [three-step-demarcation](../skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/references/contract.md) | `scripts/demarcation.py` | `--action run/analyze`；服务链路三步定界（请求校验 → 渲染反解 → 原始生成对照） |
 
 `--plan` 表示无业务执行效果的检查，但读取范围不同：例如总入口只读顶层形状，准备阶段还会委托子任务计划。不得将某一入口的计划行为推广到全部入口，不能从 `ready=true` 或退出 0 推断资产、服务或评测已有效。
 

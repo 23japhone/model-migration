@@ -13,6 +13,16 @@
       "parent": "vllm-migration-execute",
       "path": "skills/vllm-migration-execute/skills/adapt-agent"
     },
+    "three-step-demarcation": {
+      "entrypoint": {
+        "fixture": null,
+        "plan": "assets/request.example.json",
+        "script": "scripts/demarcation.py"
+      },
+      "level": 2,
+      "parent": "vllm-precision-align",
+      "path": "skills/vllm-precision-align/skills/three-step-demarcation"
+    },
     "verify-agent": {
       "entrypoint": {
         "fixture": null,

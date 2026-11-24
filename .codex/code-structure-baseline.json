@@ -165,6 +165,26 @@
         "files": 11,
         "kind": "source"
       },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts": {
+        "files": 1,
+        "kind": "source"
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation": {
+        "files": 6,
+        "kind": "source"
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/checks": {
+        "files": 5,
+        "kind": "source"
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge": {
+        "files": 4,
+        "kind": "source"
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/probe": {
+        "files": 4,
+        "kind": "source"
+      },
       "skills/vllm-model-migration/skills/vllm-precision-align/skills/verify-agent-plus/assets": {
         "files": 1,
         "kind": "source"
@@ -187,6 +207,10 @@
       },
       "tests/vllm-model-migration": {
         "files": 16,
+        "kind": "test"
+      },
+      "tests/vllm-model-migration/demarcation": {
+        "files": 4,
         "kind": "test"
       },
       "tests/vllm-model-migration/devices": {
@@ -1319,6 +1343,86 @@
         "kind": "source",
         "lines": 6
       },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation.py": {
+        "kind": "source",
+        "lines": 10
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/__init__.py": {
+        "kind": "source",
+        "lines": 4
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/checks/__init__.py": {
+        "kind": "source",
+        "lines": 1
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/checks/garbage.py": {
+        "kind": "source",
+        "lines": 61
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/checks/markers.py": {
+        "kind": "source",
+        "lines": 41
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/checks/render.py": {
+        "kind": "source",
+        "lines": 60
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/checks/request.py": {
+        "kind": "source",
+        "lines": 63
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/cli.py": {
+        "kind": "source",
+        "lines": 58
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/contract.py": {
+        "kind": "source",
+        "lines": 76
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/evidence.py": {
+        "kind": "source",
+        "lines": 90
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/inputs.py": {
+        "kind": "source",
+        "lines": 15
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/__init__.py": {
+        "kind": "source",
+        "lines": 1
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/coverage.py": {
+        "kind": "source",
+        "lines": 88
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/decide.py": {
+        "kind": "source",
+        "lines": 89
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/verdicts.py": {
+        "kind": "source",
+        "lines": 21
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/probe/__init__.py": {
+        "kind": "source",
+        "lines": 1
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/probe/capability.py": {
+        "kind": "source",
+        "lines": 73
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/probe/http.py": {
+        "kind": "source",
+        "lines": 68
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/probe/replay.py": {
+        "kind": "source",
+        "lines": 141
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/runner.py": {
+        "kind": "source",
+        "lines": 230
+      },
       "skills/vllm-model-migration/skills/vllm-precision-align/skills/verify-agent-plus/assets/aisbench-config.example.py": {
         "kind": "source",
         "lines": 17
@@ -1474,6 +1578,22 @@
       "skills/vllm-model-migration/skills/vllm-precision-align/skills/verify-agent-plus/scripts/validator.py": {
         "kind": "source",
         "lines": 10
+      },
+      "tests/vllm-model-migration/demarcation/__init__.py": {
+        "kind": "test",
+        "lines": 1
+      },
+      "tests/vllm-model-migration/demarcation/test_capability.py": {
+        "kind": "test",
+        "lines": 105
+      },
+      "tests/vllm-model-migration/demarcation/test_judge.py": {
+        "kind": "test",
+        "lines": 153
+      },
+      "tests/vllm-model-migration/demarcation/test_runner.py": {
+        "kind": "test",
+        "lines": 144
       },
       "tests/vllm-model-migration/devices/__init__.py": {
         "kind": "test",
@@ -12814,6 +12934,587 @@
         "path": "skills/vllm-model-migration/skills/vllm-precision-align/scripts/alignment/summary.py",
         "statements": 5
       },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/checks/garbage.py::_dup_ngram_ratio": {
+        "branches": 1,
+        "complexity": 5,
+        "line": 15,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/checks/garbage.py",
+        "statements": 7
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/checks/garbage.py::_min_window_diversity": {
+        "branches": 2,
+        "complexity": 3,
+        "line": 5,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/checks/garbage.py",
+        "statements": 7
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/checks/garbage.py::analyze_garbage": {
+        "branches": 10,
+        "complexity": 15,
+        "line": 25,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/checks/garbage.py",
+        "statements": 26
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/checks/markers.py::analyze_markers": {
+        "branches": 4,
+        "complexity": 10,
+        "line": 22,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/checks/markers.py",
+        "statements": 12
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/checks/render.py::_check_messages": {
+        "branches": 6,
+        "complexity": 8,
+        "line": 13,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/checks/render.py",
+        "statements": 11
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/checks/render.py::_check_tools": {
+        "branches": 4,
+        "complexity": 11,
+        "line": 27,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/checks/render.py",
+        "statements": 12
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/checks/render.py::_normalize": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 9,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/checks/render.py",
+        "statements": 1
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/checks/render.py::check_rendered": {
+        "branches": 6,
+        "complexity": 6,
+        "line": 42,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/checks/render.py",
+        "statements": 13
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/checks/request.py::_check_messages": {
+        "branches": 3,
+        "complexity": 6,
+        "line": 4,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/checks/request.py",
+        "statements": 7
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/checks/request.py::_check_tools": {
+        "branches": 6,
+        "complexity": 14,
+        "line": 16,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/checks/request.py",
+        "statements": 17
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/checks/request.py::step1_check_request": {
+        "branches": 4,
+        "complexity": 10,
+        "line": 37,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/checks/request.py",
+        "statements": 17
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/checks/request.py::step1_has_fail": {
+        "branches": 0,
+        "complexity": 2,
+        "line": 62,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/checks/request.py",
+        "statements": 1
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/cli.py::Parser.error": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 13,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/cli.py",
+        "statements": 1
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/cli.py::blocked": {
+        "branches": 0,
+        "complexity": 2,
+        "line": 27,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/cli.py",
+        "statements": 4
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/cli.py::main": {
+        "branches": 5,
+        "complexity": 7,
+        "line": 34,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/cli.py",
+        "statements": 22
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/cli.py::parser": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 17,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/cli.py",
+        "statements": 7
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/contract.py::check_output": {
+        "branches": 2,
+        "complexity": 4,
+        "line": 70,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/contract.py",
+        "statements": 6
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/contract.py::endpoint": {
+        "branches": 1,
+        "complexity": 4,
+        "line": 27,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/contract.py",
+        "statements": 3
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/contract.py::object_fields": {
+        "branches": 1,
+        "complexity": 4,
+        "line": 12,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/contract.py",
+        "statements": 2
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/contract.py::output_parent": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 62,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/contract.py",
+        "statements": 5
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/contract.py::reference": {
+        "branches": 2,
+        "complexity": 6,
+        "line": 18,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/contract.py",
+        "statements": 5
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/contract.py::run_name": {
+        "branches": 1,
+        "complexity": 3,
+        "line": 33,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/contract.py",
+        "statements": 2
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/contract.py::validate": {
+        "branches": 5,
+        "complexity": 10,
+        "line": 38,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/contract.py",
+        "statements": 19
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/evidence.py::begin": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 70,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/evidence.py",
+        "statements": 6
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/evidence.py::bound": {
+        "branches": 2,
+        "complexity": 4,
+        "line": 38,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/evidence.py",
+        "statements": 7
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/evidence.py::decode": {
+        "branches": 0,
+        "complexity": 2,
+        "line": 29,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/evidence.py",
+        "statements": 1
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/evidence.py::finish": {
+        "branches": 6,
+        "complexity": 5,
+        "line": 79,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/evidence.py",
+        "statements": 10
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/evidence.py::load": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 34,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/evidence.py",
+        "statements": 1
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/evidence.py::now": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 59,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/evidence.py",
+        "statements": 1
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/evidence.py::record": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 63,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/evidence.py",
+        "statements": 1
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/evidence.py::sha256": {
+        "branches": 1,
+        "complexity": 2,
+        "line": 12,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/evidence.py",
+        "statements": 5
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/evidence.py::unique": {
+        "branches": 2,
+        "complexity": 3,
+        "line": 20,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/evidence.py",
+        "statements": 6
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/evidence.py::write": {
+        "branches": 1,
+        "complexity": 1,
+        "line": 48,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/evidence.py",
+        "statements": 6
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/inputs.py::bind": {
+        "branches": 1,
+        "complexity": 2,
+        "line": 6,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/inputs.py",
+        "statements": 6
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/coverage.py::_chat_template_gap": {
+        "branches": 2,
+        "complexity": 4,
+        "line": 15,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/coverage.py",
+        "statements": 6
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/coverage.py::_common_uncovered": {
+        "branches": 4,
+        "complexity": 5,
+        "line": 74,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/coverage.py",
+        "statements": 8
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/coverage.py::_inconclusive_gap": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 53,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/coverage.py",
+        "statements": 1
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/coverage.py::_model_incomplete_gap": {
+        "branches": 1,
+        "complexity": 2,
+        "line": 47,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/coverage.py",
+        "statements": 3
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/coverage.py::_model_numeric_gap": {
+        "branches": 1,
+        "complexity": 3,
+        "line": 24,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/coverage.py",
+        "statements": 4
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/coverage.py::_request_gap": {
+        "branches": 1,
+        "complexity": 3,
+        "line": 8,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/coverage.py",
+        "statements": 4
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/coverage.py::_service_output_gap": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 43,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/coverage.py",
+        "statements": 1
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/coverage.py::_thinking_parser_gap": {
+        "branches": 1,
+        "complexity": 2,
+        "line": 37,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/coverage.py",
+        "statements": 3
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/coverage.py::_tool_parser_gap": {
+        "branches": 1,
+        "complexity": 2,
+        "line": 31,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/coverage.py",
+        "statements": 3
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/coverage.py::_verdict_uncovered": {
+        "branches": 2,
+        "complexity": 2,
+        "line": 69,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/coverage.py",
+        "statements": 2
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/coverage.py::coverage": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 85,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/coverage.py",
+        "statements": 3
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/decide.py::_numeric_verdict": {
+        "branches": 1,
+        "complexity": 2,
+        "line": 30,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/decide.py",
+        "statements": 3
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/decide.py::_service_output_verdict": {
+        "branches": 4,
+        "complexity": 13,
+        "line": 48,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/decide.py",
+        "statements": 8
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/decide.py::_step3_verdicts": {
+        "branches": 2,
+        "complexity": 3,
+        "line": 59,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/decide.py",
+        "statements": 5
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/decide.py::_thinking_parser_verdict": {
+        "branches": 1,
+        "complexity": 4,
+        "line": 42,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/decide.py",
+        "statements": 3
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/decide.py::_tool_parser_verdict": {
+        "branches": 1,
+        "complexity": 3,
+        "line": 36,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/decide.py",
+        "statements": 3
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/decide.py::analyze_chat": {
+        "branches": 2,
+        "complexity": 8,
+        "line": 15,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/decide.py",
+        "statements": 8
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/decide.py::analyze_raw": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 7,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/decide.py",
+        "statements": 5
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/decide.py::decide": {
+        "branches": 10,
+        "complexity": 10,
+        "line": 68,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/decide.py",
+        "statements": 19
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/verdicts.py::load_profile": {
+        "branches": 1,
+        "complexity": 2,
+        "line": 15,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/judge/verdicts.py",
+        "statements": 6
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/probe/capability.py::_parse_version": {
+        "branches": 1,
+        "complexity": 4,
+        "line": 11,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/probe/capability.py",
+        "statements": 5
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/probe/capability.py::detect_version": {
+        "branches": 1,
+        "complexity": 4,
+        "line": 19,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/probe/capability.py",
+        "statements": 5
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/probe/capability.py::probe_convention": {
+        "branches": 10,
+        "complexity": 12,
+        "line": 46,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/probe/capability.py",
+        "statements": 24
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/probe/capability.py::resolve_contract": {
+        "branches": 4,
+        "complexity": 10,
+        "line": 27,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/probe/capability.py",
+        "statements": 3
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/probe/capability.py::root_endpoint": {
+        "branches": 2,
+        "complexity": 2,
+        "line": 5,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/probe/capability.py",
+        "statements": 3
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/probe/http.py::Client.__init__": {
+        "branches": 2,
+        "complexity": 4,
+        "line": 16,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/probe/http.py",
+        "statements": 12
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/probe/http.py::Client.ledger": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 35,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/probe/http.py",
+        "statements": 1
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/probe/http.py::Client.request": {
+        "branches": 13,
+        "complexity": 9,
+        "line": 38,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/probe/http.py",
+        "statements": 25
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/probe/http.py::Client.request_count": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 31,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/probe/http.py",
+        "statements": 1
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/probe/replay.py::_extract_render_token_ids": {
+        "branches": 10,
+        "complexity": 14,
+        "line": 25,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/probe/replay.py",
+        "statements": 18
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/probe/replay.py::_extract_token_ids": {
+        "branches": 3,
+        "complexity": 5,
+        "line": 16,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/probe/replay.py",
+        "statements": 6
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/probe/replay.py::chat": {
+        "branches": 1,
+        "complexity": 4,
+        "line": 131,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/probe/replay.py",
+        "statements": 9
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/probe/replay.py::completions": {
+        "branches": 3,
+        "complexity": 6,
+        "line": 116,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/probe/replay.py",
+        "statements": 10
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/probe/replay.py::completions_ext_fields": {
+        "branches": 2,
+        "complexity": 3,
+        "line": 46,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/probe/replay.py",
+        "statements": 7
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/probe/replay.py::detokenize": {
+        "branches": 4,
+        "complexity": 5,
+        "line": 56,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/probe/replay.py",
+        "statements": 14
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/probe/replay.py::render_via_endpoint": {
+        "branches": 5,
+        "complexity": 8,
+        "line": 73,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/probe/replay.py",
+        "statements": 16
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/probe/replay.py::render_via_tokenize": {
+        "branches": 5,
+        "complexity": 8,
+        "line": 95,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/probe/replay.py",
+        "statements": 17
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/runner.py::_conclude": {
+        "branches": 1,
+        "complexity": 3,
+        "line": 119,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/runner.py",
+        "statements": 5
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/runner.py::_discover_model": {
+        "branches": 3,
+        "complexity": 7,
+        "line": 33,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/runner.py",
+        "statements": 6
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/runner.py::_fatal_request_result": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 131,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/runner.py",
+        "statements": 1
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/runner.py::_generation_params": {
+        "branches": 1,
+        "complexity": 4,
+        "line": 111,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/runner.py",
+        "statements": 5
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/runner.py::_render": {
+        "branches": 6,
+        "complexity": 6,
+        "line": 42,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/runner.py",
+        "statements": 11
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/runner.py::_run_step2": {
+        "branches": 2,
+        "complexity": 4,
+        "line": 57,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/runner.py",
+        "statements": 9
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/runner.py::_run_step3": {
+        "branches": 4,
+        "complexity": 5,
+        "line": 70,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/runner.py",
+        "statements": 13
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/runner.py::_save": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 27,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/runner.py",
+        "statements": 3
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/runner.py::_setup": {
+        "branches": 3,
+        "complexity": 5,
+        "line": 98,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/runner.py",
+        "statements": 10
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/runner.py::_step3_uncovered": {
+        "branches": 2,
+        "complexity": 3,
+        "line": 89,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/runner.py",
+        "statements": 6
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/runner.py::analyze": {
+        "branches": 4,
+        "complexity": 7,
+        "line": 200,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/runner.py",
+        "statements": 22
+      },
+      "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/runner.py::run": {
+        "branches": 13,
+        "complexity": 10,
+        "line": 139,
+        "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/scripts/demarcation/runner.py",
+        "statements": 28
+      },
       "skills/vllm-model-migration/skills/vllm-precision-align/skills/verify-agent-plus/scripts/catalog.py::main": {
         "branches": 4,
         "complexity": 5,
@@ -14318,6 +15019,377 @@
         "line": 47,
         "path": "skills/vllm-model-migration/skills/vllm-precision-align/skills/verify-agent-plus/scripts/precision/runtime/versioning.py",
         "statements": 15
+      },
+      "tests/vllm-model-migration/demarcation/test_capability.py::ContractTests.test_new_render_is_object": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 35,
+        "path": "tests/vllm-model-migration/demarcation/test_capability.py",
+        "statements": 4
+      },
+      "tests/vllm-model-migration/demarcation/test_capability.py::ContractTests.test_old_completions_drops_token_ids_field": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 52,
+        "path": "tests/vllm-model-migration/demarcation/test_capability.py",
+        "statements": 2
+      },
+      "tests/vllm-model-migration/demarcation/test_capability.py::ContractTests.test_old_render_is_list": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 28,
+        "path": "tests/vllm-model-migration/demarcation/test_capability.py",
+        "statements": 5
+      },
+      "tests/vllm-model-migration/demarcation/test_capability.py::ContractTests.test_scale_out_required_from_030": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 41,
+        "path": "tests/vllm-model-migration/demarcation/test_capability.py",
+        "statements": 2
+      },
+      "tests/vllm-model-migration/demarcation/test_capability.py::ContractTests.test_unknown_version_is_liberal": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 45,
+        "path": "tests/vllm-model-migration/demarcation/test_capability.py",
+        "statements": 5
+      },
+      "tests/vllm-model-migration/demarcation/test_capability.py::DetectVersionTests.test_detect": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 76,
+        "path": "tests/vllm-model-migration/demarcation/test_capability.py",
+        "statements": 2
+      },
+      "tests/vllm-model-migration/demarcation/test_capability.py::DetectVersionTests.test_missing_returns_unknown": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 80,
+        "path": "tests/vllm-model-migration/demarcation/test_capability.py",
+        "statements": 2
+      },
+      "tests/vllm-model-migration/demarcation/test_capability.py::ParseVersionTests.test_invalid": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 22,
+        "path": "tests/vllm-model-migration/demarcation/test_capability.py",
+        "statements": 2
+      },
+      "tests/vllm-model-migration/demarcation/test_capability.py::ParseVersionTests.test_plain_version": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 13,
+        "path": "tests/vllm-model-migration/demarcation/test_capability.py",
+        "statements": 1
+      },
+      "tests/vllm-model-migration/demarcation/test_capability.py::ParseVersionTests.test_rc_suffix": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 16,
+        "path": "tests/vllm-model-migration/demarcation/test_capability.py",
+        "statements": 1
+      },
+      "tests/vllm-model-migration/demarcation/test_capability.py::ParseVersionTests.test_v_prefix": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 19,
+        "path": "tests/vllm-model-migration/demarcation/test_capability.py",
+        "statements": 1
+      },
+      "tests/vllm-model-migration/demarcation/test_capability.py::ProbeConventionTests.test_root_prefix_and_prompt_field": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 86,
+        "path": "tests/vllm-model-migration/demarcation/test_capability.py",
+        "statements": 3
+      },
+      "tests/vllm-model-migration/demarcation/test_capability.py::ProbeConventionTests.test_v1_prefix_and_text_field": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 94,
+        "path": "tests/vllm-model-migration/demarcation/test_capability.py",
+        "statements": 3
+      },
+      "tests/vllm-model-migration/demarcation/test_capability.py::RootEndpointTests.test_with_v1_suffix": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 58,
+        "path": "tests/vllm-model-migration/demarcation/test_capability.py",
+        "statements": 1
+      },
+      "tests/vllm-model-migration/demarcation/test_capability.py::RootEndpointTests.test_without_v1_suffix": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 61,
+        "path": "tests/vllm-model-migration/demarcation/test_capability.py",
+        "statements": 1
+      },
+      "tests/vllm-model-migration/demarcation/test_capability.py::_FakeClient.__init__": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 66,
+        "path": "tests/vllm-model-migration/demarcation/test_capability.py",
+        "statements": 2
+      },
+      "tests/vllm-model-migration/demarcation/test_capability.py::_FakeClient.request": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 70,
+        "path": "tests/vllm-model-migration/demarcation/test_capability.py",
+        "statements": 2
+      },
+      "tests/vllm-model-migration/demarcation/test_judge.py::DecideTests.test_bad_render_is_chat_template": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 35,
+        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "statements": 2
+      },
+      "tests/vllm-model-migration/demarcation/test_judge.py::DecideTests.test_closed_think_without_reasoning_is_thinking_parser": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 60,
+        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "statements": 4
+      },
+      "tests/vllm-model-migration/demarcation/test_judge.py::DecideTests.test_empty_raw_is_inconclusive": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 39,
+        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "statements": 3
+      },
+      "tests/vllm-model-migration/demarcation/test_judge.py::DecideTests.test_fatal_request_is_request": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 26,
+        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "statements": 2
+      },
+      "tests/vllm-model-migration/demarcation/test_judge.py::DecideTests.test_garbage_is_model_numeric": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 49,
+        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "statements": 3
+      },
+      "tests/vllm-model-migration/demarcation/test_judge.py::DecideTests.test_nonfatal_request_keeps_request": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 30,
+        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "statements": 3
+      },
+      "tests/vllm-model-migration/demarcation/test_judge.py::DecideTests.test_normal_chat_is_pass": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 78,
+        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "statements": 4
+      },
+      "tests/vllm-model-migration/demarcation/test_judge.py::DecideTests.test_only_thinking_is_model_incomplete": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 44,
+        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "statements": 3
+      },
+      "tests/vllm-model-migration/demarcation/test_judge.py::DecideTests.test_plain_answer_but_chat_empty_is_service_output": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 66,
+        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "statements": 4
+      },
+      "tests/vllm-model-migration/demarcation/test_judge.py::DecideTests.test_toolcall_text_without_tool_calls_is_tool_parser": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 54,
+        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "statements": 4
+      },
+      "tests/vllm-model-migration/demarcation/test_judge.py::DecideTests.test_tools_without_toolcall_is_model_output": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 72,
+        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "statements": 4
+      },
+      "tests/vllm-model-migration/demarcation/test_judge.py::GarbageTests.test_repetition_is_garbage": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 111,
+        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "statements": 3
+      },
+      "tests/vllm-model-migration/demarcation/test_judge.py::GarbageTests.test_short_text_is_skipped": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 106,
+        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "statements": 3
+      },
+      "tests/vllm-model-migration/demarcation/test_judge.py::GarbageTests.test_whitespace_only_is_garbage": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 102,
+        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "statements": 2
+      },
+      "tests/vllm-model-migration/demarcation/test_judge.py::MarkerTests.test_think_close_and_content_after": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 92,
+        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "statements": 6
+      },
+      "tests/vllm-model-migration/demarcation/test_judge.py::MarkerTests.test_toolcall_and_think_detection": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 86,
+        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "statements": 4
+      },
+      "tests/vllm-model-migration/demarcation/test_judge.py::RenderCheckTests.test_message_with_newline_still_matches_after_normalization": {
+        "branches": 0,
+        "complexity": 3,
+        "line": 118,
+        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "statements": 5
+      },
+      "tests/vllm-model-migration/demarcation/test_judge.py::RenderCheckTests.test_missing_message_is_fail": {
+        "branches": 0,
+        "complexity": 3,
+        "line": 125,
+        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "statements": 5
+      },
+      "tests/vllm-model-migration/demarcation/test_judge.py::RequestCheckTests.test_bad_tool_structure_is_fail": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 144,
+        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "statements": 4
+      },
+      "tests/vllm-model-migration/demarcation/test_judge.py::RequestCheckTests.test_empty_messages_is_fatal": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 140,
+        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "statements": 2
+      },
+      "tests/vllm-model-migration/demarcation/test_judge.py::RequestCheckTests.test_valid_request_passes": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 134,
+        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "statements": 4
+      },
+      "tests/vllm-model-migration/demarcation/test_judge.py::_raw": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 19,
+        "path": "tests/vllm-model-migration/demarcation/test_judge.py",
+        "statements": 3
+      },
+      "tests/vllm-model-migration/demarcation/test_runner.py::MockServer.__init__": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 48,
+        "path": "tests/vllm-model-migration/demarcation/test_runner.py",
+        "statements": 4
+      },
+      "tests/vllm-model-migration/demarcation/test_runner.py::MockServer.close": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 59,
+        "path": "tests/vllm-model-migration/demarcation/test_runner.py",
+        "statements": 2
+      },
+      "tests/vllm-model-migration/demarcation/test_runner.py::MockServer.endpoint": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 55,
+        "path": "tests/vllm-model-migration/demarcation/test_runner.py",
+        "statements": 2
+      },
+      "tests/vllm-model-migration/demarcation/test_runner.py::RunnerTests._request": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 71,
+        "path": "tests/vllm-model-migration/demarcation/test_runner.py",
+        "statements": 1
+      },
+      "tests/vllm-model-migration/demarcation/test_runner.py::RunnerTests._routes": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 78,
+        "path": "tests/vllm-model-migration/demarcation/test_runner.py",
+        "statements": 1
+      },
+      "tests/vllm-model-migration/demarcation/test_runner.py::RunnerTests.test_fatal_empty_messages_is_request_without_service": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 102,
+        "path": "tests/vllm-model-migration/demarcation/test_runner.py",
+        "statements": 7
+      },
+      "tests/vllm-model-migration/demarcation/test_runner.py::RunnerTests.test_full_run_produces_pass": {
+        "branches": 1,
+        "complexity": 1,
+        "line": 88,
+        "path": "tests/vllm-model-migration/demarcation/test_runner.py",
+        "statements": 11
+      },
+      "tests/vllm-model-migration/demarcation/test_runner.py::RunnerTests.test_render_fallback_to_tokenize": {
+        "branches": 1,
+        "complexity": 1,
+        "line": 111,
+        "path": "tests/vllm-model-migration/demarcation/test_runner.py",
+        "statements": 13
+      },
+      "tests/vllm-model-migration/demarcation/test_runner.py::RunnerTests.test_step3_failure_is_inconclusive_without_retry": {
+        "branches": 1,
+        "complexity": 1,
+        "line": 127,
+        "path": "tests/vllm-model-migration/demarcation/test_runner.py",
+        "statements": 12
+      },
+      "tests/vllm-model-migration/demarcation/test_runner.py::_Handler._respond": {
+        "branches": 7,
+        "complexity": 5,
+        "line": 20,
+        "path": "tests/vllm-model-migration/demarcation/test_runner.py",
+        "statements": 15
+      },
+      "tests/vllm-model-migration/demarcation/test_runner.py::_Handler.do_GET": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 37,
+        "path": "tests/vllm-model-migration/demarcation/test_runner.py",
+        "statements": 1
+      },
+      "tests/vllm-model-migration/demarcation/test_runner.py::_Handler.do_POST": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 40,
+        "path": "tests/vllm-model-migration/demarcation/test_runner.py",
+        "statements": 1
+      },
+      "tests/vllm-model-migration/demarcation/test_runner.py::_Handler.log_message": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 43,
+        "path": "tests/vllm-model-migration/demarcation/test_runner.py",
+        "statements": 1
+      },
+      "tests/vllm-model-migration/demarcation/test_runner.py::_write_badcase": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 64,
+        "path": "tests/vllm-model-migration/demarcation/test_runner.py",
+        "statements": 3
       },
       "tests/vllm-model-migration/devices/fixtures.py::attach": {
         "branches": 0,
@@ -18463,7 +19535,7 @@
         "path": "tests/vllm-model-migration/test_skill_paths.py",
         "statements": 8
       },
-      "tests/vllm-model-migration/test_skill_paths.py::SkillPathsTests.test_layout_resolves_all_twelve_skills_and_public_entries": {
+      "tests/vllm-model-migration/test_skill_paths.py::SkillPathsTests.test_layout_resolves_all_thirteen_skills_and_public_entries": {
         "branches": 2,
         "complexity": 3,
         "line": 26,
@@ -20047,6 +21119,6 @@
       }
     }
   },
-  "policy_sha256": "6861bf1113133c31b889b5fbb99fe2d15ea8583ce78a8cfc098572ee91fbbd68",
+  "policy_sha256": "70959c29ff5b200f33dbed69befc2e9246c5a84e1ae9e1e412d1a4b12036626c",
   "version": 1
 }
