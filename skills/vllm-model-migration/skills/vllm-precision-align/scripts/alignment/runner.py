@@ -29,7 +29,7 @@ def invoke(group,key,request,attempt,manifest,timeout,action):
     try:
         value,reference=delegate(group,key,request,attempt,manifest['run_id'],timeout,action)
         row.update(status=value['status'],receipt=reference,conclusions=value['conclusions'])
-        if group!='evaluations' and not summary.dependency_pass(group,value):
+        if group not in ('evaluations','diagnoses') and not summary.dependency_pass(group,value):
             row['status']='failed' if value['status']=='failed' or 'fail' in value['conclusions'].values() else 'blocked'
         return value,reference
     except EvidenceError:raise
@@ -65,6 +65,16 @@ def prepared(item,values,manifest):
     return request
 
 
+def prepared_diagnosis(item,manifest):
+    """把定界项转成 three-step-demarcation 的请求（service 来自部署交接）。"""
+    dependency=manifest['tasks']['deployments'][item['deployment']]
+    if dependency['status']!='completed':raise ValueError('必需依赖未完成：deployment/'+item['deployment'])
+    resource=summary.resource(dependency['receipt'])
+    return {'schema_version':'1.0',
+            'service':{'endpoint':resource['endpoint'],'model':resource['model']['name']},
+            'badcase':item['badcase'],'render_mode':'auto'}
+
+
 def evaluations(request,values,attempt,manifest,timeout,action):
     if action=='run':
         from .preflight import evaluations as check_datasets
@@ -81,6 +91,20 @@ def evaluations(request,values,attempt,manifest,timeout,action):
         except INPUT_ERRORS as error:item_error(row,error,'blocked');save(attempt,manifest);continue
         value,reference=evaluate_item(item,child,attempt,manifest,timeout,action)
         if value:summary.collect_result(value,manifest,key,reference)
+        save(attempt,manifest)
+
+
+def diagnoses(request,attempt,manifest,timeout,action):
+    for item in request.get('diagnoses',[]):
+        key=item['id'];row=manifest['tasks']['diagnoses'][key]
+        if row['status']=='blocked':continue
+        try:
+            child=prepared_diagnosis(item,manifest)
+        except INPUT_ERRORS as error:item_error(row,error,'blocked');save(attempt,manifest);continue
+        value,reference=invoke('diagnoses',key,child,attempt,manifest,timeout,action)
+        if value:
+            manifest['results'][key]={'receipt':reference,'conclusions':value['conclusions'],'uncovered':value['uncovered']}
+            manifest['uncovered'].extend(value['uncovered'])
         save(attempt,manifest)
 
 
@@ -117,6 +141,7 @@ def run(request,work_root,run_id,action):
         timeout=request.get('timeout_seconds',14400)
         dependencies(request,values,attempt,manifest,timeout)
         evaluations(request,values,attempt,manifest,timeout,action)
+        diagnoses(request,attempt,manifest,timeout,action)
         summary.conclude(manifest)
     except EvidenceError:raise
     except KeyboardInterrupt as error:
