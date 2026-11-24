@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "advice": {
+    "REQUEST": "按 step1_request 明细修正请求(messages/tools 结构/参数)",
+    "CHAT_TEMPLATE": "渲染/反解得到的 prompt 已不正确: 检查 chat template、chat_template_kwargs、tools 格式和 vLLM 启动参数(--chat-template 等), 详见 references/step2-render-verify.md",
+    "MODEL_NUMERIC": "原始输出已是乱码/无意义重复/错误 token: 模型/推理链路问题, 不是 Chat Parser 问题; 进入权重/环境/配置自检, 仍未闭环则做 logprobs/logits 标杆对比, 再用 msprobe 逐层定位",
+    "MODEL_INCOMPLETE": "原始输出只有 thinking、没有最终回答或工具调用——parser 并没有吞掉内容, 模型原始生成就是不完整: 增大 max_tokens、检查停止条件; 必要时进入逐层数值诊断(layer_diag)",
+    "TOOL_PARSER": "原始输出有完整工具调用文本但 chat 响应没返回 tool_calls: 检查服务启动的 --tool-call-parser 是否与模型模板匹配(hermes/qwen3/mistral 等)",
+    "THINKING_PARSER": "原始输出有 think 标记但 chat 响应没有 reasoning_content: 检查 --enable-reasoning / --reasoning-parser 是否与模型匹配",
+    "SERVICE_OUTPUT": "原始输出完整正常但 chat 响应内容缺失/错位/格式被破坏: 检查服务输出处理层(parser/detokenize/stop 处理/响应封装); 对照 raw_completion.json 与 chat_response.json 人工确认",
+    "MODEL_OUTPUT": "请求带 tools 但原始输出没有任何工具调用格式——模型在当前 prompt 下没有生成 tool call(不能单独证明精度异常): 排查 prompt 诱导 / 工具描述质量 / 模型能力 / tool_choice / 采样参数(可试 tool_choice=required、调整 temperature、改写工具描述)",
+    "INCONCLUSIVE": "证据不完整, 暂无法定界: 补齐证据后再下结论(优先服务端 render 端点, 其次 /v1/tokenize, 再本地 tokenizer 对照), 不猜测根因",
+    "PASS": "服务化解析链路正常, 问题不在此链路; 转 logprobs-diff 看数值分布"
+  },
+  "thresholds": {
+    "garbage": {
+      "alnum_ratio": 0.05,
+      "char_diversity": 0.12,
+      "top_token_freq": 0.6,
+      "dup_ngram_ratio": 0.7,
+      "min_visible_chars": 40,
+      "dup_ngram_min_chars": 200,
+      "window": 100,
+      "ngram": 8
+    }
+  }
+}

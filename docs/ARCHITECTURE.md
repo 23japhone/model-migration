@@ -59,21 +59,22 @@ model_migration/
             │       └── verify-agent/
             └── vllm-precision-align/
                 └── skills/
-                    └── verify-agent-plus/
+                    ├── verify-agent-plus/
+                    └── three-step-demarcation/
 ```
 
-仓库根另有 `.agents/skills/` 保存团队开发工作流技能，`.codex/` 保存质量策略和基线；两者的使用见 [开发技能索引](DEVELOPMENT_SKILLS.md)。它们属于维护资源，不属于上图的 12 个模型迁移业务 Skill，不计入业务运行资源或模型运行载体。
+仓库根另有 `.agents/skills/` 保存团队开发工作流技能，`.codex/` 保存质量策略和基线；两者的使用见 [开发技能索引](DEVELOPMENT_SKILLS.md)。它们属于维护资源，不属于上图的 13 个模型迁移业务 Skill，不计入业务运行资源或模型运行载体。
 
 子 Skill 的内部资源在图中省略。每个 Skill 都有自己的 `SKILL.md`；`scripts/` 承担确定性操作，`references/` 保存契约与知识，`assets/` 保存模板和静态示例。`adapt-agent` 沿用单数 `reference/`，资源枚举与维护时需要保留这一实际目录。
 
-截至本次核对，技能树有 **12 个 Skill**，资源数量由当前目录枚举，实测记录见 TESTING.md；文件由布局和静态资源规则从当前目录枚举，不保留构建资源清单。本架构文档与仓库测试位于技能树之外。模型权重、数据集实体、镜像归档、实际请求、日志及运行证据由用户指定位置保存，不纳入技能静态资源。
+截至本次核对，技能树有 **13 个 Skill**，资源数量由当前目录枚举，实测记录见 TESTING.md；文件由布局和静态资源规则从当前目录枚举，不保留构建资源清单。本架构文档与仓库测试位于技能树之外。模型权重、数据集实体、镜像归档、实际请求、日志及运行证据由用户指定位置保存，不纳入技能静态资源。
 
 ### 2.1 路径支持与布局
 
 | 文件 | 实际职责 | 当前状态 |
 | --- | --- | --- |
 | [scripts/skill_paths.py](../skills/vllm-model-migration/scripts/skill_paths.py) | 技能根、直属资源、完整副本及实际字节快照 | 根据自身位置、布局和明确的静态资源规则工作，不依赖 cwd、Git 或构建入口 |
-| [references/skill-layout.json](../skills/vllm-model-migration/references/skill-layout.json) | 记录 12 个入口的名称、相对路径、层级和入口资料 | Skill 路径相对总 Skill 根，总入口 path 为 .；入口脚本仍相对各自 Skill |
+| [references/skill-layout.json](../skills/vllm-model-migration/references/skill-layout.json) | 记录 13 个入口的名称、相对路径、层级和入口资料 | Skill 路径相对总 Skill 根，总入口 path 为 .；入口脚本仍相对各自 Skill |
 
 `owned_files()` 枚举所选 Skill 直接拥有的当前资源，不收入嵌套子 Skill；`bundle_files()` 验证并枚举全部声明 Skill。准备阶段和两条注册复制链路使用同一套纳入规则，实际摘要保留在原有回执中。角色、类型、必需项和拒绝边界以[总入口契约](../skills/vllm-model-migration/references/contract.md#静态资源路径契约)及源码为准。
 
