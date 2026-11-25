@@ -93,7 +93,7 @@ class IntegrityTests(unittest.TestCase):
                     row['ranks'].append(dict(rank=rank, row=file_ref(ref,folder)))
                 timeline.append(row)
             errors = []
-            images = bind_images([dict(image_index=0, **file_ref(picture,folder))], timeline, errors)
+            images = bind_images([dict(image_index=0, **file_ref(picture,folder))], timeline, errors, 2)
             self.assertEqual(errors, [])
             self.assertEqual(images[0]['ranks'][1]['fusion_forward_ids'], ['0','1'])
             result = dict(images=images, timeline=timeline, engine_input={'path':str(folder/'request.json')})

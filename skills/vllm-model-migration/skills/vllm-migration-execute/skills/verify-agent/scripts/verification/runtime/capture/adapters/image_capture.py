@@ -89,7 +89,7 @@ def bind(rec, obj, method, after, before=None):
 
 def install(rec, model):
     runner = rec.runner
-    if rec.world_size != 2 or 'visual.blocks' not in rec.architecture.get('other_stacks', {}):
+    if rec.world_size <= 1 or 'visual.blocks' not in rec.architecture.get('other_stacks', {}):
         return
     # Install the adapter only on a model whose merge and encoder implementations were inspected.
     if type(model).__module__ != 'vllm.model_executor.models.qwen3_5':

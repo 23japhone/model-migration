@@ -66,8 +66,8 @@ def check_options(command, size=1):
         value = inline if sep else (command[index + 1:index + 2] or [''])[0]
         if key in ('-tp', '--tensor-parallel-size'):
             declared.append(value)
-        elif key == '--distributed-executor-backend' and size == 2 and value != 'mp':
-            raise ValueError('双 rank 采集要求本机 mp executor')
+        elif key == '--distributed-executor-backend' and size > 1 and value != 'mp':
+            raise ValueError('多卡采集要求本机 mp executor')
         elif key in PARALLEL_FLAGS and value != '1':
             raise ValueError(f'{size} 个 TP rank 采集要求其他并行维度为 1，冲突参数 {key}')
         check_capture_flag(key, value, size)
@@ -77,8 +77,8 @@ def check_options(command, size=1):
 
 
 def check_capture_flag(key, value, size):
-    if size == 2 and key in ('--enable-expert-parallel', '-ep'):
-        raise ValueError('本次双卡采集要求纯张量并行')
+    if size > 1 and key in ('--enable-expert-parallel', '-ep'):
+        raise ValueError('多卡采集要求纯张量并行')
     if key == '--config':
         raise ValueError('外部 --config 的执行模式和采集设置未核实')
     if key == '--additional-config':
@@ -98,8 +98,8 @@ def check_service(request):
     elif '--enforce-eager' not in flags or '--no-enforce-eager' in flags:
         raise ValueError('采集准备要求服务显式启用 Eager')
     devices = request['npu']['devices']
-    if len(devices) not in (1, 2) or len(set(devices)) != len(devices):
-        raise ValueError('采集仅支持单 rank 或单机双卡 TP=2')
+    if not devices or len(set(devices)) != len(devices):
+        raise ValueError('采集需要非空且互不重复的物理卡号')
     check_options(command, len(devices))
 
 

@@ -64,7 +64,7 @@ def inspect(payload):
         for key in ('WORLD_SIZE', 'LOCAL_WORLD_SIZE', 'VLLM_DP_SIZE'):
             allowed = ['1'] if key == 'VLLM_DP_SIZE' else ['1', str(payload.get('world_size', 1))]
             if os.environ.get(key, '1') not in allowed:
-                raise ValueError('目标环境不是单 rank：' + key)
+                raise ValueError('目标环境与声明的 rank 数或并行配置不符：' + key)
         if os.environ.get('MSPROBE_CONFIG_PATH'):
             raise ValueError('目标环境已有 MSPROBE_CONFIG_PATH')
         data = Path(payload['config']).read_bytes()

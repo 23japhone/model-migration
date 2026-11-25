@@ -4,6 +4,14 @@
 
 ## 当前验证基准
 
+### 2026-11-25 单机可变卡数 TP 采集（离线）
+
+运行 `python3 -B -m unittest discover -s tests/vllm-model-migration/worker_capture/parallel_cases -p 'test_*.py' -q`。2、4、8 个本地进程分别验证同一调度的前向编号传递。4、8 个模拟 worker 的完整会话从公开 CLI 封存后，按同一个输出 Token 查回每个 rank 独有的缓存值。八卡用例还用 CPU PyTorch 读取原生格式的张量，覆盖成员绑定被改写、文件串卡、缺前向和封存后文件丢失，逐项核对完好 rank 仍可读取。
+
+该组测试使用乱序、不连续的物理卡编号和合成证据。四卡、八卡模型推理、HCCL 建组和设备端采集仍待实机验证。[离线会话用例](../tests/vllm-model-migration/worker_capture/parallel_cases/test_tp_session.py) · [卡数和设备映射](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/runtime-capture.md#单机张量并行联合采集)
+
+全量离线回归 720 项通过，其中多卡专项 26 项。独立复跑的 52 项 `source_contract` 全部通过。结构审计有 0 个错误、303 条软提示。本次新增一条提示来自 `seal_members` 核对登记和封存时的成员数及逐 rank 身份，复杂度为 12，硬阈值为 15。
+
 ### 2026-11-25 任务质量对齐单题验收
 
 实机验收从 `precision.py --action quality` 进入精度阶段，在昇腾 910B2 上使用 Qwen3.5-27B、EvalScope 1.14.1 和 GSM8K 原生任务 v1.1。正式题库只有测试集首题 `test.jsonl#0`，参考答案为 18。四个训练样本用于构造原生提示。

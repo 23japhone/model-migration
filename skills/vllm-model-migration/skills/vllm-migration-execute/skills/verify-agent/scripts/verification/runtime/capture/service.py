@@ -10,6 +10,7 @@ from ...review import review_source
 from .. import carrier, inspection
 from .adapters import state
 from .adapters.sources import SOURCES
+from .parallel.topology import expected_worker_roles, validate_members
 
 
 def deployment(source_ref):
@@ -58,17 +59,18 @@ def live(handoff, preparation, attempt):
     if errors:
         raise ValueError(state.read(errors[0])['error'])
     topology = read_bound(preparation['parallel']) if 'parallel' in preparation else None
-    worker_roles = ['worker-rank0', 'worker-rank1'] if topology else ['worker']
-    roles = [*worker_roles, 'engine']
-    if topology:
-        roles.extend(['executor', 'frontend'])
-    elif state.read(root/'worker.json').get('coverage_capability'):
-        roles.append('frontend')
+    if topology is not None:
+        worker_roles = expected_worker_roles(topology, (p.stem for p in root.glob('worker-rank*.json')))
+        roles = [*worker_roles, 'engine', 'executor', 'frontend']
+    else:
+        worker_roles = ['worker']
+        roles = [*worker_roles, 'engine']
+        if state.read(root/'worker.json').get('coverage_capability'):
+            roles.append('frontend')
     identities = {role: verified_role(root, handoff, preparation, role, worker_roles) for role in roles}
     verify_sources(root, preparation)
     read_bound(preparation['config'])
-    if topology:
-        from .parallel.topology import validate_members
+    if topology is not None:
         return validate_members(topology, identities)
     return state.read(root / 'worker.json')
 

@@ -16,7 +16,7 @@
 - **使用原生评测**：新测量默认 EvalScope，兼容显式 AISBench；保留原生模板、评分和数据身份，分别判断测量有效性、GPU/NPU 可比性和目标达标情况。
 - **共用环境与证据**：客户 EvalScope 每次有效正式准备调用原版安装脚本，续接继承环境并核对实际绑定；性能启动前另行核验 Python、venv、CLI、版本和当前 PATH，实际两端共用须有进程证据。
 - **交付可核验配置**：完整 EvalScope 客户流程联合校验、整体发布三个 JSON，保留独立导出回执、文件路径和 SHA256。
-- **按输出 Token 回查运行数据**，通过 `verify-agent` 可找到产生该 Token 的实际前向、msProbe 张量及已适配层的缓存原值。同步 Eager 支持单卡和单机 TP=2，单卡文本请求还支持 ACLGraph。MLA 缓存适配范围为单卡同步 Eager。[运行时采集工具](skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/runtime-capture.md)
+- **按输出 Token 回查运行数据**，通过 `verify-agent` 可找到产生该 Token 的实际前向、msProbe 张量及已适配层的缓存原值。同步 Eager 按所选物理卡数处理单机张量并行，双卡已有实机记录，四卡和八卡已做离线验证，单卡文本请求还支持 ACLGraph。MLA 缓存适配范围为单卡同步 Eager。[运行时采集工具](skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/runtime-capture.md)
 
 本仓交付的是包含指令、脚本、契约和模板的 Skills。Agent 负责需求理解、资料核对、源码适配与语义复核；脚本负责确定性执行和证据记录。使用本项目无需启动 MoFix 后端。
 

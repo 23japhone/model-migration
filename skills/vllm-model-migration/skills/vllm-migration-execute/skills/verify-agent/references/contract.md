@@ -35,7 +35,7 @@
 
 使用[采集请求示例](../assets/worker-capture.request.example.json)在 verify 输入中声明可选的 `worker_capture`。Eager 服务使用 `adapter="msprobe_pytorch_eager"`。单卡图服务使用 `adapter="msprobe_pytorch_aclgraph"`，部署选项和会话范围见[图模式采集](runtime-capture.md#单卡-aclgraph-文本请求)。两种适配器均须声明宿主绝对路径 `output_root`，可选 `expected_msprobe_version` 精确匹配目标解释器安装的 `mindstudio-probe` 分发包版本。未知字段、非法类型和相对路径按输入无效处理。普通部署可省略整个对象。可选 `decode_cache={"max_snapshot_bytes":16777216}` 设置一次前向内所有快照共用的字节预算。全层观察使用 `layer_scope=all`（默认）。单卡 Eager 的旧式单步观察可选 `legacy_pair`，ACLGraph 的缓存观察要求 `all`。完整模型应按实际数据量设置预算。迁移阶段照常引用该请求文件及其 SHA256，公开的 `--plan` 只检查请求形状。
 
-采集服务须为自有。Eager 适配器要求显式 `--enforce-eager`，支持单 NPU 或单机双 NPU 纯 TP=2。ACLGraph 适配器要求单 NPU，启动时省略 `--enforce-eager`，通过 `--compilation-config` 指定 `FULL` 或 `PIECEWISE`。按声明及目标环境核对并行设置。已有 `--additional-config` 指定的 `dump_config_path` 或目标环境的 `MSPROBE_CONFIG_PATH` 会产生配置冲突。Docker 请求须在创建容器前显式声明可写 bind mount；`output_root` 可为挂载源或其子目录，覆盖本次尝试的映射须唯一、未被其他目标挂载遮蔽。Linux process 使用同一宿主路径。输出根须在 Skill、注册资源、模型和构建输入之外。
+采集服务须为自有。Eager 适配器要求显式 `--enforce-eager`，支持单 NPU 或单机多 NPU 纯张量并行，TP 大小须等于选定物理卡数。ACLGraph 适配器要求单 NPU，启动时省略 `--enforce-eager`，通过 `--compilation-config` 指定 `FULL` 或 `PIECEWISE`。按声明及目标环境核对并行设置。已有 `--additional-config` 指定的 `dump_config_path` 或目标环境的 `MSPROBE_CONFIG_PATH` 会产生配置冲突。Docker 请求须在创建容器前显式声明可写 bind mount；`output_root` 可为挂载源或其子目录，覆盖本次尝试的映射须唯一、未被其他目标挂载遮蔽。Linux process 使用同一宿主路径。输出根须在 Skill、注册资源、模型和构建输入之外。
 
 注册复验后、模型启动前，在 `output_root/<attempt_id>/msprobe.json` 生成 PyTorch 配置。Eager 的 `dump_path` 指向载体视角的本次 `dump/`，ACLGraph 指向 `dump/native/`。Eager 配置保存模块和受支持 API 的前向输入输出（`task=tensor`、`level=mix`、`risk_level=ALL`、`tensor.data_mode=["forward"]`），初始 `dump_enable=false`。短探针使用目标 Python、有效环境和载体身份，导入 PyTorch 调试入口，调用目标版本的配置解析器并核对结果。探针将唯一校验内容写入预定输出目录，宿主读回一致后移除校验文件。准备阶段封存配置和适配器源码摘要。服务启动时加载适配器；模型、Eager、并行和调度参数沿用原请求。
 
@@ -132,4 +132,4 @@ begin 核验自有 retained 服务、新适配器真实 worker/engine/frontend �
 
 msProbe 的覆盖范围为实际模块与注册 API；不保证设备 kernel 内部或未注册扩展内部可见。hook 包及目标源码摘要仍须匹配。采集失败不更改普通部署生命周期结论；会话操作自身失败返回 1，输入错误 2，成功 0。end 仅释放本次会话，未完结实际请求保留租约；不停止模型或其他任务。采集回执与查询产物独立于部署交接，后者不回写。
 
-单机 TP=2 的全程采集使用 `capture-session`。封存回执包含一次逻辑前向及两张卡的逐层原值索引。按输出或 prompt 位置读取时可指定 `rank`。设备、分片及快照预算的语义见[运行时采集](runtime-capture.md#单机-tp2-联合采集)。
+单机多卡的全程采集使用 `capture-session`。封存回执包含一次逻辑前向及所有参与卡的本地逐层原值索引。按输出或 prompt 位置读取时可指定 `rank`。设备、分片及快照预算的语义见[运行时采集](runtime-capture.md#单机张量并行联合采集)。

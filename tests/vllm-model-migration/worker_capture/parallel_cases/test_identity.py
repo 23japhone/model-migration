@@ -14,10 +14,13 @@ from verification.runtime.capture.adapters import state
 from verification.runtime.capture.adapters.decode_cache.plan import install_schedule
 
 
-def receive(connection):
-    schedule = connection.recv()
-    connection.send(schedule._verify_forward)
-    connection.close()
+def receive(connection, rank, folder):
+    from verification.runtime.capture.adapters.parallel import select_frame
+    with connection:
+        schedule = connection.recv()
+        rec = SimpleNamespace(rank=rank, folder=folder)
+        frame = select_frame(rec, schedule, 'req')
+        connection.send((os.getpid(), frame, rec.folder))
 
 
 class IdentityTests(unittest.TestCase):
@@ -41,33 +44,49 @@ class IdentityTests(unittest.TestCase):
                 return output
         with tempfile.TemporaryDirectory() as base, patch.dict(os.environ, VERIFY_EAGER_ROOT=base):
             root = Path(base)
-            state.write(root / 'parallel.json', {'world_size': 2})
-            state.write(root / 'active.json', {'directory': 'request'})
-            folder = root / 'request'
-            folder.mkdir()
-            state.write(folder / 'request.json', {'internal_id': 'req', 'prompt_ids': [7, 7, 8]})
-            state.write(folder / 'intent.json', {'request_id': 'trace'})
             install_schedule(Scheduler, parallel=True)
-            schedule = Scheduler().schedule()
-            identity = schedule._verify_forward
             context = multiprocessing.get_context('spawn')
-            for rank in range(2):
-                parent, child = context.Pipe()
-                worker = context.Process(target=receive, args=(child,))
-                worker.start()
-                child.close()
-                try:
-                    parent.send(schedule)
-                    self.assertTrue(parent.poll(15))
-                    self.assertEqual(parent.recv(), identity)
-                finally:
-                    parent.close()
-                    worker.join(15)
-                self.assertEqual(worker.exitcode, 0)
-            self.assertEqual(identity['ordinal'], 0)
-            self.assertEqual(identity['position'], 0)
-            self.assertEqual(identity['count'], 2)
-            self.assertEqual(identity['request_id'], 'trace')
+            for size in (2, 4, 8):
+                with self.subTest(size=size):
+                    state.write(root / 'parallel.json', {'world_size': size})
+                    folder = root / f'request-{size}'
+                    folder.mkdir()
+                    state.write(root / 'active.json', {'directory': folder.name})
+                    state.write(folder / 'request.json', {'internal_id': 'req', 'prompt_ids': [7, 7, 8]})
+                    state.write(folder / 'intent.json', {'request_id': 'trace'})
+                    schedule = Scheduler().schedule()
+                    identity = schedule._verify_forward
+                    self.assertEqual((identity['ordinal'], identity['position'], identity['count']), (0, 0, 2))
+                    self.assertEqual(identity['request_id'], 'trace')
+                    workers = []
+                    try:
+                        for rank in range(size):
+                            parent, child = context.Pipe()
+                            worker = context.Process(target=receive, args=(child, rank, folder))
+                            worker.start()
+                            child.close()
+                            workers.append((parent, worker))
+                        for parent, _ in workers:
+                            parent.send(schedule)
+                        pids = set()
+                        for rank, (parent, worker) in enumerate(workers):
+                            self.assertTrue(parent.poll(15))
+                            pid, frame, path = parent.recv()
+                            pids.add(pid)
+                            self.assertEqual(pid, worker.pid)
+                            self.assertEqual((frame['rank'], frame['dispatch']), (rank, identity))
+                            self.assertEqual(frame['forward_id'], identity['forward_id'])
+                            self.assertEqual(path, folder / f'rank{rank}')
+                            self.assertTrue(path.is_dir())
+                        self.assertEqual(len(pids), size)
+                    finally:
+                        for parent, worker in workers:
+                            parent.close()
+                            worker.join(15)
+                            if worker.is_alive():
+                                worker.kill()
+                                worker.join()
+                    self.assertTrue(all(w.exitcode == 0 for _, w in workers))
 
     def test_runtime_member_mapping_and_lost_worker_after_arm(self):
         from verification.runtime.capture.parallel.topology import validate_members, bind_at_arm, seal_members
@@ -100,9 +119,11 @@ class IdentityTests(unittest.TestCase):
             result=inference_failed({'trace_id':'A','http':{}},folder,{'native_id':1,'sample_key':'prompt'},
                                     {'error':{'message':'engine stopped'}})
             self.assertEqual(read_bound(result['receipt'])['inference_status'],'failed')
-        for rank in (True,-1,2):
+        for rank in (True, -1, 2.0):
             with self.assertRaisesRegex(ValueError,'rank'):
                 action.validate_forward_selector({'rank':rank})
+        for rank in (2, 3, 7):
+            action.validate_forward_selector({'rank': rank})
 
     def test_scheduler_snapshot_cannot_be_rebound_to_another_dispatch(self):
         from verification.runtime.capture.cache_evidence import check_identity

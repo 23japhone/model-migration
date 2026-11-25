@@ -40,6 +40,14 @@ def live(handoff, preparation, attempt):
         record = state.read(root / (role + '.json'))
         if record['adapter_files'] != preparation['adapter_files']:
             raise ValueError('fixture adapter identity changed')
+    if 'parallel' in preparation:
+        from .parallel.topology import validate_members
+        topology = read_bound(preparation['parallel'])
+        records = {'executor': state.read(root / 'executor.json')}
+        for rank in range(topology['world_size']):
+            role = f'worker-rank{rank}'
+            records[role] = state.read(root / (role + '.json'))
+        return validate_members(topology, records)
     return state.read(root / 'worker.json')
 ''')
     # A use of an evaluator SDK fails explicitly, even if installed on this host.
@@ -54,19 +62,20 @@ sys.meta_path.insert(0, RejectEvaluator())
     return scripts / 'verify.py'
 
 
-def device_handoff(root, endpoint):
+def device_handoff(root, endpoint, physical_devices=(0,)):
     declared = {'runtime': {'kind': 'process', 'env': {}}, 'model': {'name': 'synthetic-model'},
-                'service': {'endpoint': endpoint, 'ownership': 'owned'}, 'npu': {'devices': [0]}}
+                'service': {'endpoint': endpoint, 'ownership': 'owned'}, 'npu': {'devices': list(physical_devices)}}
     request = write(root / 'declared.json', declared)
     resource = {'kind': 'process', 'ownership': 'owned', 'nonce': 'synthetic-owner',
                 'identity': {'pid': os.getpid(), 'start_ticks': 'synthetic'}}
-    devices = [{'physical_id': 0, 'logical_id': 0, 'visible_index': 0}]
-    probe = write(root / 'device-probe.json', {'status': 'completed', 'count': 1, 'devices': devices,
+    devices = [{'physical_id': device, 'logical_id': i, 'visible_index': i}
+               for i, device in enumerate(physical_devices)]
+    probe = write(root / 'device-probe.json', {'status': 'completed', 'count': len(devices), 'devices': devices,
                   'library': 'synthetic-cann', 'executable_realpath': sys.executable, 'environment': {}})
     mapping = write(root / 'device-mapping.json', {
         'schema_version': '1.0', 'format': 'ascend-device-mapping-v1', 'request': request,
         'resource': resource, 'host': {'hostname': 'offline-fixture', 'boot_id': 'synthetic'},
-        'selected_physical_devices': [0], 'devices': devices, 'base_probe': probe, 'visible_probe': probe,
+        'selected_physical_devices': list(physical_devices), 'devices': devices, 'base_probe': probe, 'visible_probe': probe,
         'library': 'synthetic-cann', 'executable_realpath': sys.executable})
     effective = write(root / 'effective-runtime.json', {'schema_version': '1.0',
         'format': 'ascend-effective-runtime-v1', 'request': request, 'device_mapping': mapping,
@@ -76,11 +85,16 @@ def device_handoff(root, endpoint):
         'final_service': {'state': 'retained'}}
 
 
-def deployment(root, endpoint, cache=False):
+def deployment(root, endpoint, cache=False, physical_devices=(0,)):
     runtime = root / 'runtime'
     config = write(runtime / 'msprobe.json', {'task': 'tensor', 'level': 'mix', 'risk_level': 'ALL',
         'dump_enable': False, 'dump_path': str(runtime / 'dump'), 'tensor': {'data_mode': ['forward']}})
+    declared, handoff = device_handoff(root, endpoint, physical_devices)
     extra = {}
+    if len(physical_devices) > 1:
+        mapping = json.loads(Path(handoff['device_mapping']['path']).read_bytes())
+        extra['parallel'] = write(runtime / 'parallel.json', {'world_size': len(physical_devices),
+                                                              'devices': mapping['devices']})
     if cache:
         extra['decode_cache'] = write(runtime / 'decode-cache.json', {'status': 'available', 'version': '0.1.4',
                                                                       'max_snapshot_bytes': 65536})
@@ -94,7 +108,6 @@ def deployment(root, endpoint, cache=False):
         if cache and role in ('engine', 'worker'):
             record['decode_cache'] = {'status': 'ready', 'config_sha256': extra['decode_cache']['sha256']}
         write(runtime / (role + '.json'), record)
-    declared, handoff = device_handoff(root, endpoint)
     capture = {'status': 'prepared', 'receipt': prep}
     bound_handoff = write(root / 'attempt' / 'deployment-handoff.json', {**handoff, 'worker_capture': capture})
     report = write(root / 'attempt' / 'verification-report.json', {

@@ -8,7 +8,7 @@ from ..adapters.state import read
 from .vision import bind_images, images
 
 
-def generation_evidence(folder, payload, response, timeline, errors, http):
+def generation_evidence(folder, payload, response, timeline, errors, http, size):
     result = {}
     captured = folder / 'frontend-payload-digest.json'
     if captured.exists():
@@ -24,7 +24,7 @@ def generation_evidence(folder, payload, response, timeline, errors, http):
         result['delivery'] = link_delivery(response, timeline, errors)
     sources = images(folder, payload)
     if sources:
-        result['images'] = bind_images(sources, timeline, errors)
+        result['images'] = bind_images(sources, timeline, errors, size)
         confirm_processor(folder, result['images'], errors)
     check_sampling_rows(payload, timeline, errors)
     return result

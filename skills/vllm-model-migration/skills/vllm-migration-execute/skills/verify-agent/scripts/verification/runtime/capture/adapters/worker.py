@@ -43,7 +43,7 @@ class Recorder:
         self.rank = identity['rank']
         self.world_size = identity.get('world_size', 1)
         role = 'worker' if self.world_size == 1 else f'worker-rank{self.rank}'
-        if self.world_size == 2:
+        if self.world_size > 1:
             identity['state_shards'] = tp.shards(model, runner.model_config.hf_text_config, self.world_size)
         if self.rank == 0:
             self.install_sampler()
@@ -67,7 +67,7 @@ class Recorder:
                 self.observe(self.candidate, result)
             return result
         sampler.greedy_sample = greedy
-        if hasattr(sampler, 'topk_topp_sampler') and self.world_size == 2:
+        if hasattr(sampler, 'topk_topp_sampler') and self.world_size > 1:
             from .random_sampling import install
             install(self, save_vector)
 
@@ -93,7 +93,7 @@ class Recorder:
             return
         if len(schedule.num_scheduled_tokens) != 1:
             raise ValueError('目标前向混入其他请求')
-        if self.world_size == 2:
+        if self.world_size > 1:
             self.frame = tp.select_frame(self, schedule, internal)
         else:
             self.frame = {'internal_id': internal, 'forward_id': uuid.uuid4().hex,

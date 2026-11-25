@@ -106,7 +106,7 @@ def verify_arm(request, root, ready, preparation):
         for worker in ready.get('rank_workers', [ready]):
             check_ready(root, worker, preparation)
     if 'rank_workers' in ready and 'cache_output_index' in request:
-        raise ValueError('TP=2 缓存采集要求 full_request')
+        raise ValueError('多卡 TP 缓存采集要求 full_request')
 
 
 def arm(request, root, lease, ready, preparation):
@@ -148,8 +148,9 @@ def operate(request, target):
             from .aclgraph.receipt import seal_worker
             ready = seal_worker(lease['graph_worker'], lambda: live(handoff, prep, attempt))
         elif request['operation'] == 'seal' and 'members' in lease:
-            from .parallel.topology import seal_members
-            ready = seal_members(root / lease['directory'], lease['members'], lambda: live(handoff, prep, attempt))
+            from .parallel.topology import group_size, seal_members
+            size = group_size(read_bound(prep['parallel']))
+            ready = seal_members(root / lease['directory'], lease['members'], lambda: live(handoff, prep, attempt), size=size)
         else:
             ready = live(handoff, prep, attempt)
         if request['operation'] == 'arm': return arm(request, root, lease, ready, prep)
