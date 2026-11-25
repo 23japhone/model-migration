@@ -1,6 +1,6 @@
 ---
 name: vllm-precision-align
-description: 根据已有部署和数据交接编排 vLLM/vLLM-Ascend 精度测试，按需委托数据准备或部署任务，或汇总已有 EvalScope/AISBench 产物的只读分析时使用。
+description: 根据部署和数据交接编排 vLLM/vLLM-Ascend 精度测试、按需委托数据准备或部署、只读分析 EvalScope/AISBench 产物时使用。也用于任务质量对齐，以及从未达标分项选题、定向复测并比较 Token 预测。
 ---
 
 # 精度测试阶段

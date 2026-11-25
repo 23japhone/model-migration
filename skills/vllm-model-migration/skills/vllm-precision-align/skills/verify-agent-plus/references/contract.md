@@ -1,6 +1,6 @@
 # 请求、产物和验收契约
 
-公开入口为 `scripts/validator.py`；控制脚本使用 Python3.10+ 标准库，评测解释器独立指定。统一参数为 `--request --work-root --run-id --action run|analyze|preflight --plan`。JSON 重复键、未知字段、非有限数字、非法路径及输出越界在运行前拒绝。所有路径属于执行主机，使用规范绝对路径；`{path,sha256}` 固定原始文件字节。
+公开入口 `scripts/validator.py` 使用 Python 3.10+ 标准库，评测解释器独立指定。通过 `--request`、`--work-root` 和 `--run-id` 传入请求与输出位置，可加 `--plan` 做静态检查。`--action` 支持普通测评的 `run`（默认）、`analyze`、`preflight`，任务质量的 `quality-run`、`quality-analyze`，以及按题定向复测的 `token-run`。运行前检查 JSON 重复键、未知字段、非有限数字、非法路径及输出边界。路径采用执行主机上的规范绝对路径，`{path,sha256}` 固定原始文件字节。
 
 ## 无推理数据预检
 
