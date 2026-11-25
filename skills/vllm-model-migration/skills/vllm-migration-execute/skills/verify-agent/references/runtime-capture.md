@@ -136,6 +136,14 @@ Ascend MLA 目前支持未量化 BF16、PA 布局、128 Token 物理块、单卡
 
 例如 DeepSeek 第二个输出可用 `output_index=1,layer_index=0,cache_snapshot=mla.latent.after`。同一层调用下的 `event` 给出调度预期写槽、元数据槽号及融合算子实收槽号。`backend_path=prefill` 时，`current` 记录本块 FIA 的有效长度和因果掩码，`history` 分次记录已有缓存的起点、长度、物理块和对应 FIA 调用。冷启动时历史列表为空。`backend_path=decode` 时，`decode` 记录分页注意力实收的块表、块长和有效 KV 长度。完整层回执的 `read_ranges` 给出按实参还原的逻辑半开区间。读取物理缓存时同时列出每页有效槽区间，读取本块输入时列出每行的因果截止位置。原始数值文件来自写入边界。指定层和 MLA 快照时，`native_recheck` 报告本次复核的 msProbe 模块、状态及缺失调用。某一分量或原生文件损坏时，仍可查询本层完整的缓存分量。
 
+### 跨请求前缀缓存命中
+
+在启用 `--enable-prefix-caching` 的单卡同步 Eager 文本服务上，先确认 worker 就绪回执的 `decode_cache.prefix_reuse=true`。在同一次 `capture-session begin` 和 `end` 之间，依次对请求 A、B 分别 arm、发送、seal。两次 arm 均使用独立 `trace_id`，并在已有全程预算上加 `"prefix_reuse":true`。可在该对象内加 `"observe_values":false` 做对照，此时保存调度、真实前向及 msProbe 原件。
+
+`capture-read view=timeline` 的 `prefix_reuse` 给出命中 Token 数、worker 首个实际位置、已验证来源的 Token 数和缺项。对于命中长度 H，按 `prompt_position=H-1` 查询会得到 `kind=reused_prefix`。其中 `sources` 记录生产请求、生产前向、缓存驻留身份、逐层分量和比较过的字节区间。`source_file` 和 `consumer_file` 引用各自的原始文件。普通注意力选择 `key.after`、`value.after`，GDN 选择 `conv.before`、`ssm.before`，MLA 选择 `mla.latent.after`、`mla.rope.after`。GDN 记录的是命中边界上的检查点，适用范围内的多个位置可指向同一检查点。
+
+从 `prompt_position=H` 开始查询 B 的真实前向。按 `output_index` 仍返回产生该输出的 B 前向。若命中块来自未采集请求，`hit_tokens` 仍是引擎实测值，联合回执以 `incomplete` 列出未验证来源。生产文件被移除后，消费请求已保存的后缀原值可独立读取。
+
 ## 单机张量并行联合采集
 
 在部署请求的 `npu.devices` 中填写所选物理 NPU 列表，将 `--tensor-parallel-size` 设为列表长度。使用 Model Runner V1、同步 Eager、单机 `mp` executor 和一个请求，其他并行维度为 1。启动时核对进程实际加入的 HCCL 组、可见设备与物理卡。四卡和八卡已通过离线契约验证，通信、真实模型分片和 NPU 原值仍待对应规模的实机验证。
@@ -162,7 +170,7 @@ Ascend MLA 目前支持未量化 BF16、PA 布局、128 Token 物理块、单卡
 | 方面 | 当前行为与未覆盖范围 |
 | --- | --- |
 | 请求与输出范围 | 会话可串行处理多条请求，每次只允许一条在途请求；为每个实际输出 Token 建立索引。sample_key/native_id 由调用方提供，工具不生成评测题目清单 |
-| 查询与采集选择 | layer/api/occurrence 只筛选已落盘结果；msProbe 采集范围沿用原配置；可选缓存观察支持一个 decode 或冷前缀完整请求；全程模式使用全层范围 |
+| 查询与采集选择 | layer/api/occurrence 只筛选已落盘结果；msProbe 采集范围沿用原配置；可选缓存观察支持一个 decode 或全程全层采集；单卡 Eager 可显式记录跨请求前缀复用 |
 | 预测与张量 | 开启数值采集时，greedy 请求保留产生输出所用的 logits 和选词分数，多卡固定 seed 采样可在输出 rank 查到抽样前概率。只为已识别布局提供 Token 切片，其余保留整张量。prompt 每个位置的全词表和每个中间选词步骤超出采集范围。 |
 | 执行路径 | 单卡 ACLGraph 已验收 Llama 整图和 Qwen 分段图的文本请求。单机多卡 V1 同步 Eager 支持单图、SSE 和带 seed 的全词表随机采样。多请求并发、多卡图模式、beam、推测解码、音视频和多图仍待适配。 |
 | 数据范围 | 实际模块及注册 API 的前向输入输出；可选缓存观察单独提供已适配层的算子边界、地址计划和状态快照。设备 kernel 内部未观测 |

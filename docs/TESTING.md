@@ -10,6 +10,16 @@
 
 专项还覆盖有限范围达标、只有分差、失败与缺项并存、中断、报告摘要变化和旧回执只记录部分基线。[旧回执续接用例](../tests/vllm-model-migration/tensor_stage_cases/test_customer_resume.py)从绑定的首轮报告恢复失败结论，即使新一轮张量诊断已对齐。Python 3.12 全量离线回归 840 项通过，独立运行的任务质量专项 119 项通过。客户用例使用合成数据。结构审计为 0 个错误、358 条软提示，新增一条来自回执检查原报告的完成状态、测量有效性和约定目标覆盖范围。
 
+### 2026-11-26 单卡跨请求前缀缓存命中
+
+在 Python 3.12、CPU PyTorch 和 msProbe 26.0.0 的环境中，全量离线回归 840 项通过，单独运行的 `source_contract` 52 项通过。结构审计报告 0 个错误、364 条软提示。
+
+前缀专项的 13 项用例覆盖块被回收或重置、相同哈希对应不同物理块、重复 Token、命中后仍须计算的尾部、两次前向间的 GDN 状态复制、部分字节缺失及封存后文件损坏。用同一个公开读取入口检查命中位置、消费请求的后缀及输出序号。[前缀专项用例](../tests/vllm-model-migration/worker_capture/prefix_cases/) · [查询契约](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/runtime-capture.md#跨请求前缀缓存命中)
+
+```bash
+python3.12 -B -m unittest discover -s tests/vllm-model-migration/worker_capture/prefix_cases -p 'test_*.py' -q
+```
+
 ### 2026-11-25 运行时张量与算子对齐
 
 2026-11-25，张量与算子对齐合入本地 `dev`（`a115d86`）。Python 3.12 使用 CPU PyTorch 和 msProbe 运行全量离线回归，827 项通过，另行复跑的 `source_contract` 52 项通过。源码结构审计为 0 个错误、357 条软提示。各专项的设备、数据来源和历史版本见下文。

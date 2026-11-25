@@ -18,6 +18,8 @@ def attention(stack, rec, module, group, plan, meta, store, result):
     else:
         raise ValueError('普通注意力未进入单 Token decode')
     bind_attention(stack, module.impl, capture, result['ops'], result['errors'])
+    if prefill:
+        stack.callback(lambda: result['errors'].extend(capture.event.get('prefix_errors', [])))
     return capture
 
 
@@ -33,6 +35,8 @@ def gdn(stack, rec, module, group, plan, meta, store, result):
         bind_gdn(stack, module, capture, result['ops'], result['errors'])
     else:
         raise ValueError('GDN 后端实际阶段与调度区间不符')
+    from ..prefix.values import gdn_routes
+    gdn_routes(rec, plan, group, capture, module.kv_cache)
     return capture
 
 

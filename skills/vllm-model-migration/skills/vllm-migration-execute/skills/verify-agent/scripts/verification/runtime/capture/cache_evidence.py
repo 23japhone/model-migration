@@ -85,6 +85,10 @@ def verify(folder, cache, row, *, sealing=False):
     check_identity(cache, row)
     check_schedule(folder, cache)
     directory = folder / ('cache-' + row['forward_id'])
+    if cache.get('format') == 'schedule_only':
+        if not cache['schedule'].get('prefix_cache') or cache['status'] != 'metadata_only':
+            raise ValueError('仅调度观测缺少前缀分配证据')
+        return
     if cache.get('format') == 2:
         from .layer_evidence import verify_layers
         verify_layers(directory, cache, row, sealing=sealing)
