@@ -23,6 +23,7 @@ class PrefillAttention:
                       'expected_slots': write_slots(group, kernel, self.start, self.count),
                       'expected_read_blocks': expected['expected_read_blocks'], 'observation': 'prefill_kv'}
         self.buffers = {}
+        self.schedule = schedule
 
     def before_write(self, args):
         slots = args['slot_mapping'].tolist()
@@ -72,3 +73,11 @@ class PrefillAttention:
         self.event.update(read_source='paged_kv', read_blocks=blocks,
                           read_slot_ranges=slot_ranges(blocks, self.kernel, kv),
                           read_plan_matches=blocks == self.event['expected_read_blocks'])
+        self.save_prefix()
+
+    def save_prefix(self):
+        if not self.schedule.get('prefix_cache', {}).get('lookup', {}).get('length'):
+            return
+        from .prefix.values import save_pages
+        save_pages(self.store, self.schedule, self.event, (self.buffers['key'][1], self.buffers['value'][1]),
+                   ('key', 'value'), self.event.setdefault('prefix_errors', []))

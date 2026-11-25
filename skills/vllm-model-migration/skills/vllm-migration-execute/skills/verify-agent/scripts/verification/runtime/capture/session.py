@@ -47,7 +47,11 @@ def validate_cache_selection(request):
 
 def validate_full_request(request):
     value = request['cache_capture']
-    schema.fields(value, ['mode', 'max_request_snapshot_bytes'])
+    schema.fields(value, ['mode', 'max_request_snapshot_bytes'], ['prefix_reuse', 'observe_values'])
+    if type(value.get('prefix_reuse', False)) is not bool:
+        raise ValueError('prefix_reuse 须为布尔值')
+    if 'observe_values' in value and (not value.get('prefix_reuse') or type(value['observe_values']) is not bool):
+        raise ValueError('observe_values 仅用于跨请求前缀观测')
     budget = value['max_request_snapshot_bytes']
     if (request['operation'] != 'arm' or 'cache_output_index' in request or value['mode'] != 'full_request'
             or type(budget) is not int or budget <= 0):
@@ -113,6 +117,8 @@ def verify_arm(request, root, ready, preparation):
         return tensor_alignment.verify_worker(ready)
     if 'profile' in request:
         return token_prediction.verify_worker(ready)
+    if request.get('cache_capture', {}).get('prefix_reuse') and not ready.get('decode_cache', {}).get('prefix_reuse'):
+        raise ValueError('实际 worker 缺少单卡 Eager 本地前缀缓存能力')
     if ready.get('mode') == 'aclgraph':
         if ('cache_capture' in request) != ready['graph']['observe_cache'] or 'cache_output_index' in request:
             raise ValueError('图采集的全程观测范围须匹配捕图时的配置')

@@ -6,6 +6,16 @@
 
 2026-11-25，张量与算子对齐合入本地 `dev`（`a115d86`）。Python 3.12 使用 CPU PyTorch 和 msProbe 运行全量离线回归，827 项通过，另行复跑的 `source_contract` 52 项通过。源码结构审计为 0 个错误、357 条软提示。各专项的设备、数据来源和历史版本见下文。
 
+### 2026-11-26 单卡跨请求前缀缓存命中
+
+在 Python 3.12、CPU PyTorch 和 msProbe 26.0.0 的环境中，全量离线回归 840 项通过，单独运行的 `source_contract` 52 项通过。结构审计报告 0 个错误、364 条软提示。
+
+前缀专项的 13 项用例覆盖块被回收或重置、相同哈希对应不同物理块、重复 Token、命中后仍须计算的尾部、两次前向间的 GDN 状态复制、部分字节缺失及封存后文件损坏。用同一个公开读取入口检查命中位置、消费请求的后缀及输出序号。[前缀专项用例](../tests/vllm-model-migration/worker_capture/prefix_cases/) · [查询契约](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/runtime-capture.md#跨请求前缀缓存命中)
+
+```bash
+python3.12 -B -m unittest discover -s tests/vllm-model-migration/worker_capture/prefix_cases -p 'test_*.py' -q
+```
+
 ### 2026-11-25 运行时张量与算子对齐
 
 在维护仓库根目录运行下面的生成器。它按失败题号构造 GPU 和 NPU 数据，将评分证据、两端预测、调用映射、张量文件和公开阶段回执保存到指定的新目录。

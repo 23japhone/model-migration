@@ -42,6 +42,7 @@ def blocks_for(table, end, kernel):
 class MLAObservation:
     def __init__(self, store, group, schedule, module, meta, errors):
         self.errors = errors
+        self.plan = schedule
         self.store = store
         self.count = schedule.get('count', 1)
         self.start = schedule['position']
@@ -80,6 +81,8 @@ class MLAObservation:
         self.event.update(write_slots=ids, metadata_slots=self.expected_meta_slots,
                           cache_layouts=[layout(latent), layout(rope)])
         self.snapshot('mla.projection.input', projection)
+        from ..prefix.values import save_pages
+        save_pages(self.store, self.plan, self.event, self.caches, ('mla.latent', 'mla.rope'), self.errors)
 
     def snapshot(self, name, tensor):
         try:

@@ -117,7 +117,7 @@ class Recorder:
         if self.world_size > 1:
             self.frame = tp.select_frame(self, schedule, internal)
         else:
-            self.frame = {'internal_id': internal, 'forward_id': uuid.uuid4().hex,
+            self.frame = {'internal_id': internal, 'forward_id': getattr(schedule, '_verify_prefix_forward_id', None) or uuid.uuid4().hex,
                           'count': schedule.num_scheduled_tokens[internal]}
         intent = state.read(tp.request_folder(self.folder) / 'intent.json')
         if intent.get('profile') in ('token_prediction', 'tensor_alignment'):
