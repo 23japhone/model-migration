@@ -11,8 +11,14 @@ from .capture import session
 from .measurement import measure_case
 
 
-def validate(request):
-    contract.object_fields(request, ('schema_version', 'native_request', 'selection', 'quality_report'))
+def validate(request, action='token-run'):
+    required = ('schema_version', 'native_request', 'selection', 'quality_report')
+    contract.object_fields(request, (*required, 'tensor_plans') if action == 'tensor-run' else required)
+    if action == 'tensor-run':
+        if not isinstance(request['tensor_plans'], list) or not request['tensor_plans']:
+            raise ValueError('三遍重放需要非空的逐题采集清单')
+        for source in request['tensor_plans']:
+            contract.reference(source)
     if request['schema_version'] != '1.0':
         raise ValueError('token-run 请求版本无效')
     for key in ('selection', 'quality_report'):
@@ -115,17 +121,21 @@ def collect_cases(attempt, request, rows, prepared):
 
 def run(request, parent, run_id):
     native = request['native_request']
+    action = 'tensor-run' if 'tensor_plans' in request else 'token-run'
     try:
         rows, first = selection(request)
+        if action == 'tensor-run':
+            from .tensor import bind_plans
+            rows = bind_plans(request, rows)
         inputs = collect(native['measurement'])
         assets = subset_assets(native)
         contract.check_output(parent, inputs['protected'] + [a['path'] for a in assets.values()])
         check_assets(native['protocol'], inputs['identity']['model_files'], assets)
     except ERRORS as error:
-        manifest = record(request, run_id, 'token-run', 'blocked')
+        manifest = record(request, run_id, action, 'blocked')
         manifest['summary'] = str(error)
         return 3, manifest
-    attempt, manifest = begin(parent, request, run_id, 'token-run')
+    attempt, manifest = begin(parent, request, run_id, action)
     try:
         prepared = prepare(native, inputs, assets, attempt, first)
         cases, issues = collect_cases(attempt, request, rows, prepared)
@@ -133,7 +143,10 @@ def run(request, parent, run_id):
         after = service.snapshot(inputs, native['measurement'], attempt, 'after')
         if prepared['before'] != after or collect(native['measurement'])['identity'] != inputs['identity'] or assets != subset_assets(native):
             raise ValueError('定向重跑期间服务、权重或数据发生变化')
-        if cases:
+        if action == 'tensor-run':
+            manifest['evidence']['tensor_bundles'] = [row['record'] for row in cases]
+            manifest['evidence']['replay_reviews'] = [row['review'] for row in cases]
+        elif cases:
             path = attempt / 'token-bundle.json'
             write(path, {'format': 'token-prediction-bundle-v1', 'hardware': 'npu', 'evidence_kind': 'runtime',
                          'quality_report_sha256': request['quality_report']['sha256'], 'cases': cases})

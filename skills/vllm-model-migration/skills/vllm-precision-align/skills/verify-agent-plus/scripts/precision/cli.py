@@ -19,7 +19,7 @@ def parser():
     value.add_argument('--request',type=Path,help='包外请求 JSON')
     value.add_argument('--work-root',type=Path,help='包外证据根')
     value.add_argument('--run-id',help='运行标识')
-    value.add_argument('--action',choices=('run','analyze','preflight','quality-run','quality-analyze','token-run'),default='run')
+    value.add_argument('--action',choices=('run','analyze','preflight','quality-run','quality-analyze','token-run','tensor-run'),default='run')
     value.add_argument('--plan',action='store_true',help='只检查形状与输出边界')
     for flag in ('model-path','model-name','hardware-type','report-path','dataset','host'):
         value.add_argument('--'+flag)
@@ -81,10 +81,10 @@ def main(argv=None):
     if not args.work_root or not args.run_id:return blocked('请提供 --work-root 和 --run-id',args)
     try:
         raw=load(args.request)
-        if args.action == 'token-run':
+        if args.action in ('token-run', 'tensor-run'):
             from .token_run.run import run as token_run, validate as validate_token
             from .runtime.process import handling_signals
-            validate_token(raw)
+            validate_token(raw, args.action)
             parent = output_parent(args.work_root, args.run_id)
             with handling_signals():
                 code, result = (0, record(raw,args.run_id,args.action,'not_run')) if args.plan else token_run(raw,parent,args.run_id)

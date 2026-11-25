@@ -41,3 +41,5 @@ python3 /完整资源/skills/vllm-model-migration/skills/vllm-precision-align/sc
 客户声明 GPU 基线或总入口查到完整的公开基线时，使用阶段的 `--action quality`。先按冻结的测量条件复核候选，再按需运行 EvalScope。将同一轮原生分数、逐题评分与 GPU 历史证据交给 [vllm-precision-compare](skills/vllm-precision-compare/SKILL.md)。单题验收使用专用单题题库，分别记录首次测量的正式请求数和第二次复用所引用的原回执。字段与输出路径见[阶段契约](references/contract.md#任务质量对齐)。
 
 任务质量报告出现可比较的未达标项时，可用 `--action token` 导出退化题或失败学科的候选清单，并比较双端同轮逐 Token 预测。按题目查看首个异常 Token、缺失证据、CPU 核验及第二遍评分是否复现原退化。[Token 阶段请求与回执](references/contract.md#token-预测对齐)
+
+二遍选出首异常后使用 `--action tensor` 比较客户 GPU 证据和 NPU 诊断结果，按需重放单题。两端复用一份共同范围和当前异常位置。[三遍采集与衔接](references/tensor.md)

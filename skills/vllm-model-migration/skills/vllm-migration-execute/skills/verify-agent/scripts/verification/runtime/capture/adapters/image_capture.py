@@ -20,6 +20,8 @@ def initialize(rec, schedule):
     features = rec.runner.requests[rec.frame['internal_id']].mm_features
     if not features:
         return
+    if rec.frame.get('profile') == 'tensor_alignment':
+        raise ValueError('定向张量采集仅支持文本')
     if len(features) != 1 or features[0].modality != 'image':
         raise ValueError('图文采集仅支持单张图片')
     rec.start_probe()

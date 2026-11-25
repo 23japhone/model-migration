@@ -147,6 +147,8 @@ flowchart TD
 
 需要定位首个异常输出 Token 时，在 `accuracy.token_alignment` 下填写两项绝对容差。按失败分项选题并取得二遍预测包后，查看客户回执中的 `token_alignment[].token_report`。[字段、二遍选择与续接](skills/vllm-model-migration/references/task-quality.md#从未达标分项进入-token-预测对齐)
 
+使用 `accuracy.tensor_alignment` 可以继续定位运行时的模块、算子和张量元素。GPU 与 NPU 按同一份清单采集。现有用例支持用本地样本验证整个诊断链。[采集、客户证据和复算](skills/vllm-model-migration/skills/vllm-precision-align/references/tensor.md)
+
 ## 支持范围与当前限制
 
 - 当前面向 vLLM / vLLM-Ascend；SGLang、框架自动选择、重新量化、训练、多机调度及逐层诊断不在范围内。

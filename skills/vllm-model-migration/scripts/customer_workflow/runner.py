@@ -201,15 +201,24 @@ def discover(session, task, observations, work_root, install=None):
     guarded(session, default_image.STEP, lambda: default_image.discover(session, task, observations, work_root))
 
 
-def workflow(session, task, supplied, work_root, install):
-    if install is not None and install.is_preview:
-        return effects.preview(session, task, work_root, install)
+def previous_observations(session, supplied):
     observations = copy.deepcopy(supplied['observations'])
-    for name, value in session.value.get('resolved_observations', {}).items():
-        value = recovery.frozen_observation(name, value)
+    for name, prior in session.value.get('resolved_observations', {}).items():
+        value = recovery.frozen_observation(name, prior)
         if name in observations and recovery.frozen_observation(name, observations[name]) != value:
             raise ValueError('已冻结的 Agent 观察不能在续接时改变：' + name)
         observations[name] = value
+    return observations
+
+
+def workflow(session, task, supplied, work_root, install):
+    if install is not None and install.is_preview:
+        return effects.preview(session, task, work_root, install)
+    from .tensor_alignment.continuation import resume
+    resumed = resume(session, task, supplied, work_root, guarded)
+    if resumed is not None:
+        return resumed
+    observations = previous_observations(session, supplied)
     discover(session, task, observations, work_root, install)
     guarded(session, 'default_model', lambda: default_model.resolve(session, task, observations))
     prepared = guarded(session, 'preparation', lambda: prepare(session, task, observations, work_root))

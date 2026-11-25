@@ -3,6 +3,7 @@ import copy
 from pathlib import Path
 import re
 
+from .tensor_alignment import validate_policy as tensor_policy
 from .token_alignment import validate_policy
 from .quality.inputs import items as quality_items, normalize_one
 from .defaults.policy import CONTAINER, DATASETS, REPOSITORY, container_name, unspecified
@@ -10,7 +11,7 @@ from .defaults.policy import CONTAINER, DATASETS, REPOSITORY, container_name, un
 FIELDS = {
     'model': ('model_repository_id', 'path', 'model_name'),
     'environment': ('image_name', 'container_name', 'available_npu_devices'),
-    'accuracy': ('evaluator', 'datasets', 'gpu_baselines', 'token_alignment'),
+    'accuracy': ('evaluator', 'datasets', 'gpu_baselines', 'token_alignment', 'tensor_alignment'),
 }
 FILES = ('benchmark_plan.json', 'accuracy_plan.json', 'deployment.json')
 
@@ -127,6 +128,8 @@ def dataset_list(items, check):
 def accuracy(value):
     if not unspecified(value['token_alignment']):
         validate_policy(value['token_alignment'])
+    if not unspecified(value['tensor_alignment']):
+        tensor_policy(value['tensor_alignment'])
     baselines = value['gpu_baselines']
     if baselines == []:
         value['gpu_baselines'] = -1
@@ -162,7 +165,7 @@ def normalize(raw):
     if default(value['environment']['container_name']):
         value['environment']['container_name'] = container_name(value['model']['model_name'])
     accuracy = value['accuracy']
-    for key in ('gpu_baselines', 'token_alignment'):
+    for key in ('gpu_baselines', 'token_alignment', 'tensor_alignment'):
         if default(accuracy[key]):
             del accuracy[key]
     if default(accuracy['evaluator']):

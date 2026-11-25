@@ -54,6 +54,20 @@ seal 不重发推理。成功后用相同 session 调用 `operation=end`；多�
 
 seal 返回 `token_sample={path,sha256}`。该回执引用的单题 JSON 给出 `evidence_kind=runtime`、`sample_id`、`prompt_token_ids`、`output_token_ids`、`stop_reason`、`raw_logits` 和 `processed_probs`。后两项每步各含一条 `{path,sha256,dtype,size}`，其中 path 是相对于样本文件的小端二进制向量路径，size 是词表大小。原始 logits 按实际 dtype 保存。贪心路径直接以分数选词，采集端将真实 argmax 前的选词分数在 CPU 上用 FP64 Softmax 转为比较所需的概率。搬运样本时连同向量一起保留相对路径。stop_reason 记录服务返回的结束原因。长度截断为 length，明确的停止 Token 或字符串分别编码为 stop_token:<id> 和 stop_string:<text>。服务只给出 stop 且无具体触发项时记 unknown_stop。采集回执保留原始 finish_reason 和 stop_trigger。
 
+## 仅采集对齐计划指定的张量和算子
+
+第三遍取证使用同一题的完整原生生成请求。在单卡同步 Eager、单请求文本 greedy 服务上，worker 就绪记录须含 `tensor_alignment=true`。会话通过 `begin` 建立后，在转发原始评测请求前设置以下 arm。
+
+```json
+{"operation":"arm","source":{"path":"/work/session/capture-session.json","sha256":"<会话摘要>"},"sample_key":37,"native_id":37,"trace_id":"tensor-37","profile":"tensor_alignment","tensor_plan":{"path":"/work/plans/sample-37.json","sha256":"<计划摘要>"}}
+```
+
+`tensor-plan-v1` 按子集和样本 ID 选择一个从 1 起算的输出位置 `p`，冻结实际 prompt、截至 `p-1` 的 Token、模型身份和两端 `torch/vllm/msprobe` 的安装包版本。arm 将计划原件存入运行时共享挂载。worker 用进程内的软件版本和调度器的内部请求 ID、累计输出、有效输入 ID、位置及 logits 行定位目标前向。首个输出对应最后一个 prefill 块。后续位置在同一请求继续 decode。其他前向保留调度元数据，预测向量只为实际返回目标 Token 的前向落盘。生产链路在 `verify-agent-plus tensor-run` 以原生质量评测协议校验部署和权重文件身份，独立 arm 只绑定调用方给出的模型身份及本次部署回执。
+
+`calls` 逐项声明真实模块路径或 msProbe 注册 API 名、直接所属模块、模块内零基 `occurrence`，以及两端的输入、权重、状态、输出槽位。运行时在框架原生回调内筛选，支持 `input_args`、`input_kwargs`、模块 `parameters`、`output` 及原地操作的 `post_input_args/post_input_kwargs`。有效区可用 `capture_slice={"axis":0,"start":1,"stop":2}` 指定半开区间，先切片再向主机拷贝。数值标量存为 0 维张量。其他张量不会出现在此定向配置的 dump 中。捕获范围覆盖模块和已注册框架 API。融合的内部计算需要存在可选择的实际边界。
+
+seal 返回 `tensor_bundle={path,sha256}`。包内张量、两份预测向量和原生调用索引使用相对路径及 SHA256。每个张量可反查实际调用名、父模块、调用次序、参数路径、shape、dtype 及已采切片；原生索引绑定 trace、目标前向、输入位置、预测行、rank 和实测软件版本。缺少计划槽位时，seal 返回 `status=incomplete`、退出码 1，并封存已取得的张量。校验失败或发现额外张量文件时，不签发可比较的结果包。本模式的主机回归覆盖真实 msProbe CPU 采集器及模拟的会话回执，NPU 结果以目标部署的实际采集包为准。
+
 ## 从第二个输出 Token 回查
 
 ```json

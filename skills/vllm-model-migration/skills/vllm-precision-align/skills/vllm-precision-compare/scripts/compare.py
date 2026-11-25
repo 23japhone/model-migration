@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""任务质量和 Token 预测比较 CLI。"""
+"""任务质量、Token 预测及逐调用张量比较 CLI。"""
 import argparse
 from decimal import Decimal
 import json
@@ -124,6 +124,10 @@ def inspect_gpu(path, include_samples=False):
 
 
 def operation_for(action, value):
+    if action == "tensor":
+        from comparison.tensor import contract, report
+        contract.request(value)
+        return report.run
     if action == "token":
         token.token_request(value)
         return token.run
@@ -137,7 +141,7 @@ def main():
     operation = parser.add_mutually_exclusive_group(required=True)
     operation.add_argument("--request")
     operation.add_argument("--inspect-gpu", help="只读核验历史 GPU 资料并列出原生成绩")
-    parser.add_argument("--action", choices=("quality", "token"))
+    parser.add_argument("--action", choices=("quality", "token", "tensor"))
     parser.add_argument("--include-samples", action="store_true", help="核验 GPU 归档时同时提取逐题成绩")
     parser.add_argument("--output")
     parser.add_argument("--work-root")

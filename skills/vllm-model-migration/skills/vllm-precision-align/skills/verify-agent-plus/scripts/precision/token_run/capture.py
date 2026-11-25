@@ -11,7 +11,7 @@ from ..evidence import decode, write
 from ..quality.protocol import ref
 
 
-def invoke(root, request):
+def invoke(root, request, *, partial_tensor=False):
     label = request['operation'] + '-' + uuid.uuid4().hex
     path = root / (label + '.json')
     write(path, request)
@@ -23,6 +23,9 @@ def invoke(root, request):
     if not result.stdout.strip():
         raise ValueError(f"预测采集 {request['operation']} 未交付回执，详见 {label}.stderr")
     response = decode(result.stdout)
+    if (partial_tensor and request['operation'] == 'seal' and result.returncode == 1
+            and response.get('status') == 'incomplete' and response.get('tensor_bundle')):
+        return response
     if result.returncode or response.get('status') != 'completed':
         raise ValueError('预测采集 ' + request['operation'] + ' 失败：' + str(response))
     return response

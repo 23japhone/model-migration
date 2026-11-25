@@ -7,20 +7,24 @@ import uuid
 from ... import outputs, request as schema
 from ...evidence import read_bound, write_json
 from .adapters.state import read
-from .generation import token_prediction
+from .generation import tensor_alignment, token_prediction
 from .lease import identity, locked, no_lease, owned
 from .service import deployment, live
 from .tensors import file_ref
 
 
 def validate(request):
-    schema.fields(request, ['operation', 'source'], ['owner_pid', 'sample_key', 'native_id', 'trace_id', 'http', 'cache_output_index', 'cache_capture', 'profile'])
+    schema.fields(request, ['operation', 'source'], ['owner_pid', 'sample_key', 'native_id', 'trace_id', 'http', 'cache_output_index', 'cache_capture', 'profile', 'tensor_plan'])
     schema.fields(request['source'], ['path', 'sha256']); schema.absolute(request['source']['path'])
     if not schema.HASH.fullmatch(str(request['source']['sha256'])): raise ValueError('来源摘要无效')
     op = request['operation']
     permitted = {'begin': {'owner_pid'}, 'arm': {'sample_key', 'native_id', 'trace_id'},
                  'seal': {'trace_id', 'http'}, 'end': set(), 'status': set()}
-    if 'profile' in request:
+    profile = request.get('profile')
+    if profile == 'tensor_alignment':
+        tensor_alignment.validate_selection(request)
+        permitted['arm'].update(('profile', 'tensor_plan'))
+    elif 'profile' in request:
         token_prediction.validate_selection(request)
         permitted['arm'].add('profile')
     if 'cache_output_index' in request:
@@ -52,7 +56,7 @@ def validate_full_request(request):
 
 def valid_sample_key(request):
     value = request['sample_key']
-    return (isinstance(value, str) and bool(value)) or (request.get('profile') == 'token_prediction' and type(value) is int)
+    return (isinstance(value, str) and bool(value)) or (request.get('profile') in ('token_prediction','tensor_alignment') and type(value) is int)
 
 
 def validate_operation(request):
@@ -105,6 +109,8 @@ def begin(request, target, run_id):
 
 
 def verify_arm(request, root, ready, preparation):
+    if request.get('profile') == 'tensor_alignment':
+        return tensor_alignment.verify_worker(ready)
     if 'profile' in request:
         return token_prediction.verify_worker(ready)
     if ready.get('mode') == 'aclgraph':
@@ -125,6 +131,8 @@ def arm(request, root, lease, ready, preparation):
     if any(row['trace_id'] == request['trace_id'] for row in lease['sealed']): raise ValueError('trace_id 已使用')
     verify_arm(request, root, ready, preparation)
     folder = root / ('request-' + uuid.uuid4().hex); folder.mkdir(mode=0o700)
+    if request.get('profile') == 'tensor_alignment':
+        tensor_alignment.snapshot_plan(request, folder)
     write_json(folder / 'intent.json', {**request, 'request_id': request['trace_id'], 'session_mode': True})
     if 'rank_workers' in ready:
         from .parallel.topology import bind_at_arm

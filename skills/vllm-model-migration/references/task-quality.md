@@ -68,3 +68,7 @@ Agent 用顶层 `model.model_repository_id` 查询 Hugging Face 发布仓库。�
 二遍采集面向定界内的单卡同步 Eager 文本贪心请求。新建的客户单卡服务会预备空闲适配器，在正式复测时才按题开启采集。vLLM 0.20.2 配方未指定调度模式时启用同步调度，显式要求异步调度的服务无法使用该采集方式。已存在的服务需持有支持 `token_prediction` 的部署回执。通过内部 `context.evidence` 提供与原质量报告 SHA256 绑定的 GPU 预测包，同一任务用原 run-id 和 `--resume` 续接。已有两端证据时直接比较。缺 GPU 包时先交付选题清单。二遍 NPU 原生评分和预测采自同一个 HTTP 请求。
 
 在 `token_alignment[].token_report` 查看每题从 1 计数的 `first_anomalous_token`、首个差异的种类、CPU 复核及同轮质量退化能否复现。测试数据须显式声明 `evidence_kind=synthetic`。独立调用、预测包格式和判定细节见[阶段契约](../skills/vllm-precision-align/references/contract.md)和[单题比较契约](../skills/vllm-precision-align/skills/vllm-precision-compare/references/token.md)。
+
+### 按失败位置运行第三遍
+
+填写 `accuracy.tensor_alignment` 后，技能依据双端第二遍仍能共同运行的首异常位置生成 L0/L1 采集清单。使用原 run-id 补交 GPU 证据，查看 `tensor_alignment[].tensor_report` 中的设备、题号、回执和槽位坐标。[第三遍采集与续接](../skills/vllm-precision-align/references/tensor.md)
