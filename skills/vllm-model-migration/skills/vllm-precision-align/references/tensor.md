@@ -4,12 +4,12 @@
 
 ## 客户任务与独立入口
 
-在已有质量及 Token 任务的 `task.json` 加入 `accuracy.tensor_alignment`。例如取 `{"atol":0.001,"rtol":0.0001}`，或用 `{}` 只报告浮点误差。省略时按已有配置执行。第二遍的 `accuracy.token_alignment` 继续使用自己的两项绝对容差。已有与本次质量报告匹配的外部 Token 报告时，也可随上下文提供。
+新建客户任务时在 `task.json` 中声明 `accuracy.tensor_alignment`。例如取 `{"atol":0.001,"rtol":0.0001}`，或用 `{}` 保留浮点误差观测；整数、布尔值、结构和非有限值仍按比较契约判定。第二遍的 `accuracy.token_alignment` 使用自己的两项绝对容差。也可在上下文提供与本次质量报告匹配的外部 Token 报告。已有客户任务若从未声明张量对齐，可用新 run-id 启用，或携带已冻结的上游报告独立调用阶段。
 
-独立调用的请求包含 `schema_version="1.0"`、`quality_report`、`token_report`、`tensor_alignment` 和数组 `evidence`。两个报告及数组项使用 `{path,sha256}` 引用。需要本地 NPU 采集时再给首轮冻结的 `native_request`。命令示例：
+独立调用的请求包含 `schema_version="1.0"`、`quality_report`、`token_report`、`tensor_alignment` 和数组 `evidence`。两个报告及数组项使用 `{path,sha256}` 引用。需要本地 NPU 采集时再给首轮冻结的 `native_request`。以下命令中，`MIGRATION_SKILL_ROOT` 指向已安装的完整 `vllm-model-migration` 目录，其下可见 `SKILL.md`、`scripts/` 和 `skills/`。
 
 ```bash
-python3 scripts/precision.py --action tensor --request "$REQUEST" --work-root "$WORK_ROOT" --run-id "$RUN_ID"
+python3 "$MIGRATION_SKILL_ROOT/skills/vllm-precision-align/scripts/precision.py" --action tensor --request "$REQUEST" --work-root "$WORK_ROOT" --run-id "$RUN_ID"
 ```
 
 只有第一遍失败范围内、第二遍两端都有预测且比较结果为 `mismatch` 的题进入取证。目标是第 `p` 个输出的预测行，前文为 prompt 加前 `p-1` 个实际接受 ID；分块 prefill 只取包含最后一个有效 prompt 位置的前向。两端的物理 forward_id 可不同。相同选词下的 logits 或概率超限同样触发采集。单侧提前结束、仅停止原因不同和输入不一致在报告中单列。
@@ -18,7 +18,7 @@ python3 scripts/precision.py --action tensor --request "$REQUEST" --work-root "$
 
 随 `context.evidence` 提交一个 `tensor-scope-v1` 双端映射，或分别提供两端的 `tensor-inventory-v1` 可观察调用清单。清单可从实际模型模块、已绑定的 API 名和已核验签名整理。每个模型用首轮协议的 `model_identity`。异构融合按已经核对的共同输入输出边界映射。重名调用各用独立逻辑 ID 与从零计数的层内 `occurrence`。没有可证明的映射时，阶段返回 `needs_scope`。
 
-以下是一项模块映射的 `calls[]` 示例。真实 scope 还应写入 `runtime_versions`，分别记录两端的 `torch`、`vllm` 与 `msprobe` 版本。模型身份、原始质量报告、单题比较、预测记录、目标位置、前文和共同清单都进入单题计划。
+以下是一项模块映射的 `calls[]` 示例。真实双端映射在 `runtime_versions.gpu`、`runtime_versions.npu` 各填写 `torch`、`vllm`、`msprobe` 三个实际版本字符串。分别提交两份 inventory 时，每份用 `hardware` 标明本端，用顶层 `versions` 填写这三个版本。模型身份、原始质量报告、单题比较、预测记录、目标位置、前文和共同清单都进入单题计划。
 
 ```json
 {
@@ -38,7 +38,7 @@ python3 scripts/precision.py --action tensor --request "$REQUEST" --work-root "$
 
 ## 客户 GPU 采集与交付
 
-在客户原有 vLLM 评测环境安装已经核对过的 msProbe，将本包 `verify-agent/scripts` 和发布目录的 `skills/vllm-model-migration/scripts` 加入 worker 的 Python 模块搜索路径。在单请求评测代理已经把稳定题号、服务 trace 和 worker 内部请求 ID 绑定之后，使用下述上下文包住同一请求的整个 execute/sample 周期。适配器针对 vLLM V1 的同步 GPUModelRunner 接口，按真实调度、已接受前文、logits_indices 和采样结果定位前向。模型身份取实际加载权重清单的首轮协议摘要。
+在运行 vLLM GPU worker 的环境中使用已核对版本的 msProbe。将完整 Skill 放在该 worker 可见的位置，把 `$MIGRATION_SKILL_ROOT/skills/vllm-migration-execute/skills/verify-agent/scripts` 和 `$MIGRATION_SKILL_ROOT/scripts` 加入 worker 的 Python 模块搜索路径。前者提供 `verification.gpu_capture`，后者提供权重核验所用的 `model_cache`。在单请求评测代理已经把稳定题号、服务 trace 和 worker 内部请求 ID 绑定之后，使用下述上下文包住同一请求的整个 execute/sample 周期。适配器针对 vLLM V1 的同步 GPUModelRunner 接口，按真实调度、已接受前文、logits_indices 和采样结果定位前向。模型身份取实际加载权重清单的首轮协议摘要。
 
 ```python
 from verification.gpu_capture import capture_request
@@ -55,16 +55,16 @@ NPU 端核对 GPU 材料后，通过 `validator.py --action tensor-run` 重用�
 
 ## 续接与报告
 
-沿用原 run-id 和 `migrate.py --task … --context … --resume <上次客户回执> …`。只改容差时同时更新上下文的 `task_source` 摘要。已完成交付且上下文只补三遍材料时，客户入口直接使用已冻结的上游回执。也可独立调用阶段或只读比较器做离线复算。
+客户任务已声明 `accuracy.tensor_alignment` 时，可沿用原 run-id 和 `migrate.py --task … --context … --resume <上次客户回执> …`。只改张量容差时保留原 task.json 路径和其他客户字段，同时更新上下文的 `task_source` 摘要。三文件已交付、已有单题 Token 报告且上下文仅补充三遍材料时，客户入口直接复用冻结的上游回执。也可独立调用阶段或离线比较器。
 
 `customer-manifest.json` 的 `tensor_alignment[]` 指向各数据集的报告。查看 `cases[]` 中的目标位置、清单、GPU/NPU 核验、目标步能否复现、比较回执和缺项。已证实超限的调用保留其坐标、双端原值与 CPU 误差；上游输入已漂移时，输出差异用于定位传播路径。只在所需操作数、等价语义和 CPU 参考齐备时给出 CPU 结论。
 
 第三遍在两端分别核对同一题、同一前文和目标位置的第二遍记录。接受的 Token ID 须相同，原始 logits 和处理后概率使用第二遍的容差。任一端未复现时，查看该端比较回执；GPU 预测未复现会在启动 NPU 重跑前结束该题。提交的材料无法绑定题目时，可从报告的 `uncovered` 查询文件引用及原因。
 
-无设备的验证方式是在仓库根运行以下命令。生成器构造第一遍质量证据、两端第二遍预测、正常与人工扰动的 GPU 张量、对照端张量，并实际调用公开的 Token 和 Tensor 阶段。输出根需要使用新目录。
+维护源码仓的 `tests/` 中提供无设备验证生成器。在该仓库根目录使用已有 PyTorch 的 Python 环境运行以下命令，输出到新目录。它会构造第一遍质量证据、两端第二遍预测、正常与人工扰动的 GPU 张量、对照端张量，并调用公开的 Token 和 Tensor 阶段。仅有已安装 Skill 的使用方可用前述公开命令处理自己的证据包。
 
 ```bash
-python3.12 -B tests/vllm-model-migration/tensor_stage_cases/build_tensor_stage_fixture.py --output "$NEW_FIXTURE_DIR"
+python3 -B tests/vllm-model-migration/tensor_stage_cases/build_tensor_stage_fixture.py --output "$NEW_FIXTURE_DIR"
 ```
 
 查看输出的 `fixture-result.json` 和关联报告。模拟输入保留 `evidence_kind=synthetic`，阶段汇总中的 `simulated` 和 `comparison_result` 分别说明来源及数值结果。

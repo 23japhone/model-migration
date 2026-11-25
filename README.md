@@ -102,6 +102,7 @@ flowchart TD
     Q --> R[质量报告或缺项原因]
     R -. 启用 Token 对齐且有可比的未达标分项 .-> T[选取退化题或失败子集]
     T -. 取得双端预测后 .-> C[逐题报告首个异常输出位置]
+    C -. 启用张量对齐且该位置有双端预测差异 .-> X[按共同清单比较该步的模块和算子张量]
 ```
 
 | 层级 | Skill | 职责 |
@@ -113,7 +114,7 @@ flowchart TD
 | ↳ 迁移任务 | `vllm-model-precheck`、`adapt-agent`、`vllm-model-register`、`verify-agent` | 分别负责预检、源码适配、框架注册、部署功能验收；verify-agent 另提供可选运行时采集 |
 | 精度阶段 | `vllm-precision-align` | 组织测量或历史分析，汇总比较与目标结论 |
 | ↳ 精度任务 | `verify-agent-plus` | 执行原生精度评测、复核已有成绩，按选题清单重跑并关联同一请求的评分和预测 |
-| ↳ 精度任务 | `vllm-precision-compare` | 比较 GPU 与 NPU 的总分、分项和逐题评分，或比较同一题的逐步预测并定位首个异常 |
+| ↳ 精度任务 | `vllm-precision-compare` | 比较总分、分项和逐题评分，定位首个异常 Token，按调用比较 GPU/NPU 张量及适用的 CPU 参考 |
 | ↳ 精度任务 | `three-step-demarcation` | 按需对服务链路做三步定界 |
 
 阶段通过公开 CLI 和文件契约调用任务。`verify-agent` 唯一管理模型服务，精度任务只管理自有评测进程，borrowed 服务保持运行。独立步骤失败时保留其他有效成果，仅阻塞其实际消费者。
@@ -147,11 +148,11 @@ flowchart TD
 
 需要定位首个异常输出 Token 时，在 `accuracy.token_alignment` 下填写两项绝对容差。按失败分项选题并取得二遍预测包后，查看客户回执中的 `token_alignment[].token_report`。[字段、二遍选择与续接](skills/vllm-model-migration/references/task-quality.md#从未达标分项进入-token-预测对齐)
 
-使用 `accuracy.tensor_alignment` 可以继续定位运行时的模块、算子和张量元素。GPU 与 NPU 按同一份清单采集。现有用例支持用本地样本验证整个诊断链。[采集、客户证据和复算](skills/vllm-model-migration/skills/vllm-precision-align/references/tensor.md)
+若 Token 报告已定位同一前文下的预测差异，可用 `accuracy.tensor_alignment` 对比该步的模块和算子。在客户回执的 `tensor_alignment[].tensor_report` 中查看超限调用、元素坐标和缺项。当前覆盖单卡、单请求、同步 Eager 文本贪心生成，离线用例使用合成 GPU/NPU 证据。[采集、客户证据和复算](skills/vllm-model-migration/skills/vllm-precision-align/references/tensor.md)
 
 ## 支持范围与当前限制
 
-- 当前面向 vLLM / vLLM-Ascend；SGLang、框架自动选择、重新量化、训练、多机调度及逐层诊断不在范围内。
+- 当前面向 vLLM / vLLM-Ascend；SGLang、框架自动选择、重新量化、训练、多机调度及自动算子根因定位不在当前范围内。
 - 提供性能测试配置交接，不执行正式压测、性能优化或性能目标验收；不提供自动异常修复循环。
 - 显式 AISBench 可执行精度测试，当前不支持三个 JSON 的完整交付；不会自动切换到 EvalScope。
 - 不提供 Agent 宿主插件发布、HTTP 服务或后台调度。vLLM 模型注册的 `mode=plugin` 仍是业务能力。

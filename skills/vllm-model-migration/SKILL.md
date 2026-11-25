@@ -7,7 +7,7 @@ description: 接收客户 prompt 与 task.json，完成 vLLM-Ascend 模型准备
 
 总入口负责范围、依赖和交接，任务实现仍归各阶段和任务所有。当前支持三个阶段的完整依赖链、显式续接和最终服务策略。 不将静态计划通过描述为部署、精度或整个流程已完成。
 
-交付或搬迁时保留完整总 Skill 目录及嵌套的 `skills/`、`scripts/`、`references/` 和 `assets/`。路径支持从自身位置读取 `references/skill-layout.json`，按[静态资源路径契约](references/contract.md#静态资源路径契约)枚举当前资源并记录实际摘要，不需要构建或刷新资源清单。不依赖仓库目录、Git、调用时 cwd 或额外 PYTHONPATH；单独复制某个子 Skill 不构成完整运行资源。请求、资产和证据放在完整总 Skill 根之外。
+交付或搬迁时保留完整总 Skill 目录及嵌套的 `skills/`、`scripts/`、`references/` 和 `assets/`。路径支持从自身位置读取 `references/skill-layout.json`，按[静态资源路径契约](references/contract.md#静态资源路径契约)枚举当前资源并记录实际摘要，不需要构建或刷新资源清单。运行公开 CLI 不依赖仓库目录、Git、调用时 cwd 或额外 PYTHONPATH；单独复制某个子 Skill 不构成完整运行资源。客户 GPU worker 若直接导入张量采集适配器，需按[采集说明](skills/vllm-precision-align/references/tensor.md#客户-gpu-采集与交付)配置该进程的模块搜索路径。请求、资产和证据放在完整总 Skill 根之外。
 
 EvalScope 输出达到已配置上限时，由 [verify-agent-plus](skills/vllm-precision-align/skills/verify-agent-plus/SKILL.md) 保留原生评分并记录截断，其他有效性检查通过即可完成该项评测；总入口不另加“零截断”门槛。原始基线与历史失败结论保持不变，不能用新规则补造旧流程的 completed 回执。
 

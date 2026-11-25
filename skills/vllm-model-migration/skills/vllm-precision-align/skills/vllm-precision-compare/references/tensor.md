@@ -1,6 +1,10 @@
 # 张量与算子对齐的离线比较
 
-用 `python3 scripts/compare.py --action tensor --request /abs/request.json --output /abs/report.json` 校验已取得的采集包。CPU 在本机执行。读取原生张量需要已安装 PyTorch，读取 `.npy` 还需要 NumPy。请求和输出也支持本 Skill 的 `--work-root`、`--run-id` 与 `--plan`。预览只检查请求形状及输出位置。
+设 `MIGRATION_SKILL_ROOT` 为完整 `vllm-model-migration` 的安装根目录。使用有 PyTorch 的本地 Python 校验采集包并执行 CPU 参考；读取 `.npy` 还需要 NumPy。下面的命令将报告写到包外。也可用 `--work-root` 和 `--run-id` 指定独立运行目录。加 `--plan` 只检查请求形状及输出位置。
+
+```bash
+python3 "$MIGRATION_SKILL_ROOT/skills/vllm-precision-align/skills/vllm-precision-compare/scripts/compare.py" --action tensor --request "$REQUEST" --output "$REPORT"
+```
 
 ## 输入与范围
 

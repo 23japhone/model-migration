@@ -4,17 +4,17 @@
 
 ## 当前验证基准
 
-2026-11-25，两项采集改动合入本地 `dev`（`12c6238`）后，Python 3.12 全量离线回归 770 项通过，另行复跑的多卡专项 26 项、Token 对齐专项 50 项及 `source_contract` 52 项均通过。结构审计为 0 个错误、321 条软提示。下文各节的套件数量和设备结果对应各自验收时的版本。
+2026-11-25，张量与算子对齐合入本地 `dev`（`a115d86`）。Python 3.12 使用 CPU PyTorch 和 msProbe 运行全量离线回归，827 项通过，另行复跑的 `source_contract` 52 项通过。源码结构审计为 0 个错误、357 条软提示。各专项的设备、数据来源和历史版本见下文。
 
 ### 2026-11-25 运行时张量与算子对齐
 
-Skill 样例按照失败题号生成独立的 GPU 和 NPU 输入。运行下面的测试入口可在新目录保存评分、两端预测、msProbe 接口所需的映射、独立张量文件，以及公开阶段的比较回执。
+在维护仓库根目录运行下面的生成器。它按失败题号构造 GPU 和 NPU 数据，将评分证据、两端预测、调用映射、张量文件和公开阶段回执保存到指定的新目录。
 
 ```bash
-python3.12 -B tests/vllm-model-migration/tensor_stage_cases/build_tensor_stage_fixture.py --output "$NEW_FIXTURE_DIR"
+python3.12 -B tests/vllm-model-migration/tensor_stage_cases/build_tensor_stage_fixture.py --output "$(mktemp -d)/fixture"
 ```
 
-该次全量离线回归使用 Python 3.12 和本机已有的 msProbe，827 项通过。回归覆盖同端预测重放、CPU 标量配置冲突、畸形或错题采集包的隔离。独立运行的 source_contract 52 项通过。Skill 样例中，第 2 个输出的原始 logits 已偏离，实际接受 ID 相同。GPU 的 `add0.y[1,0]` 由 4 调整到 8，运行时输入的 CPU FP64 重算结果为 4。正常对照通过，人工扰动时 4 个元素中有 1 个超限，放宽到绝对容差 4 可复用相同采集清单。独立 runtime 钩子测试通过硬件无关的 PyTorch 运行，需将已安装的 msProbe 加入测试解释器的模块路径。普通源发布时可以运行下列完整套件及专项。
+专项回归覆盖同端预测重放、CPU 标量配置冲突、畸形或错题采集包的隔离。模拟样例中，第 2 个输出的原始 logits 已偏离，实际接受 ID 相同。GPU 的 `add0.y[1,0]` 由 4 调整到 8，运行时输入的 CPU FP64 重算结果为 4。正常对照通过，人工扰动时 4 个元素中有 1 个超限，放宽到绝对容差 4 可复用相同采集清单。独立 runtime 钩子测试通过硬件无关的 PyTorch 运行，需将已安装的 msProbe 加入测试解释器的模块路径。在维护仓库根目录可运行以下完整套件及专项。
 
 ```bash
 python3.12 -B -m unittest discover -s tests/vllm-model-migration -p 'test_*.py' -q

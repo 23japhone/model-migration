@@ -15,7 +15,7 @@ EvalScope 配置中的 `limit` 可选，由用户输入正整数作为每个 sub
 
 EvalScope 输出触及已配置长度上限时，保留原生评分和全部样本，记录 `output_truncation`，不单凭截断判整个评测失败。原生 `max_tokens` 必须与 HTTP `length` 对应，生成 token 数须等于请求上限；推理错误、覆盖、内容一致性、上下文及其他校验照常生效。仅记录截断不代表样本答对或模型达标。AISBench 结束策略保持不变；冻结基线及历史失败报告不改写。
 
-当任务质量对齐交接失败题号时，`scripts/validator.py --action token-run` 执行已选题的原生重跑，绑定同一请求的 Token 预测及逐题评分。见[定向重跑契约](references/contract.md#token-定向重跑)。
+当任务质量对齐交接失败题号时，`scripts/validator.py --action token-run` 执行已选题的原生重跑，绑定同一请求的 Token 预测及逐题评分。见[Token 定向重跑契约](references/contract.md#token-定向重跑)。若阶段已冻结目标前向的采集清单，使用 `--action tensor-run` 取得 NPU 张量包和同题重放评分。[张量定向重跑契约](references/contract.md#张量定向重跑)
 
 ## 执行步骤
 
@@ -58,5 +58,3 @@ python3 /完整资源/skills/vllm-model-migration/skills/vllm-precision-align/sk
 显式 backend 优先；未声明 backend 且使用原有 `.py` 配置的请求按 AISBench 兼容识别，其他新请求默认 EvalScope。旧请求明确填写的 version 仍作为安装版本期望值核验，不查询最新；直接精度请求省略它即可跟随稳定发布；客户生成请求保持实际明确版本。工具不可用或配置不兼容时阻塞，不自动回退。历史分析依据来源工具及实际版本，不联网核验 latest。EvalScope 与 AISBench 的分数不能直接作为彼此的相对基线。新版原生格式仍须通过配置与证据核验，不能将尚未发布的版本表述为已经验收。
 
 示例：[默认测量请求](assets/request.example.json)、[EvalScope 配置](assets/evalscope-config.example.json)、[AISBench 请求](assets/request.aisbench.example.json)、[AISBench 配置](assets/aisbench-config.example.py)、[分析请求](assets/analyze.example.json)。示例路径和摘要必须替换为实际资料，不能作为运行证据。
-
-`--action tensor-run` 在原生质量协议下重放已定位的单题，使用同一请求对应的 runtime 捕获回执封存指定前向。输入包含 `runtime` 评测请求 `native_request`、`quality_report`、`selection` 与 `tensor_plans`。就绪的 Skill 入口可直接准备这些请求。[三遍采集契约](../../references/tensor.md)
