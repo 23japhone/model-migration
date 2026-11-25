@@ -33,11 +33,11 @@
 
 ## msProbe 采集准备
 
-使用[采集请求示例](../assets/worker-capture.request.example.json)在 verify 输入中声明可选的 `worker_capture`。Eager 服务使用 `adapter="msprobe_pytorch_eager"`。单卡图服务使用 `adapter="msprobe_pytorch_aclgraph"`，部署选项和会话范围见[图模式采集](runtime-capture.md#单卡-aclgraph-文本请求)。两种适配器均须声明宿主绝对路径 `output_root`，可选 `expected_msprobe_version` 精确匹配目标解释器安装的 `mindstudio-probe` 分发包版本。未知字段、非法类型和相对路径按输入无效处理。普通部署可省略整个对象。可选 `decode_cache={"max_snapshot_bytes":16777216}` 设置一次前向内所有快照共用的字节预算。可选 layer_scope=all（缺省）或 legacy_pair，完整模型应按实际数据量设置预算。迁移阶段照常引用该请求文件及其 SHA256，公开的 `--plan` 只检查请求形状。
+使用[采集请求示例](../assets/worker-capture.request.example.json)在 verify 输入中声明可选的 `worker_capture`。Eager 服务使用 `adapter="msprobe_pytorch_eager"`。单卡图服务使用 `adapter="msprobe_pytorch_aclgraph"`，部署选项和会话范围见[图模式采集](runtime-capture.md#单卡-aclgraph-文本请求)。两种适配器均须声明宿主绝对路径 `output_root`，可选 `expected_msprobe_version` 精确匹配目标解释器安装的 `mindstudio-probe` 分发包版本。未知字段、非法类型和相对路径按输入无效处理。普通部署可省略整个对象。可选 `decode_cache={"max_snapshot_bytes":16777216}` 设置一次前向内所有快照共用的字节预算。全层观察使用 `layer_scope=all`（默认）。单卡 Eager 的旧式单步观察可选 `legacy_pair`，ACLGraph 的缓存观察要求 `all`。完整模型应按实际数据量设置预算。迁移阶段照常引用该请求文件及其 SHA256，公开的 `--plan` 只检查请求形状。
 
-服务须为自有、显式 `--enforce-eager`、单 NPU 或单机双 NPU 纯 TP=2。按声明及目标环境核对并行设置。已有 `--additional-config` 指定的 `dump_config_path` 或目标环境的 `MSPROBE_CONFIG_PATH` 会产生配置冲突。Docker 请求须在创建容器前显式声明可写 bind mount；`output_root` 可为挂载源或其子目录，覆盖本次尝试的映射须唯一、未被其他目标挂载遮蔽。Linux process 使用同一宿主路径。输出根须在 Skill、注册资源、模型和构建输入之外。
+采集服务须为自有。Eager 适配器要求显式 `--enforce-eager`，支持单 NPU 或单机双 NPU 纯 TP=2。ACLGraph 适配器要求单 NPU，启动时省略 `--enforce-eager`，通过 `--compilation-config` 指定 `FULL` 或 `PIECEWISE`。按声明及目标环境核对并行设置。已有 `--additional-config` 指定的 `dump_config_path` 或目标环境的 `MSPROBE_CONFIG_PATH` 会产生配置冲突。Docker 请求须在创建容器前显式声明可写 bind mount；`output_root` 可为挂载源或其子目录，覆盖本次尝试的映射须唯一、未被其他目标挂载遮蔽。Linux process 使用同一宿主路径。输出根须在 Skill、注册资源、模型和构建输入之外。
 
-注册复验后、模型启动前，在 `output_root/<attempt_id>/msprobe.json` 生成 PyTorch 配置，`dump_path` 指向载体视角的本次 `dump/`。配置使用真实张量、模块和受支持 API 的前向输入输出（`task=tensor`、`level=mix`、`risk_level=ALL`、`tensor.data_mode=["forward"]`），初始 `dump_enable=false`。短探针使用目标 Python、有效环境和载体身份，导入 PyTorch 调试入口，调用目标版本的配置解析器并核对结果。探针将唯一校验内容写入预定输出目录，宿主读回一致后移除校验文件。准备阶段封存配置和适配器源码摘要。服务启动时加载适配器；模型、Eager、并行和调度参数沿用原请求。
+注册复验后、模型启动前，在 `output_root/<attempt_id>/msprobe.json` 生成 PyTorch 配置。Eager 的 `dump_path` 指向载体视角的本次 `dump/`，ACLGraph 指向 `dump/native/`。Eager 配置保存模块和受支持 API 的前向输入输出（`task=tensor`、`level=mix`、`risk_level=ALL`、`tensor.data_mode=["forward"]`），初始 `dump_enable=false`。短探针使用目标 Python、有效环境和载体身份，导入 PyTorch 调试入口，调用目标版本的配置解析器并核对结果。探针将唯一校验内容写入预定输出目录，宿主读回一致后移除校验文件。准备阶段封存配置和适配器源码摘要。服务启动时加载适配器；模型、Eager、并行和调度参数沿用原请求。
 
 每次声明采集的 verify 尝试在其证据目录生成 `worker-capture-preparation.json`。其中有 `run_id`、`attempt_id`、适配器、目标解释器；随进度记录实际版本、`config={path,runtime_path,sha256}`、`dump={path,runtime_path}`、探针观察及读写结果。宿主消费者用 `path`，worker 用 `runtime_path`。结果见 `verification-manifest.json` 的 `detailed_report.worker_capture={status,reason,receipt:{path,sha256}}`，不参与普通功能成功判定。已完成最后一次 worker 身份复核的部署交接也包含该字段，和 `final_service` 一起写入后再计算交接摘要。
 
@@ -118,7 +118,7 @@ process长期服务的主PID已退出而原组号仍有成员时，不能以成�
 
 全程回执也可选择 `view="timeline"`、`forward_id` 或零基 `prompt_position`，与 `output_index` 互斥。时间线给出半开位置区间及可空的输出序号，前向和位置查询沿用层及快照选择条件。见[完整请求回查](runtime-capture.md#从完整请求回查每次前向)。
 
-针对已采集缓存的前向，查询还返回 `decode_cache`。可选字符串 `cache_snapshot` 使用具体快照名，例如 `ssm.after`，返回该张量完整的 `values` 和 `shape`。可用零基 layer_index 或完整 layer 路径定位实际层。全层模式另支持 input、output 激活快照；按层回查 K/V、卷积与递归状态的字段、完整数值文件和不完整回执见[缓存采集契约](runtime-capture.md#从一次-decode-回查层缓存)。
+针对已采集缓存的前向，查询还返回 `decode_cache`。可选字符串 `cache_snapshot` 使用具体快照名，例如 `ssm.after`，返回该张量完整的 `values` 和 `shape`。可用零基 layer_index 或完整 layer 路径定位实际层。全层模式另支持 input、output 激活快照；普通注意力和 GDN 的快照名见[单步缓存查询](runtime-capture.md#从一次-decode-回查层缓存)。单卡 Eager 的压缩 KV 和 RoPE 写后值分别使用 `mla.latent.after` 和 `mla.rope.after`。[MLA 缓存字段](runtime-capture.md#单卡同步-eager-的-mla-缓存)
 
 ## 正式评测采集会话
 
@@ -128,6 +128,8 @@ begin 核验自有 retained 服务、新适配器真实 worker/engine/frontend �
 
 前端从实际 engine_client.generate 参数取得 external ID，经 InputProcessor 记录 engine internal ID，并记录完整响应 ID 与最终引擎 Token 序列；不会将 Chat 请求套成固定 cmpl 后缀。worker 前向覆盖模型执行至 compute_logits；关闭 debugger 后复制原始全词表 logits，argmax 前复制处理后分数，调度器输出为最终接受依据。每个已开启前向都有 begin/end。seal 核对正式响应、接受序列、前文、所有 Token 前向、实际模块/API 调用与文件后生成 capture-receipt。EOS 短输出允许封存，不伪造第二个 Token。
 
-单卡会话支持同步 Eager 文本 greedy。双卡 TP=2 会话扩展到单图、SSE 和显式 seed 的随机采样，细节见[双卡生成与回查](runtime-capture.md#双卡图文流式与固定-seed-采样)。覆盖范围为实际模块与 msProbe 注册 API；不保证设备 kernel 内部或未注册扩展内部可见。hook 包及目标源码摘要仍须匹配。采集失败不更改普通部署生命周期结论；会话操作自身失败返回 1，输入错误 2，成功 0。end 仅释放本次会话，未完结实际请求保留租约；不停止模型或其他任务。采集回执与查询产物独立于部署交接，后者不回写。
+单卡文本 greedy 会话支持同步 Eager 和 ACLGraph，图服务可回查每次实际重放。双卡 TP=2 的同步 Eager 会话还可采集单图、SSE 和显式 seed 的随机采样。[单卡图服务](runtime-capture.md#单卡-aclgraph-文本请求) · [双卡生成与回查](runtime-capture.md#双卡图文流式与固定-seed-采样)
+
+msProbe 的覆盖范围为实际模块与注册 API；不保证设备 kernel 内部或未注册扩展内部可见。hook 包及目标源码摘要仍须匹配。采集失败不更改普通部署生命周期结论；会话操作自身失败返回 1，输入错误 2，成功 0。end 仅释放本次会话，未完结实际请求保留租约；不停止模型或其他任务。采集回执与查询产物独立于部署交接，后者不回写。
 
 单机 TP=2 的全程采集使用 `capture-session`。封存回执包含一次逻辑前向及两张卡的逐层原值索引。按输出或 prompt 位置读取时可指定 `rank`。设备、分片及快照预算的语义见[运行时采集](runtime-capture.md#单机-tp2-联合采集)。
