@@ -16,7 +16,7 @@
 
 所有动作通过同一个 `scripts/verify.py`，保留 `--request --work-root --run-id --plan`。`--plan` 只做静态检查，不验证来源材料、进程或设备。真实调用在部署的 Linux 宿主侧执行；Docker 使用已有显式可写 bind mount，配置同时记录宿主路径与容器路径。调用方与运行材料必须在同一可见路径空间；不存在自动 SSH 或跨机文件传输。
 
-会话要求自有且 retained 的单请求服务。同步 Eager 文本 greedy 支持单卡和单机多卡纯张量并行，单卡文本服务也可使用 ACLGraph 适配器。图文、SSE 与固定 seed 采样扩展使用双卡 Eager 会话。完整总 Skill 资源必须可访问，既有共享设备合同是依赖；单独复制 `capture/` 不足以部署。目标解释器必须已经安装兼容 msProbe。工具核对适配器源码、目标 vLLM/vLLM-Ascend 源码及挂点，不自动安装、升级或改变服务并行/图模式。`prepared` 仅证明准备成功，开始会话还需实际 worker、engine、frontend 就绪记录及当前服务身份。
+会话要求自有且 retained 的单请求服务。同步 Eager 文本 greedy 支持单卡和单机多卡纯张量并行，单卡文本服务也可使用 ACLGraph 适配器。单图、SSE 与固定 seed 采样使用单机多卡同步 Eager 会话。完整总 Skill 资源必须可访问，既有共享设备合同是依赖；单独复制 `capture/` 不足以部署。目标解释器必须已经安装兼容 msProbe。工具核对适配器源码、目标 vLLM/vLLM-Ascend 源码及挂点，不自动安装、升级或改变服务并行/图模式。`prepared` 仅证明准备成功，开始会话还需实际 worker、engine、frontend 就绪记录及当前服务身份。
 
 ## 无评测器的会话调用
 
@@ -40,7 +40,7 @@
 
 seal 不重发推理。成功后用相同 session 调用 `operation=end`；多题调用方逐题 arm、发送、seal，最后 end。`status` 只查询租约状态。控制请求成功返回 0，形状无效 2，运行或证据失败 1。活动请求失败时保留证据；end 对实际尚未结束的请求拒绝释放租约，防止混入后续采集。工具不自动清理其他持有者或失活租约。
 
-`capture-one` 是独立诊断入口，内部发送一次关闭采集的对照请求和一次开启采集的请求；需要“只发送一次实际请求”的调用方使用会话接口。
+单卡同步 Eager 的 `capture-one` 会发送两次请求，分别关闭和开启采集。单次实际请求或多卡采集使用 `capture-session`。
 
 ## 仅采集单题的 Token 预测
 
@@ -92,7 +92,7 @@ seal 返回 `token_sample={path,sha256}`。该回执引用的单题 JSON 给出 
 {"cache_capture":{"mode":"full_request","max_request_snapshot_bytes":6442450944}}
 ```
 
-以下为 V1 同步 Eager 文本 greedy 的全程配置，要求冷前缀、单请求、单卡或单机多卡纯张量并行。图服务的全程配置见[单卡 ACLGraph 文本请求](#单卡-aclgraph-文本请求)。全程与单输出模式分别使用 `cache_capture` 和 `cache_output_index`，一次 arm 只选其一。两项都省略即可仅启用 msProbe 作为对照。保存原始 HTTP 请求与响应并 seal 后，使用同一份 `source` 和 `request_id`，在 capture-read 请求中选择一种定位方式。
+以下为 V1 同步 Eager 文本 greedy 的全程配置，要求冷前缀、单请求、单卡或单机多卡纯张量并行。图服务的全程配置见[单卡 ACLGraph 文本请求](#单卡-aclgraph-文本请求)。全程模式使用 `cache_capture`。单卡 Eager 还可用 `cache_output_index` 选择单次 decode，一次 arm 只选其一。两项都省略即可仅启用 msProbe 作为对照。保存原始 HTTP 请求与响应并 seal 后，使用同一份 `source` 和 `request_id`，在 capture-read 请求中选择一种定位方式。
 
 | 想查的内容 | 在请求中加入的字段 |
 | --- | --- |
@@ -149,8 +149,8 @@ Ascend MLA 目前支持未量化 BF16、PA 布局、128 Token 物理块、单卡
 | --- | --- |
 | 请求与输出范围 | 会话可串行处理多条请求，每次只允许一条在途请求；为每个实际输出 Token 建立索引。sample_key/native_id 由调用方提供，工具不生成评测题目清单 |
 | 查询与采集选择 | layer/api/occurrence 只筛选已落盘结果；msProbe 采集范围沿用原配置；可选缓存观察支持一个 decode 或冷前缀完整请求；全程模式使用全层范围 |
-| 预测与张量 | 开启数值采集时，greedy 请求保留产生输出所用的 logits 和选词分数，双卡固定 seed 采样另存抽样前概率。只为已识别布局提供 Token 切片，其余保留整张量。prompt 每个位置的全词表和每个中间选词步骤超出采集范围。 |
-| 执行路径 | 单卡 ACLGraph 已验收 Llama 整图和 Qwen 分段图的文本请求。双卡 V1 同步 Eager 适配单图、SSE 和带 seed 的全词表随机采样。多请求并发、双卡图模式、beam、推测解码、音视频和多图仍待适配。 |
+| 预测与张量 | 开启数值采集时，greedy 请求保留产生输出所用的 logits 和选词分数，多卡固定 seed 采样可在输出 rank 查到抽样前概率。只为已识别布局提供 Token 切片，其余保留整张量。prompt 每个位置的全词表和每个中间选词步骤超出采集范围。 |
+| 执行路径 | 单卡 ACLGraph 已验收 Llama 整图和 Qwen 分段图的文本请求。单机多卡 V1 同步 Eager 支持单图、SSE 和带 seed 的全词表随机采样。多请求并发、多卡图模式、beam、推测解码、音视频和多图仍待适配。 |
 | 数据范围 | 实际模块及注册 API 的前向输入输出；可选缓存观察单独提供已适配层的算子边界、地址计划和状态快照。设备 kernel 内部未观测 |
 | 存储与恢复 | 当前配置同步保存真实张量；缓存原始字节受单前向预算和全程模式的请求预算限制，msProbe 仍按原配置保存；压缩去重、自动租约恢复和跨机传输未接入。离线查询依赖回执原路径，不是可自动搬迁的数据包 |
 
@@ -176,7 +176,9 @@ Chat 前端另审核了源文件 SHA256 `8c41af967ef813bf6fd2e2f16b8eedbbf6098d7
 
 ## 双卡图文、流式与固定 seed 采样
 
-图文、SSE 和固定 seed 随机采样沿用单请求、冷前缀、TP=2、同步 Eager、Model Runner V1 会话。HTTP 请求带 `return_token_ids=true`，流式请求保存客户端实际收到的 SSE 字节。关闭缓存观测时也保留 msProbe 及引擎接受序列。图像用例在服务启动时启用视觉塔，采用单图和视觉权重并行，关闭跨请求前缀和多模态处理器缓存。
+下表以双卡为例。单机多卡同步 Eager 的 Model Runner V1 按实际 TP 组封存证据，使用单请求和冷前缀。HTTP 请求带 `return_token_ids=true`，流式请求保存客户端实际收到的 SSE 字节。关闭缓存观测时也保留 msProbe 及引擎接受序列。图像用例在服务启动时启用视觉塔，采用单图和视觉权重并行，关闭跨请求前缀和多模态处理器缓存。
+
+2026-11-24 的双卡 NPU 实测封存了 5 次正式请求。Llama 文本流式 greedy 和固定 seed 采样各做了缓存观测开关对照。Qwen 单张红图仅完成关闭缓存观测的请求。红图开启缓存观测时的 K/V、GDN 原值、蓝图正式对照、图文与流式随机采样的组合，以及四卡、八卡的这些生成场景，仍待实机验证。
 
 | 查询字段（另需 source、request_id） | 返回内容 |
 | --- | --- |
