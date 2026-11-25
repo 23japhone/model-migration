@@ -1,16 +1,14 @@
 from pathlib import Path
 import json
-import shutil
 import sys
 import tempfile
 import unittest
 from types import SimpleNamespace
-from uuid import uuid4
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from worker_capture import native_fixture as native
-from worker_capture.session_fixture import write
-from worker_capture.parallel_cases.test_identity import VERIFY
+from worker_capture.parallel_cases.frames_fixture import add_frame
+from worker_capture.session_fixture import AGENT, BUNDLE, write
+sys.path.insert(0, str(BUNDLE / AGENT / 'scripts'))
 from verification.evidence import read_bound
 from verification.runtime.capture.adapters.parallel import share
 from verification.runtime.capture.parallel.receipt import collect
@@ -35,39 +33,7 @@ class RankEvidenceTests(unittest.TestCase):
         self.tokens = [7, 7]
         self.ids = []
         for n, (pos, count, ix) in enumerate([(0,2,None), (2,1,0), (3,1,1)]):
-            self.add_frame(n, pos, count, ix)
-
-    def add_frame(self, step, pos, count, ix):
-        fid = uuid4().hex
-        self.ids.append(fid)
-        identity = dict(internal_id='req', request_id='A', ordinal=step, position=pos,
-                        count=count, phase='prefill' if pos<3 else 'decode', output_index=ix or 0,
-                        schedule_id=uuid4().hex, forward_id=fid)
-        write(self.folder / f'dispatch-{step}.json', identity)
-        folder, calls = native.native_dump(self.root, step)
-        shutil.copytree(folder, folder.parent/'rank1')
-        for rank in range(2):
-            dest = self.folder / f'rank{rank}'
-            frame = {**identity, 'dispatch': identity, 'rank': rank, 'positions': list(range(pos,pos+count)),
-                     'input_ids': [7]*count, 'logits_indices':[count-1], 'step': step, 'probe_window_seconds':1,
-                     'dump': str((folder.parent/f'rank{rank}').relative_to(self.root)),
-                     'coverage': {'calls':{'input':calls, 'output':calls},
-                                  'modules':{'begin':native.MODULES,'end':native.MODULES},
-                                  'scope':'all_invoked_modules_and_msprobe_registered_apis'}}
-            write(dest/f'begin-{fid}.json',frame)
-            write(dest/f'end-{fid}.json',{**frame,'status':'completed'})
-            if rank==0 and ix is not None:
-                import struct
-                vector = [0.0]*100
-                vector[7] = 1
-                for key in ['raw','scores']:
-                    name = fid+'-'+key+'.bin'
-                    (dest/name).write_bytes(struct.pack('<100f',*vector))
-                    frame[key] = {'file':name, 'size':100, 'dtype':'torch.float32'}
-                frame['candidate']=7
-                write(dest/f'{fid}.json',frame)
-                write(dest/f'prediction-{ix}.json',frame)
-                write(self.folder/f'accepted-{ix}.json',dict(internal_id='req',forward_id=fid,output_index=ix,token_id=7))
+            self.ids.append(add_frame(self.root, self.folder, 2, n, pos, count, ix))
 
     def collect(self):
         return collect(self.root,self.folder,self.intent,{'rank_workers':self.members},self.mapped,self.tokens)
@@ -139,7 +105,8 @@ class RankEvidenceTests(unittest.TestCase):
             write_json(path, data)
             return file_ref(path, directory)
         source = ref('deployment.json', {})
-        topo = ref('parallel.json', {'world_size':2}, self.root)
+        topo = ref('parallel.json', {'world_size': 2, 'devices': [
+            {'physical_id': 6, 'visible_index': 0}, {'physical_id': 4, 'visible_index': 1}]}, self.root)
         prep = ref('prepare.json', {'parallel':topo}, self.root)
         config = ref('native-config.json', {}, self.root)
         ref('executor.json', {'output_rank':0}, self.root)

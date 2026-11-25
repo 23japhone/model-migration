@@ -58,10 +58,11 @@ def prepare_files(request, attempt, receipt):
     folder = host / attempt.name
     runtime = runtime_root(folder, request)
     folder.mkdir(mode=0o700, parents=True, exist_ok=False)
-    if len(request['npu']['devices']) == 2:
+    size = len(request['npu']['devices'])
+    if size > 1:
         mapping = request['_device_state']['devices']
         parallel = folder / 'parallel.json'
-        write_json(parallel, {'world_size': 2, 'devices': mapping})
+        write_json(parallel, {'world_size': size, 'devices': mapping})
         receipt['parallel'] = {'path': str(parallel), 'sha256': sha256(parallel)}
     dump = folder / 'dump'
     dump.mkdir(mode=0o700)

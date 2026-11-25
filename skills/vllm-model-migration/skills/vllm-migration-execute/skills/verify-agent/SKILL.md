@@ -50,7 +50,7 @@ python3 /实际技能目录/scripts/verify.py \
 
 调用方也可直接控制单条请求，不需要 GPU 基线或评测器；准备依赖、会话请求形状、输出引用与第二个 Token 的查询方法见[运行时采集工具](references/runtime-capture.md)。
 
-单机双卡张量并行的运行时采集使用 `capture-session`。按 Token 查询本地分片时使用 `capture-read` 的 `rank` 字段，见[双卡采集契约](references/runtime-capture.md#单机-tp2-联合采集)。
+单机张量并行的运行时采集使用 `capture-session`。按 Token 查询本地分片时使用 `capture-read` 的 `rank` 字段，见[多卡采集契约](references/runtime-capture.md#单机张量并行联合采集)。
 
 单卡 ACLGraph 文本服务使用 `msprobe_pytorch_aclgraph` 适配器。通过 `capture-read` 回查每个前向的实际图重放、msProbe 原件和全层状态快照。部署模式、预算与查询字段见[图模式采集契约](references/runtime-capture.md#单卡-aclgraph-文本请求)。
 
