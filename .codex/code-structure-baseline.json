@@ -10141,11 +10141,11 @@
         "statements": 11
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/worker.py::save_vector": {
-        "branches": 1,
-        "complexity": 3,
+        "branches": 0,
+        "complexity": 1,
         "line": 15,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/worker.py",
-        "statements": 6
+        "statements": 1
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/cache_evidence.py::check_files": {
         "branches": 1,
@@ -11143,7 +11143,7 @@
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/session.py::validate_operation": {
         "branches": 5,
-        "complexity": 11,
+        "complexity": 10,
         "line": 49,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/session.py",
         "statements": 12

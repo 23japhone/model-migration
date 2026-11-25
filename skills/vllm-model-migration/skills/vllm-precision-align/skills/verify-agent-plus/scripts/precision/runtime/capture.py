@@ -26,7 +26,7 @@ def close_socket(connection):
     connection.close()
 
 
-def handler(endpoint,folder,index,lock,timeout,connections,validator=validate_response):
+def handler(endpoint,folder,index,lock,timeout,connections,validator=validate_response,trace_id=None):
     upstream=urlsplit(endpoint)
     def register(connection):
         with lock:
@@ -63,6 +63,8 @@ def handler(endpoint,folder,index,lock,timeout,connections,validator=validate_re
                 (local/'request.bin').write_bytes(body)
                 headers={key:value for key,value in self.headers.items()
                          if key.lower() in ('content-type','accept','user-agent')}
+                if trace_id and self.command == 'POST' and self.path in ('/v1/chat/completions', '/v1/completions'):
+                    headers['X-Precision-Trace'] = trace_id
                 connection=http.client.HTTPConnection(upstream.hostname,upstream.port,timeout=timeout)
                 connection.connect();upstream_socket=connection.sock
                 register(upstream_socket)
@@ -89,11 +91,11 @@ def handler(endpoint,folder,index,lock,timeout,connections,validator=validate_re
 
 
 @contextmanager
-def recording(endpoint,folder,timeout,validator=validate_response):
+def recording(endpoint,folder,timeout,validator=validate_response,*,trace_id=None):
     folder=Path(folder);folder.mkdir(parents=True,exist_ok=False)
     index={'requests':[],'errors':[]};lock=threading.Lock()
     connections={'active':set(),'closing':False}
-    server=ThreadingHTTPServer(('127.0.0.1',0),handler(endpoint,folder,index,lock,timeout,connections,validator))
+    server=ThreadingHTTPServer(('127.0.0.1',0),handler(endpoint,folder,index,lock,timeout,connections,validator,trace_id))
     server.daemon_threads=False
     worker=threading.Thread(target=server.serve_forever,daemon=True);worker.start()
     try:yield 'http://127.0.0.1:'+str(server.server_port)

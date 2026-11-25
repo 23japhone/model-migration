@@ -126,6 +126,8 @@ process长期服务的主PID已退出而原组号仍有成员时，不能以成�
 
 begin 核验自有 retained 服务、新适配器真实 worker/engine/frontend 就绪记录与摘要；prepared 不等于 ready。跨命令通过文件锁保护持久 lease 状态，不依赖上次命令持有的进程锁。旧 capture-one 在租约存在时也拒绝。重复 arm、已封存 trace、其他控制者或失活租约不覆盖现场。
 
+单卡同步 Eager 的 arm 可选 `profile="token_prediction"`，按样本导出完整词表预测回执。参数、实际 HTTP 字节约束和可迁移文件布局见[单题预测协议](runtime-capture.md#仅采集单题的-token-预测)。
+
 前端从实际 engine_client.generate 参数取得 external ID，经 InputProcessor 记录 engine internal ID，并记录完整响应 ID 与最终引擎 Token 序列；不会将 Chat 请求套成固定 cmpl 后缀。worker 前向覆盖模型执行至 compute_logits；关闭 debugger 后复制原始全词表 logits，argmax 前复制处理后分数，调度器输出为最终接受依据。每个已开启前向都有 begin/end。seal 核对正式响应、接受序列、前文、所有 Token 前向、实际模块/API 调用与文件后生成 capture-receipt。EOS 短输出允许封存，不伪造第二个 Token。
 
 单卡文本 greedy 会话支持同步 Eager 和 ACLGraph，图服务可回查每次实际重放。双卡 TP=2 的同步 Eager 会话还可采集单图、SSE 和显式 seed 的随机采样。[单卡图服务](runtime-capture.md#单卡-aclgraph-文本请求) · [双卡生成与回查](runtime-capture.md#双卡图文流式与固定-seed-采样)

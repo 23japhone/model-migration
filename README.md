@@ -143,6 +143,8 @@ flowchart TD
 
 任务质量结果保存在本次运行的 `customer-manifest.json` 中，其路径见入口输出的 `evidence.manifest`。打开 `task_quality[]` 中的报告引用 `report`，可查看成绩、逐题变化或缺项原因。自动搜索未取得完整 GPU 基线时，该项记为 `not_evaluated`（无法判断是否对齐），流程继续检查三份 JSON 的交付条件。[任务质量对齐契约](skills/vllm-model-migration/references/task-quality.md)
 
+需要定位首个异常输出 Token 时，在 `accuracy.token_alignment` 下填写两项绝对容差。按失败分项选题并取得二遍预测包后，查看客户回执中的 `token_alignment[].token_report`。[字段、二遍选择与续接](skills/vllm-model-migration/references/task-quality.md#从未达标分项进入-token-预测对齐)
+
 ## 支持范围与当前限制
 
 - 当前面向 vLLM / vLLM-Ascend；SGLang、框架自动选择、重新量化、训练、多机调度及逐层诊断不在范围内。

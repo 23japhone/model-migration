@@ -1,9 +1,13 @@
 ---
 name: vllm-precision-compare
-description: 按 GPU 基线实际评测条件比较 NPU 总分、分项及可选逐题评分，记录可比性、下降量目标和证据覆盖。
+description: 按 GPU 基线比较 NPU 总分、分项和逐题评分，或在相同前文上比较全词表预测及实际选词的首个异常。
 ---
 
-# 任务质量对齐
+# 精度比较
+
+`--action token` 读取已核验的单题预测记录，可在首异常位置接入 CPU 参考。最小采集字段、绝对容差及一基位置见 [Token 比较契约](references/token.md)。
+
+## 任务质量对齐
 
 使用 `python3 scripts/compare.py --request /abs/request.json --output /abs/comparison.json` 比较已取得的测量；也可用 `--work-root /abs/runs --run-id ID` 写入独立尝试。加 `--plan` 只读检查请求形状和输出边界。文件引用、示例和外层操作入口见 [请求示例](assets/request.example.json)。
 
@@ -17,7 +21,7 @@ description: 按 GPU 基线实际评测条件比较 NPU 总分、分项及可选
 
 ## 导入 GPU 原生 EvalScope 运行
 
-用 `python3 scripts/compare.py --inspect-gpu /abs/index.json` 可在调度 NPU 之前单独读取并核验 GPU 归档。成功时标准输出给出冻结协议、原生总分与分项分数、生效静态配置及来源引用，错误退出码为 2。
+用 `python3 scripts/compare.py --inspect-gpu /abs/index.json` 可在调度 NPU 之前单独读取并核验 GPU 归档。成功时标准输出给出冻结协议、原生总分与分项分数、生效静态配置及来源引用，错误退出码为 2。后续定向重跑如需从已有原生资料定位退化题，可使用 `--include-samples` 一并提取可用的逐题成绩。
 
 已存档的原生 EvalScope v2 评测可使用 `evalscope-gpu-history-v1` 索引。该索引由调用方用已有材料整理，`source`、`config`、`report` 和可选 `reviews` 下的每个值都是原始文件的 `{path,sha256}` 引用。例如：
 

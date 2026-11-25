@@ -42,6 +42,18 @@ seal 不重发推理。成功后用相同 session 调用 `operation=end`；多�
 
 `capture-one` 是独立诊断入口，内部发送一次关闭采集的对照请求和一次开启采集的请求；需要“只发送一次实际请求”的调用方使用会话接口。
 
+## 仅采集单题的 Token 预测
+
+在准备了 `worker_capture.adapter="msprobe_pytorch_eager"` 的自有单卡服务上，worker 就绪记录的 `token_prediction=true` 表示支持这种采集。调用 `capture-session begin`，在每个实际评测请求转发前调用以下 arm。字符串或整数 `sample_key` 将作为跨端的样本 ID。
+
+```json
+{"operation":"arm","source":{"path":"/work/session/capture-session.json","sha256":"<会话摘要>"},"sample_key":37,"native_id":37,"trace_id":"test-37","profile":"token_prediction"}
+```
+
+发送本题唯一的文本请求时设置 `X-Precision-Trace: test-37`，正文显式包含 `temperature=0` 和 `return_token_ids=true`，使用单输出、非流式响应。保存实际发送和接收的 HTTP 正文字节，按原会话协议 seal。服务前端核对请求原件摘要，采集端将采样位置、实际输入、worker 候选、调度器接受 ID 和最终返回逐步配对。worker 按原始分数和选词前分数各自出现的时机暂存一行。runner 返回实际输出 ID 后写入对应的两份向量，无输出的分块 prefill 只保留前向记录。此次 arm 无需声明缓存配置。结束后使用 `capture-session end` 释放租约。
+
+seal 返回 `token_sample={path,sha256}`。该回执引用的单题 JSON 给出 `evidence_kind=runtime`、`sample_id`、`prompt_token_ids`、`output_token_ids`、`stop_reason`、`raw_logits` 和 `processed_probs`。后两项每步各含一条 `{path,sha256,dtype,size}`，其中 path 是相对于样本文件的小端二进制向量路径，size 是词表大小。原始 logits 按实际 dtype 保存。贪心路径直接以分数选词，采集端将真实 argmax 前的选词分数在 CPU 上用 FP64 Softmax 转为比较所需的概率。搬运样本时连同向量一起保留相对路径。stop_reason 记录服务返回的结束原因。长度截断为 length，明确的停止 Token 或字符串分别编码为 stop_token:<id> 和 stop_string:<text>。服务只给出 stop 且无具体触发项时记 unknown_stop。采集回执保留原始 finish_reason 和 stop_trigger。
+
 ## 从第二个输出 Token 回查
 
 ```json

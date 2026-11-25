@@ -15,6 +15,8 @@ EvalScope 配置中的 `limit` 可选，由用户输入正整数作为每个 sub
 
 EvalScope 输出触及已配置长度上限时，保留原生评分和全部样本，记录 `output_truncation`，不单凭截断判整个评测失败。原生 `max_tokens` 必须与 HTTP `length` 对应，生成 token 数须等于请求上限；推理错误、覆盖、内容一致性、上下文及其他校验照常生效。仅记录截断不代表样本答对或模型达标。AISBench 结束策略保持不变；冻结基线及历史失败报告不改写。
 
+当任务质量对齐交接失败题号时，`scripts/validator.py --action token-run` 执行已选题的原生重跑，绑定同一请求的 Token 预测及逐题评分。见[定向重跑契约](references/contract.md#token-定向重跑)。
+
 ## 执行步骤
 
 1. 阅读[请求与结果契约](references/contract.md)。取得已完成的部署交接、数据准备清单、实际服务模型名、评测环境及配置。仅有模型名、HTTP 200 或旧分数不足以开始正式精度验收。

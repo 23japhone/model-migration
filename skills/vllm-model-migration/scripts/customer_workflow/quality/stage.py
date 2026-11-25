@@ -52,13 +52,18 @@ def run_one(session, task, observed, supplied, work_root, candidate, index):
             raise
         return selection.unresolved(session, key, [str(error)], candidate['discovery'], baseline['dataset'])
     session.step(key, 'prepared', preparation_seconds=monotonic() - started)
+    gpu = candidate.get('gpu_evidence') or plan.get('gpu_evidence')
     candidates = list(plan.get('candidates', []))
+    if 'token_alignment' in task['accuracy']:
+        from .resume import prior_candidate
+        prior = prior_candidate(session, key, baseline['dataset'], baseline, plan['native_request'], gpu)
+        if prior:
+            candidates.append(prior)
     candidates.extend(recent_measurements(work_root, baseline['dataset']))
     candidates.extend(supplied.get('evaluation_results', {}).values())
     candidates.extend(recovery.evaluations(session.value).values())
     request = {'schema_version': '1.0', 'baseline': baseline, 'native_request': plan['native_request'],
                'candidates': list(unique(candidates))}
-    gpu = candidate.get('gpu_evidence') or plan.get('gpu_evidence')
     if gpu:
         request['gpu_evidence'] = gpu
     return execute(session, key, 'vllm-precision-align', request, work_root, action='quality')
@@ -84,6 +89,12 @@ def compare_all(session, task, observations, supplied, work_root, guarded):
             entry['report'] = result['quality_report']
             if result.get('alignment_status') == 'not_evaluated':
                 entry['status'] = 'not_evaluated'
+        if 'token_alignment' in task['accuracy'] and entry.get('report'):
+            from .resume import frozen
+            entry = frozen(session, entry)
         reports.append(entry)
     session.value['task_quality'] = reports
     session.save()
+    if 'token_alignment' in task['accuracy']:
+        from ..token_alignment import stage
+        stage.compare_all(session, task['accuracy']['token_alignment'], supplied, work_root, guarded)

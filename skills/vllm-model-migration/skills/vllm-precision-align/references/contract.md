@@ -80,3 +80,17 @@ run下可选GPU基线读取失败不阻止单端评测，具体比较限制由�
 质量重跑由 EvalScope 直连现有服务，预检在客户端计算提示长度。比较使用原生报告、题目身份和评分，依靠配置、版本及摘要核对口径。质量任务本身不启动 HTTP 正文记录器，也不启用 Token 预测数据、模型层或算子张量采集。若可比的评分项未达标，后续诊断可针对这些样本另行重跑并采集所需数据。
 
 客户精度意图明确且 `accuracy.gpu_baselines` 为空时，客户入口应先按顶层模型名称与仓库身份查找公开评测证据。模型卡上的展示分数可作为搜索线索。取得可核验的 GPU 原生记录、实际权重和评测口径后，对照本次编译的条件再安排比较。搜索无结果、身份歧义或准备时发现条件缺失时，客户回执在 `gpu_baseline_search` 保存搜索记录，在 `task_quality[]` 记录 `not_evaluated`、缺项和 `quality_measurement_started=false`。已进入阶段后复核出静态条件不符时，客户条目标记 `not_evaluated`，其 `report` 引用的报告记录原因、`quality_measurement_started=false` 与零次正式请求。两种情况均继续后续任务。
+
+## Token 预测对齐
+
+通过 `precision.py --action token --request <请求> --work-root <包外目录> --run-id <标识>` 处理一份已发布的任务质量报告。请求提供 `schema_version="1.0"`、`quality_report={path,sha256}` 和 `token_alignment`。后者分别以 `raw_logits.atol`、`processed_scores.atol` 约定原始分数和选词后概率的非负绝对容差。可选 `bundles` 为预测包引用数组。仅当需委托 NPU 定向评测时提供首轮相同协议的 `native_request`。加 `--plan` 只校验参数形状和输出边界。
+
+阶段对照 `next_action.failed_scores` 和 `scores` 的可比未达标分项，按指标方向合并首轮报告和已核验原生 reviews 中的退化题。总分和学科分数指向同一题时仅列一次，保留触发它的每个指标。只有学科分数时，可以从首轮有效 NPU 回执取得该学科完整题号名册。仅有总分且无法定位样本，或缺少可核验的学科名册时，交付待定界范围。`selection.json` 的 `cases` 给出子集、原题号和触发项，`scope_coverage` 区分已定位的退化题与完整学科候选，`pending_scopes` 记录缺失依据。
+
+一个预测包记录 `format=token-prediction-bundle-v1`、设备 `hardware=gpu|npu`、`quality_report_sha256`、`evidence_kind=synthetic|runtime` 和 `cases`。每题提供 `subset`、`sample_id`、指向预测记录的 `record={path,sha256}`，可附 `cpu` 和 `review` 引用。预测记录及 CPU 核验字段见[比较任务](../skills/vllm-precision-compare/SKILL.md)。第二遍逐题评分文件含相同题号、子集、设备、来源类型、质量报告摘要、`record_sha256` 和 `metrics` 原生指标分值。具有原始退化证据的题可据此判断是否复现；整科候选只报告第二遍实际观察到的分差。模拟结果均标明来源。
+
+有 GPU 对照、该题缺少 NPU 记录且传入与首轮相同的 `native_request.protocol` 时，阶段将这些题目委托给 `validator.py --action token-run`。已有双端记录的题目直接比较。子任务部分成功时，先核对成功与失败清单互斥且覆盖全部受托题目，再导入成功项、报告每项失败原因。每题经 `compare.py --action token` 判断，首个异常 Token 从 1 计数。存在显式 CPU 数据时使用该引用，也可从首轮已固定的本地模型和部署交接生成 CPU 参考。缺失 CPU 依据单独记录。原生质量、第二遍评分复现及 Token 数值结论各自交付。
+
+每次运行在 `<work-root>/<run-id>/vllm-precision-align/token/<attempt>/` 写入 `token-stage-manifest.json`、选题清单和逐题 `token-report.json`。阶段摘要公开 `status`、`alignment_status`、`selection`、`selected_count`、`token_report` 和 `manifest`。首轮目标未失败时为 `not_triggered`，有模拟来源时查看逐题结果并区分 `simulated`，依赖缺失时报告 `insufficient_evidence` 或 `partially_evaluated`。`comparison_scope=provided_predictions` 表示所有数值结论只覆盖清单中实际成功比较的位置。外部预测包的 `runtime` 标签由提供方声明。通过本阶段执行的 NPU 采集另有 `npu_measurement` 原生测量回执可核验。历史质量回执保持只读。
+
+客户按同一任务及 run-id 续接、补入与首轮质量报告摘要绑定的预测包时，本次质量阶段仍复核当前候选。若原始 NPU 回执、GPU 来源、测量协议、指标和质量判定均一致，`task_quality[].report` 沿用冻结报告，`stage` 指向其原始阶段，`verification_stage` 引用本次复核阶段。候选或条件变化时使用本次新报告。
