@@ -7,18 +7,22 @@ import uuid
 from ... import outputs, request as schema
 from ...evidence import read_bound, write_json
 from .adapters.state import read
+from .generation import token_prediction
 from .lease import identity, locked, no_lease, owned
 from .service import deployment, live
 from .tensors import file_ref
 
 
 def validate(request):
-    schema.fields(request, ['operation', 'source'], ['owner_pid', 'sample_key', 'native_id', 'trace_id', 'http', 'cache_output_index', 'cache_capture'])
+    schema.fields(request, ['operation', 'source'], ['owner_pid', 'sample_key', 'native_id', 'trace_id', 'http', 'cache_output_index', 'cache_capture', 'profile'])
     schema.fields(request['source'], ['path', 'sha256']); schema.absolute(request['source']['path'])
     if not schema.HASH.fullmatch(str(request['source']['sha256'])): raise ValueError('来源摘要无效')
     op = request['operation']
     permitted = {'begin': {'owner_pid'}, 'arm': {'sample_key', 'native_id', 'trace_id'},
                  'seal': {'trace_id', 'http'}, 'end': set(), 'status': set()}
+    if 'profile' in request:
+        token_prediction.validate_selection(request)
+        permitted['arm'].add('profile')
     if 'cache_output_index' in request:
         validate_cache_selection(request)
         permitted['arm'].add('cache_output_index')
@@ -46,11 +50,16 @@ def validate_full_request(request):
         raise ValueError('全程采集需要独立的 arm 选择和正整数请求预算')
 
 
+def valid_sample_key(request):
+    value = request['sample_key']
+    return (isinstance(value, str) and bool(value)) or (request.get('profile') == 'token_prediction' and type(value) is int)
+
+
 def validate_operation(request):
     op = request['operation']
     if op in ('arm', 'seal') and not re.fullmatch(r'[a-zA-Z0-9_-]{1,96}', str(request['trace_id'])):
         raise ValueError('trace_id 无效')
-    if op == 'arm' and (not isinstance(request['sample_key'], str) or not request['sample_key'] or
+    if op == 'arm' and (not valid_sample_key(request) or
                         not isinstance(request['native_id'], (str, int)) or isinstance(request['native_id'], bool)):
         raise ValueError('必须提供原生样本身份')
     if op == 'seal':
@@ -96,6 +105,8 @@ def begin(request, target, run_id):
 
 
 def verify_arm(request, root, ready, preparation):
+    if 'profile' in request:
+        return token_prediction.verify_worker(ready)
     if ready.get('mode') == 'aclgraph':
         if ('cache_capture' in request) != ready['graph']['observe_cache'] or 'cache_output_index' in request:
             raise ValueError('图采集的全程观测范围须匹配捕图时的配置')

@@ -41,7 +41,7 @@ class EagerCalls:
         cls = type(module); original = cls.__call__
         @wraps(original)
         def invoked(instance, *args, **kwargs):
-            if instance is module and recorder.frame is not None:
+            if instance is module and recorder.frame is not None and recorder.frame.get('profile') != 'token_prediction':
                 if instance.do_not_compile is not True: raise ValueError('直接 Eager 模式已变化')
                 return Module._call_impl(instance, *args, **kwargs)
             return original(instance, *args, **kwargs)

@@ -87,3 +87,9 @@ EvalScope 在固定输出预算下保留原生评分：HTTP `finish_reason=lengt
 本任务只复用模型服务。取消、超时和异常仅回收自有评测进程组及回环记录器，不停止 PID/CID 交接的服务，不调用历史启动、性能或全局清理脚本。完成后重新核对资源、监听者和实际设备进程；服务变更则不能交付本次有效测量。单次报告的原子写入不构成多文件事务，磁盘不可写时退出失败，不保证能够保存最终报告。
 
 针对 GPU 基线的指定 EvalScope scope，另见[任务质量测量与只读复核](quality-measurement.md)。
+
+## Token 定向重跑
+
+`validator.py --action token-run --request /abs/request.json --work-root /abs/output --run-id ID` 消费 `schema_version="1.0"`、首轮的完整 `native_request`、质量报告和阶段选题的 `quality_report`、`selection` 两份 path/sha256 引用。请求中的原生协议须与首轮 NPU 质量测量一致。
+
+评测器通过准备回执将稳定题号映射到原生 subset/index，核对原生样本的提示、few-shot 和答案。在已准备的单卡同步 Eager 服务上，每题用独立租约关联实际 HTTP、worker 预测和原生 review。每次只接受一个成功的正式生成请求。输出 `evidence.token_bundle` 绑定成功题目的单题记录与同轮评分。当个别题失败，进程以非零结束，`detailed_report.case_errors` 逐项列明原因。只有前后服务和资产仍一致时才发布成功题的包。

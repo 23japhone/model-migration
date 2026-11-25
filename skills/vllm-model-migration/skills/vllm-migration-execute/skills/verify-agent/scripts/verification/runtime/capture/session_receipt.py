@@ -23,6 +23,9 @@ def seal(request, authority, handoff, root, lease, ready):
     if lease['state'] != 'armed' or lease['trace_id'] != request['trace_id']:
         raise ValueError('没有匹配的活动请求')
     folder = root / lease['directory']; intent = read(folder / 'intent.json')
+    if intent.get('profile') == 'token_prediction':
+        from .generation import token_prediction
+        return token_prediction.seal(request, authority, handoff, folder, intent, ready)
     if ready.get('mode') == 'aclgraph':
         response = http_json(request['http']['response'])
         if 'error' in response:

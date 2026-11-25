@@ -21,12 +21,15 @@ def main(argv=None):
     parser.add_argument('--request',type=Path,required=True,help='包外阶段请求JSON')
     parser.add_argument('--work-root',type=Path,required=True,help='独立证据根')
     parser.add_argument('--run-id',required=True,help='本次运行标识')
-    parser.add_argument('--action',choices=('run','analyze','quality'),default='run')
+    parser.add_argument('--action',choices=('run','analyze','quality','token'),default='run')
     parser.add_argument('--plan',action='store_true',help='只检查形状和安装资源输出边界')
     args=parser.parse_args(argv)
     try:
         raw = read(args.request.expanduser().absolute())
-        if args.action == 'quality':
+        if args.action == 'token':
+            from token_stage.runner import validate as token_request
+            request = token_request(raw)
+        elif args.action == 'quality':
             from quality_stage.runner import validate as quality_request
             request = quality_request(raw)
         else:
@@ -39,7 +42,9 @@ def main(argv=None):
             'status':'not_run','operation':args.action,'inputs':request,'evidence_parent':str(parent)},ensure_ascii=False));return 0
     previous={sig:signal.signal(sig,cancelled) for sig in (signal.SIGINT,signal.SIGTERM)}
     try:
-        if args.action == 'quality':
+        if args.action == 'token':
+            from token_stage.runner import run
+        elif args.action == 'quality':
             from quality_stage.runner import run
         else:
             from .runner import run

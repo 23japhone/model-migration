@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""任务质量比较 CLI。"""
+"""任务质量和 Token 预测比较 CLI。"""
 import argparse
 from decimal import Decimal
 import json
@@ -14,6 +14,7 @@ sys.dont_write_bytecode = True
 from comparison.evidence import gpu_evidence, npu_evidence, path_of, read
 from comparison.quality import compare
 from comparison.samples import numeric
+from comparison import token
 
 
 def json_text(value):
@@ -109,15 +110,26 @@ def publish(output, payload):
         temporary.unlink(missing_ok=True)
 
 
-def inspect_gpu(path):
+def inspect_gpu(path, include_samples=False):
     evidence, refs = gpu_evidence(path)
     # 搜索资格只要数据集/分项分数，逐题原文留在已固定来源。
-    rows = [{key: value for key, value in row.items() if key not in ("samples", "sample_errors")}
-            for row in evidence["scores"]]
+    rows = evidence["scores"]
+    if not include_samples:
+        rows = [{key: value for key, value in row.items() if key not in ("samples", "sample_errors")}
+                for row in rows]
     if not any("error" not in row and row.get("value") is not None for row in rows):
         raise ValueError("原生 GPU 归档没有任何作用范围可核验的成绩")
     print(json_text({**evidence, "scores": rows, "evidence": refs}))
     return 0
+
+
+def operation_for(action, value):
+    if action == "token":
+        token.token_request(value)
+        return token.run
+    request(value)
+    value["baseline"] = normalize_baseline(value["baseline"])
+    return run
 
 
 def main():
@@ -125,6 +137,8 @@ def main():
     operation = parser.add_mutually_exclusive_group(required=True)
     operation.add_argument("--request")
     operation.add_argument("--inspect-gpu", help="只读核验历史 GPU 资料并列出原生成绩")
+    parser.add_argument("--action", choices=("quality", "token"))
+    parser.add_argument("--include-samples", action="store_true", help="核验 GPU 归档时同时提取逐题成绩")
     parser.add_argument("--output")
     parser.add_argument("--work-root")
     parser.add_argument("--run-id")
@@ -132,17 +146,18 @@ def main():
     args = parser.parse_args()
     try:
         if args.inspect_gpu:
-            if args.output or args.plan or args.work_root or args.run_id:
+            if args.output or args.plan or args.work_root or args.run_id or args.action:
                 raise ValueError("--inspect-gpu 只输出原始 GPU 证据摘要")
-            return inspect_gpu(args.inspect_gpu)
+            return inspect_gpu(args.inspect_gpu, args.include_samples)
+        if args.include_samples:
+            raise ValueError("--include-samples 须与 --inspect-gpu 同用")
         req = read(args.request)
-        request(req.value)
-        req.value["baseline"] = normalize_baseline(req.value["baseline"])
+        compare_operation = operation_for(args.action, req.value)
         output = destination(args)
         if args.plan:
             print(json.dumps({"status": "not_run", "task_id": "vllm-precision-compare"}))
             return 0
-        report = run(req.value, req.ref)
+        report = compare_operation(req.value, req.ref)
         report["report_path"] = str(output)
         payload = json_text(report) + "\n"
         publish(output, payload)

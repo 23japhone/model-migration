@@ -134,11 +134,12 @@ flowchart TD
     A --> H[独立导出：三个交付 JSON]
     E -. 客户任务的 GPU 基线或精度意图 .-> Q[任务质量对齐]
     Q --> S[客户回执中的质量报告]
+    S -. 启用 Token 对齐且有可比失败分项 .-> T[定界选题并比较首个异常输出位置]
     M -. 需要适配回执 .-> R[Agent 按 adapt-agent 完成实现与公开检查]
     R -. 新请求显式续接 .-> M
 ```
 
-客户 `--task` 流程在普通精度步骤后、三文件交付前调度任务质量对齐。质量回执写入 `customer-manifest.json` 的 `task_quality[]`。三文件交付按普通精度、部署和导出回执独立判定。
+客户 `--task` 流程在普通精度步骤后、三文件交付前调度任务质量对齐。质量回执写入 `customer-manifest.json` 的 `task_quality[]`。若配置 `accuracy.token_alignment`，精度阶段根据该报告定界，委托原生评测定向采集，再调用比较器并将报告写入 `token_alignment[]`。[比较契约](../skills/vllm-model-migration/skills/vllm-precision-align/skills/vllm-precision-compare/references/token.md)三文件交付按普通精度、部署和导出回执独立判定。
 
 ### 4.2 支持度分流与明确续接
 

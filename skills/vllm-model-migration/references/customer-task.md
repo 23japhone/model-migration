@@ -20,6 +20,7 @@
 | environment.available_npu_devices | 本任务允许使用的 NPU 范围；非空、唯一、非负整数列表 | 当前执行主机实际发现的全部 NPU 候选池；不等于固定 TP |
 | accuracy.evaluator | evalscope / aisbench，大小写不敏感 | evalscope；每次准备调用共用环境安装脚本，绑定实际版本 |
 | accuracy.gpu_baselines | GPU 基线数组，空数组也视作未提供，详见[任务质量对齐](task-quality.md) | 有精度意图时依模型名称查找 GPU 基线，缺项时记录未评估并继续后续任务 |
+| accuracy.token_alignment | 对象，必须同时给出 `raw_logits.atol`、`processed_scores.atol` 两项有限非负绝对容差 | 省略时沿用现有质量评测流程，填写时对可比且未达标的分项定向诊断 |
 | accuracy.datasets | 非空对象列表；名称唯一；显式选择及顺序保持 | 按 ceval、gsm8k 顺序生成两项 |
 | accuracy.datasets[].name | 原生评测工具数据集标识 | 不允许 |
 | accuracy.datasets[].path | 实际本地绝对路径 | ceval 为 /data/ceval，gsm8k 为 /data/gsm8k；其他数据集须明确路径 |

@@ -1,0 +1,343 @@
+{
+  "format": "synthetic-token-first-anomaly-test-v1",
+  "evidence_kind": "synthetic",
+  "description": "离线测试规格。GPU、CPU参照及首轮样例均为人工构造，不能作为真实硬件精度证据。每个用例以共享GPU记录的副本作为模拟NPU记录，再依次应用标准JSON Patch replace。文件内数组下标从0开始；预期异常Token序号从1开始。early_stop的位置是第一个缺少对应输出的位置。stop_after_tokens是结束边界。",
+  "task_json_accuracy_fragment": {
+    "token_alignment": {
+      "raw_logits": {
+        "atol": 0.125
+      },
+      "processed_scores": {
+        "atol": 0.015625
+      }
+    }
+  },
+  "quality_handoff_test_input": {
+    "dataset": "synthetic-choices",
+    "subset": "toy",
+    "metric": "accuracy",
+    "direction": "higher",
+    "gpu_score": 1,
+    "npu_score": 0,
+    "max_drop": 0,
+    "comparability": "pass",
+    "precision_target": "fail",
+    "sample_comparison": {
+      "items": [
+        {
+          "subset": "toy",
+          "sample_id": "toy-001",
+          "gpu_score": 1,
+          "npu_score": 0,
+          "change": "correct_to_wrong"
+        }
+      ]
+    }
+  },
+  "gpu_record": {
+    "sample_id": "toy-001",
+    "prompt_token_ids": [
+      0,
+      1
+    ],
+    "raw_logits": [
+      [
+        0.0,
+        1.6094379124341003,
+        0.0,
+        0.0
+      ],
+      [
+        1.6094379124341003,
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        1.6094379124341003,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.6094379124341003
+      ]
+    ],
+    "processed_probs": [
+      [
+        0.125,
+        0.625,
+        0.125,
+        0.125
+      ],
+      [
+        0.625,
+        0.125,
+        0.125,
+        0.125
+      ],
+      [
+        0.125,
+        0.125,
+        0.625,
+        0.125
+      ],
+      [
+        0.125,
+        0.125,
+        0.125,
+        0.625
+      ]
+    ],
+    "output_token_ids": [
+      1,
+      0,
+      2,
+      3
+    ],
+    "stop_reason": "eos"
+  },
+  "cpu_test_oracle": {
+    "evidence_kind": "analytical_synthetic",
+    "rule": "对共同前缀上的第1至4步，候选依次为ID 1、0、2、3。在各步给该ID的logit取ln(5)，另外三个为0。softmax的解析解分别为5/8与1/8。只在首个可疑位置查询。"
+  },
+  "test_cases": [
+    {
+      "name": "完全相同",
+      "npu_patch": [],
+      "expected": {
+        "result": "aligned",
+        "first_anomalous_token": null
+      }
+    },
+    {
+      "name": "绝对差等于两项容差",
+      "npu_patch": [
+        {
+          "op": "replace",
+          "path": "/raw_logits/0",
+          "value": [
+            0.125,
+            1.7344379124341003,
+            0.125,
+            0.125
+          ]
+        },
+        {
+          "op": "replace",
+          "path": "/processed_probs/0",
+          "value": [
+            0.109375,
+            0.640625,
+            0.125,
+            0.125
+          ]
+        }
+      ],
+      "expected": {
+        "result": "aligned",
+        "first_anomalous_token": null
+      }
+    },
+    {
+      "name": "第一个输出已异常",
+      "npu_patch": [
+        {
+          "op": "replace",
+          "path": "/raw_logits/0",
+          "value": [
+            0.25,
+            1.8594379124341003,
+            0.25,
+            0.25
+          ]
+        }
+      ],
+      "expected": {
+        "result": "mismatch",
+        "first_anomalous_token": 1
+      }
+    },
+    {
+      "name": "先分数超差、再选词改变，只返回较早位置",
+      "npu_patch": [
+        {
+          "op": "replace",
+          "path": "/raw_logits/1",
+          "value": [
+            1.8594379124341003,
+            0.25,
+            0.25,
+            0.25
+          ]
+        },
+        {
+          "op": "replace",
+          "path": "/output_token_ids/2",
+          "value": 1
+        }
+      ],
+      "expected": {
+        "result": "mismatch",
+        "first_anomalous_token": 2
+      }
+    },
+    {
+      "name": "只改第3步处理后概率，仍选同词",
+      "npu_patch": [
+        {
+          "op": "replace",
+          "path": "/processed_probs/2",
+          "value": [
+            0.125,
+            0.125,
+            0.59375,
+            0.15625
+          ]
+        }
+      ],
+      "expected": {
+        "result": "mismatch",
+        "first_anomalous_token": 3
+      }
+    },
+    {
+      "name": "分数相同，第2步实际接受的ID不同",
+      "npu_patch": [
+        {
+          "op": "replace",
+          "path": "/output_token_ids/1",
+          "value": 1
+        }
+      ],
+      "expected": {
+        "result": "mismatch",
+        "first_anomalous_token": 2
+      }
+    },
+    {
+      "name": "词表尾部的低分候选先超差",
+      "npu_patch": [
+        {
+          "op": "replace",
+          "path": "/raw_logits/0/3",
+          "value": -0.25
+        }
+      ],
+      "expected": {
+        "result": "mismatch",
+        "first_anomalous_token": 1
+      }
+    },
+    {
+      "name": "NPU在两个相同输出后先达到长度上限",
+      "npu_patch": [
+        {
+          "op": "replace",
+          "path": "/raw_logits",
+          "value": [
+            [
+              0.0,
+              1.6094379124341003,
+              0.0,
+              0.0
+            ],
+            [
+              1.6094379124341003,
+              0.0,
+              0.0,
+              0.0
+            ]
+          ]
+        },
+        {
+          "op": "replace",
+          "path": "/processed_probs",
+          "value": [
+            [
+              0.125,
+              0.625,
+              0.125,
+              0.125
+            ],
+            [
+              0.625,
+              0.125,
+              0.125,
+              0.125
+            ]
+          ]
+        },
+        {
+          "op": "replace",
+          "path": "/output_token_ids",
+          "value": [
+            1,
+            0
+          ]
+        },
+        {
+          "op": "replace",
+          "path": "/stop_reason",
+          "value": "length"
+        }
+      ],
+      "expected": {
+        "result": "early_stop",
+        "first_anomalous_token": 3
+      }
+    },
+    {
+      "name": "相同输出序列，仅结束原因不同",
+      "npu_patch": [
+        {
+          "op": "replace",
+          "path": "/stop_reason",
+          "value": "length"
+        }
+      ],
+      "expected": {
+        "result": "stop_reason_mismatch",
+        "first_anomalous_token": null,
+        "stop_after_tokens": 4
+      }
+    },
+    {
+      "name": "实际输入不同",
+      "npu_patch": [
+        {
+          "op": "replace",
+          "path": "/prompt_token_ids/1",
+          "value": 2
+        }
+      ],
+      "expected": {
+        "result": "input_mismatch",
+        "first_anomalous_token": null
+      }
+    },
+    {
+      "name": "第2步分数缺失且第3步发生选词分歧",
+      "npu_patch": [
+        {
+          "op": "replace",
+          "path": "/raw_logits/1",
+          "value": null
+        },
+        {
+          "op": "replace",
+          "path": "/output_token_ids/2",
+          "value": 1
+        }
+      ],
+      "expected": {
+        "result": "insufficient_evidence",
+        "first_anomalous_token": null,
+        "first_missing_token": 2
+      }
+    }
+  ]
+}

@@ -5,7 +5,7 @@ description: 根据已有部署和数据交接编排 vLLM/vLLM-Ascend 精度测�
 
 # 精度测试阶段
 
-先核验本次范围的服务、数据及评测输入，再通过公开CLI调用 `verify-agent-plus`，汇总实际测量、有效性、可比性、目标和资源交接。阶段不重新实现评分、部署或下载，不进入诊断、调参及自动重测。
+先核验本次范围的服务、数据及评测输入，再通过公开CLI调用 `verify-agent-plus`，汇总实际测量、有效性、可比性、目标和资源交接。原生评测由评测任务执行，部署与下载分别归属原有任务；Token 预测比较按已确认的质量失败范围定向评测。
 
 ## 工作步骤
 
@@ -39,3 +39,5 @@ python3 /完整资源/skills/vllm-model-migration/skills/vllm-precision-align/sc
 客户流程可为 evaluation 提供 `blocked_reason` 保存未就绪项，并让其他独立项继续；也可提供 `result` 引用复用同一完整输入的有效原 run。复用前委托 verify-agent-plus 的公开 analyze 核验，再保留原 run 引用，不生成新测量。结果/来源变化阻塞该项；契约见 references/contract.md。
 
 客户声明 GPU 基线或总入口查到完整的公开基线时，使用阶段的 `--action quality`。先按冻结的测量条件复核候选，再按需运行 EvalScope。将同一轮原生分数、逐题评分与 GPU 历史证据交给 [vllm-precision-compare](skills/vllm-precision-compare/SKILL.md)。单题验收使用专用单题题库，分别记录首次测量的正式请求数和第二次复用所引用的原回执。字段与输出路径见[阶段契约](references/contract.md#任务质量对齐)。
+
+任务质量报告出现可比较的未达标项时，可用 `--action token` 导出退化题或失败学科的候选清单，并比较双端同轮逐 Token 预测。按题目查看首个异常 Token、缺失证据、CPU 核验及第二遍评分是否复现原退化。[Token 阶段请求与回执](references/contract.md#token-预测对齐)

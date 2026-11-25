@@ -49,3 +49,22 @@ Agent 用顶层 `model.model_repository_id` 查询 Hugging Face 发布仓库。�
 | 现有 GPU 历史资料 | 在已有 context.evidence 中传原生质量回执或 evalscope-gpu-history-v1 归档索引引用。多份资料时优先使用唯一匹配的冻结协议。报告独立核验历史指标、样本和 GPU 身份。 |
 
 首次解析网络索引后记录发行选择和原文。离线使用已取得的官方资料时，`responses` 可按官方 URL 映射到含 `url,body` 的原始索引记录引用，`content_sources` 可按不可变文件 URL 映射到含 `url,payload` 的来源记录引用，payload 为原文件引用。离线资料需对应本次选择时点。后续运行核对被冻结的版本、样本和题库字节。
+
+## 从未达标分项进入 Token 预测对齐
+
+在原 `task.json` 的 `accuracy` 下启用此诊断。以下数值仅供演示，两项均须由任务给定。
+
+```json
+{
+  "token_alignment": {
+    "raw_logits": {"atol": 0.05},
+    "processed_scores": {"atol": 0.001}
+  }
+}
+```
+
+首轮照常完成任务评分。打开 `customer-manifest.json` 的 `token_alignment[].selection` 查看需要重跑的子集和题号。优先选择逐题退化项，只有科目分项失败时可按已核实的科目名册定界。总分失败而无可靠逐题或科目证据时，保留待定界状态。已有词表核对和运行配置由首轮交接引用。
+
+二遍采集面向定界内的单卡同步 Eager 文本贪心请求。新建的客户单卡服务会预备空闲适配器，在正式复测时才按题开启采集。vLLM 0.20.2 配方未指定调度模式时启用同步调度，显式要求异步调度的服务无法使用该采集方式。已存在的服务需持有支持 `token_prediction` 的部署回执。通过内部 `context.evidence` 提供与原质量报告 SHA256 绑定的 GPU 预测包，同一任务用原 run-id 和 `--resume` 续接。已有两端证据时直接比较。缺 GPU 包时先交付选题清单。二遍 NPU 原生评分和预测采自同一个 HTTP 请求。
+
+在 `token_alignment[].token_report` 查看每题从 1 计数的 `first_anomalous_token`、首个差异的种类、CPU 复核及同轮质量退化能否复现。测试数据须显式声明 `evidence_kind=synthetic`。独立调用、预测包格式和判定细节见[阶段契约](../skills/vllm-precision-align/references/contract.md)和[单题比较契约](../skills/vllm-precision-align/skills/vllm-precision-compare/references/token.md)。

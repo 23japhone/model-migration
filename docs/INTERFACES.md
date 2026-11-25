@@ -23,9 +23,9 @@
 | [adapt-agent](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/adapt-agent/reference/contract.md) | `scripts/adapt.py` | `--action capture/check`，不自动生成适配代码 |
 | [vllm-model-register](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/vllm-model-register/references/contract.md) | `scripts/register.py`、`scripts/check.py` | 注册与只读载体复验 |
 | [verify-agent](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/contract.md) | `scripts/verify.py` | `--action verify/review/stop/inspect-devices/capture-one/capture-session/capture-read`；采集会话消费部署报告并交付独立采集回执，见[输入输出](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/runtime-capture.md) |
-| [vllm-precision-align](../skills/vllm-model-migration/skills/vllm-precision-align/references/contract.md) | `scripts/precision.py` | `--action run/analyze/quality` |
-| [verify-agent-plus](../skills/vllm-model-migration/skills/vllm-precision-align/skills/verify-agent-plus/references/contract.md) | `scripts/validator.py` | `--action run/analyze/preflight/quality-run`；preflight 仅原生本地数据核验，兼容参数按契约约束 |
-| [vllm-precision-compare](../skills/vllm-model-migration/skills/vllm-precision-align/skills/vllm-precision-compare/SKILL.md) | `scripts/compare.py` | 比较已核验的原生测量，输出逐项达标和逐题变化 |
+| [vllm-precision-align](../skills/vllm-model-migration/skills/vllm-precision-align/references/contract.md) | `scripts/precision.py` | `--action run/analyze/quality/token` |
+| [verify-agent-plus](../skills/vllm-model-migration/skills/vllm-precision-align/skills/verify-agent-plus/references/contract.md) | `scripts/validator.py` | `--action run/analyze/preflight/quality-run/quality-analyze/token-run`；preflight 仅原生本地数据核验，兼容参数按契约约束 |
+| [vllm-precision-compare](../skills/vllm-model-migration/skills/vllm-precision-align/skills/vllm-precision-compare/SKILL.md) | `scripts/compare.py` | 比较已核验的原生测量，输出逐项达标和逐题变化；`--action token` 比较单题首个异常 Token |
 | [three-step-demarcation](../skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/references/contract.md) | `scripts/demarcation.py` | `--action run/analyze`；服务链路三步定界（请求校验 → 渲染反解 → 原始生成对照） |
 
 `--plan` 表示无业务执行效果的检查，但读取范围不同：例如总入口只读顶层形状，准备阶段还会委托子任务计划。不得将某一入口的计划行为推广到全部入口，不能从 `ready=true` 或退出 0 推断资产、服务或评测已有效。

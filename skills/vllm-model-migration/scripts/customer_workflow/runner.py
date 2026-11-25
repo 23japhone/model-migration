@@ -5,6 +5,7 @@ import signal
 
 from coordination.runtime import sources
 from coordination.runtime.evidence import EvidenceError, defer_interrupts
+from .token_alignment import deployment as token_deployment
 from . import context, effects, recovery, model_identity
 from .compile import assets, accuracy, deployment
 from .quality.stage import compare_all
@@ -107,7 +108,7 @@ def migrate(session, task, observations, jobs, work_root, supplied):
                                             'observation': session.value['steps']['host_observation']['receipt']}, work_root)
     recovery.container(session, task['environment'], host, supplied.get('decisions', {}), work_root)
     verification = deployment.verify(task, asset, prepared, observations, allocation, host['port'], context_length, functional)
-    verification['npu']['allocation'] = session.value['steps']['allocation']['receipt']
+    token_deployment.attach(session, task, verification)
     verify_ref = session.artifact('verify', verification)
     request = {'schema_version': '1.0', 'preparation': session.value['steps']['preparation']['receipt'],
                'precheck': check, 'verify': verify_ref, **deployment.extensions(recipe)}
