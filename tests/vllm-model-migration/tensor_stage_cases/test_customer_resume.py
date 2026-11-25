@@ -34,7 +34,8 @@ class CustomerResume(unittest.TestCase):
             previous = put(folder/'prior.json', {'task_id':'vllm-model-migration-customer','status':'completed',
                 'run_id':'synthetic','task_source':old_task,'inputs':normalize(raw),'declared_inputs':normalize(raw),
                 'tensor_context_identity':context_identity(context),'tensor_context_evidence':[],
-                'deliverables':files,'export_manifest':exported['path'], 'task_quality':[],
+                'deliverables':files,'export_manifest':exported['path'],
+                'task_quality':[{'dataset':'fixture','status':'completed','report':stage['inputs']['quality_report']}],
                 'token_alignment':[{'status':'completed','stage':old_token,'token_report':stage['inputs']['token_report'],
                                     'quality_report':stage['inputs']['quality_report']}],
                 'steps': {'delivery':{'status':'completed','receipt':exported},
@@ -52,6 +53,11 @@ class CustomerResume(unittest.TestCase):
             self.assertEqual(current['comparison_result'], 'aligned')
             self.assertEqual(current['plans'], stage['plans'])
             self.assertEqual(receipt['deliverables'], files)
+            conclusion = receipt['task_quality_conclusion']
+            self.assertEqual(conclusion['precision_target'], 'fail')
+            self.assertEqual(conclusion['reports'][0]['report'], stage['inputs']['quality_report'])
+            self.assertEqual(json.loads(Path(receipt['evidence']['manifest']).read_text())['task_quality_conclusion'], conclusion)
+            self.assertNotIn('task_quality_conclusion', get(previous))
             self.assertEqual(set(receipt['steps']), {'delivery','tensor-0'})
 
             good = next(get(source) for source in stage['inputs']['evidence']

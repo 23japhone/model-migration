@@ -10,8 +10,10 @@ from .defaults.policy import pending
 
 
 def plan(task, parent):
+    from .quality.conclusion import summarize
     return {'schema_version': '1.0', 'task_id': 'vllm-model-migration', 'status': 'not_run',
-            'success': False, 'inputs': task, 'evidence_parent': str(parent),
+            'success': False, 'task_quality_conclusion': summarize('not_run', [], {}, None),
+            'inputs': task, 'evidence_parent': str(parent),
             'deliverables': list(FILES) if task['accuracy']['evaluator'] == 'evalscope' else [],
             'delivery_supported': task['accuracy']['evaluator'] == 'evalscope',
             'next_action': 'agent_resolve_intent_and_observations',

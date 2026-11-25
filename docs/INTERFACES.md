@@ -39,7 +39,7 @@
 - 共享执行状态为 `not_run/running/completed/failed/blocked/skipped`；结论为 `pass/fail/not_evaluated/review_required`。内部台账可以有契约规定的其他状态，不机械套用共享枚举。
 - 回执须核对 task/run/operation、原始输入、stdout 与落盘结果、文件引用及摘要；摘要固定字节身份，不证明执行可信、当前服务存活或模型能力。
 - 原请求和已完成尝试不改写；绑定或续接形成新副本、摘要与独立尝试。资产路径属于实际执行主机或容器，不自动转换开发机路径。
-- 旧 `migrate.py --request` 的精度目标失败时可同时返回 `status=completed` 和退出码 1。总入口输入无效返回 2，必需条件不足返回 3。客户 `migrate.py --task` 完成交付返回 0，任务质量是否达标要读取 `task_quality[]` 所引用报告的 `conclusions.precision_target`。[总入口退出码](../skills/vllm-model-migration/references/contract.md#静态计划输出与退出码) · [精度阶段契约](../skills/vllm-model-migration/skills/vllm-precision-align/references/contract.md#任务质量对齐)
+- 旧 `migrate.py --request` 的精度目标失败时可同时返回 `status=completed` 和退出码 1。总入口输入无效返回 2，必需条件不足返回 3。客户 `migrate.py --task` 完成交付返回 0。精度验收读取终端 JSON 或客户回执中的 `task_quality_conclusion.precision_target`，中文汇报读取同一对象的 `summary`。旧回执的分项依据在 `task_quality[]` 所引用报告的 `conclusions.precision_target`。[客户回执契约](../skills/vllm-model-migration/references/task-quality.md#客户回执中的任务质量结论) · [总入口退出码](../skills/vllm-model-migration/references/contract.md#静态计划输出与退出码)
 
 ## 精度与交接兼容性
 

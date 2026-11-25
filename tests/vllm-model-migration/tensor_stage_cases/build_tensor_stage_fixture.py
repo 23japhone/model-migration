@@ -45,7 +45,8 @@ def quality_fixture(root):
                  'status':'completed', 'conclusions':{'evaluation_validity':'pass'},
                  'detailed_report':{'hardware':'npu'},'evidence':{'quality_evidence':measurement}})
     score = {'subset':'math', 'metric':'accuracy', 'direction':'higher', 'precision_target':'fail',
-             'comparability':'pass', 'sample_comparison':{'status':'completed',
+             'comparability':'pass', 'unit':'ratio', 'npu_score':0, 'gpu_score':1,
+             'npu_minus_gpu':-1, 'drop':1, 'target':{'max_drop':0}, 'sample_comparison':{'status':'completed',
              'items':[{**CASE, 'gpu_score':1, 'npu_score':0}]}}
     return put(root / 'quality.json', {'task_id':'vllm-precision-compare','operation':'run','status':'completed',
                'conclusions':{'precision_target':'fail','evaluation_validity':'pass'},'scores':[score],

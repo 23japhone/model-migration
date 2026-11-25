@@ -69,17 +69,25 @@ def run_one(session, task, observed, supplied, work_root, candidate, index):
     return execute(session, key, 'vllm-precision-align', request, work_root, action='quality')
 
 
+def pending_reports(choices):
+    return [{'dataset': candidate['baseline']['dataset'], 'step': f'quality-{i}', 'status': 'not_run'}
+            for i, candidate in enumerate(choices)]
+
+
 def compare_all(session, task, observations, supplied, work_root, guarded):
     if not task['accuracy'].get('gpu_baselines') and not supplied.get('intent', {}).get('accuracy'):
         return
     observed = selection.observation(session, observations, supplied)
     choices, reports = selection.select(session, task, observed, supplied)
+    start = len(reports)
+    reports.extend(pending_reports(choices))
+    session.value['task_quality'] = reports
     for index, candidate in enumerate(choices):
         key = f'quality-{index}'
         result = guarded(session, key, lambda: run_one(
             session, task, observed, supplied, work_root, candidate, index))
         if result and result.get('status') == 'not_evaluated':
-            reports.append(result)
+            reports[start + index] = result
             continue
         row = session.value['steps'][key]
         entry = {'dataset': candidate['baseline']['dataset'], 'step': key, 'status': row['status']}
@@ -92,8 +100,7 @@ def compare_all(session, task, observations, supplied, work_root, guarded):
         if entry.get('report') and any(key in task['accuracy'] for key in ('token_alignment', 'tensor_alignment')):
             from .resume import frozen
             entry = frozen(session, entry)
-        reports.append(entry)
-    session.value['task_quality'] = reports
+        reports[start + index] = entry
     session.save()
     if 'token_alignment' in task['accuracy']:
         from ..token_alignment import stage
