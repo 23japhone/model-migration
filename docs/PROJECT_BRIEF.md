@@ -29,11 +29,13 @@
 
 成功标准按所选任务判断：资产身份齐备、支持路线有据、适配/注册进入最终载体、真实权重功能通过、原生评测有效，以及适用的比较与目标结论。完整 `deployment_precision/run` 还需独立导出三个交付 JSON。测量有效但目标未达标时，应交付真实 `fail`，不追求把报告改成通过。
 
-现行精度流程提供数据集评测和已有结果分析。下一阶段计划接入标准三步走问题定界和逐层激活值诊断，任务归属及验收要求见[精度对齐专项开发规划](MODEL_MIGRATION_FEATURE_PLAN_SUMMARY.md#432-精度对齐专项开发规划)。
+现行精度流程提供数据集评测和已有结果分析。正式评测的逐题评分与同轮运行时采集仍待贯通，基线复测和逐层数值比较也分别验收。[精度对齐专项开发规划](MODEL_MIGRATION_FEATURE_PLAN_SUMMARY.md#432-精度对齐专项开发规划)
 
 本仓不承担 SGLang 迁移、框架自动选择、正式性能测试和优化、自动异常修复循环、重新量化、训练、多机调度或宿主插件发布。保留的旧文件契约不改变当前框架范围。
 
 ## 当前状态
+
+截至 2026-11-25，`verify-agent` 可独立采集 msProbe 张量并通过 mindie-debugger 观察已适配层的缓存状态。固定版本的 NPU 实测覆盖 Llama 普通注意力、Qwen 普通注意力与 GDN，以及 DeepSeek-V2-Lite-Chat 的单卡同步 Eager MLA。Llama 和 Qwen 另有单机 TP=2 与单卡 ACLGraph 的分项验收记录。[使用契约](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/runtime-capture.md) · [按模型和模式查看实测证据](MSPROBE_RUNTIME_CAPTURE.md)
 
 2026-11-05，缺省镜像选择功能 `e6dc69e` 已通过 `1a21cf0` 合入本地 `dev`。客户未指定镜像时，准备阶段从官方 Quay 选版，客户入口将选中的标签和目标平台 digest 交给镜像任务。同一任务续接沿用冻结的选择。显式镜像和模板的用法见[缺省镜像选择](../skills/vllm-model-migration/references/customer-task.md#缺省镜像选择)。
 

@@ -17,6 +17,32 @@ def nested_configs(config, prefix=''):
     return values
 
 
+def declared_block_stack(config, name, count):
+    types = config.get('layer_types')
+    if types is None:
+        status = 'runtime_resolution_required'
+    elif not isinstance(types, list) or not all(isinstance(t, str) and t for t in types):
+        status = 'invalid_layer_types'
+    else:
+        status = 'declared' if len(types) == count else 'count_mismatch'
+    labels = types if status == 'declared' else []
+    diagram = '\n'.join([f'{name}  ({count})'] + [f'  {i}  {kind}' for i, kind in enumerate(labels)])
+    return {'config_path': name, 'count': count, 'layer_types': types, 'status': status, 'diagram': diagram}
+
+
+def declared_stacks(config, path=''):
+    """仅展开配置明确声明的层数和类型，运行实例由 worker 独立核对。"""
+    stacks = []
+    count = next((config[key] for key in ('num_hidden_layers', 'n_layer', 'num_layers', 'depth')
+                  if type(config.get(key)) is int and config[key] > 0), None)
+    if count is not None:
+        stacks.append(declared_block_stack(config, path or 'root', count))
+    for name, value in config.items():
+        if name.endswith('_config') and isinstance(value, dict):
+            stacks.extend(declared_stacks(value, f'{path}.{name}'.strip('.')))
+    return stacks
+
+
 def inspect_model(request):
     model = request['model']
     root = Path(model['path'])
@@ -28,6 +54,7 @@ def inspect_model(request):
         raise ValueError('architectures 含重复项')
     result = {'path': str(root), 'config': config, 'config_sha256': digest,
               'architectures': architectures, 'nested_configs': nested_configs(config),
+              'declared_stacks': declared_stacks(config),
               'task': model['task'], 'modalities': model['modalities'],
               'requested_dtype': model['dtype'], 'requested_quantization': model['quantization'],
               'configured_quantization': config.get('quantization_config'), 'errors': []}

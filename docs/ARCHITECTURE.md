@@ -107,6 +107,10 @@ model_migration/
 
 独立任务可以直接调用；这不表示把单个子目录复制出去就足够，跨技能定位、公共 Schema 和注册复验等依赖仍须一并满足。
 
+`verify-agent` 另提供可选 msProbe 运行时采集：准备配置及部署摘要 → 实际前端/引擎/worker 挂点 → 会话逐请求授权与封存 → 按输出 Token 反查前向及模块/API 文件。指定一次 decode 或冷前缀完整请求时，调度器逐次记录分配，目标层算子实参和 mindie-debugger 数值快照沿同一 forward_id 封存。完整请求的时间线还索引没有接受输出的 prompt 块，并记录每次前向实际消费的 Token。全部实现归 `verification/runtime/capture/`，直接消费部署报告，不依赖 GPU 基线解析或评测 SDK。输入输出及实际覆盖边界见[运行时采集工具](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/runtime-capture.md)；独立离线验证及固定环境的真实 NPU 验收见[交付记录](MSPROBE_RUNTIME_CAPTURE.md)。
+
+模型预检读取配置声明的层数和类型。加载模型后，worker 用实际文本层实例生成结构清单，并据此核对 msProbe 调用。缓存采集按实际后端类匹配观察点，核验实现源码、挂点和执行模式。普通注意力观察 K/V，GDN 观察卷积与递归状态，单卡同步 Eager 的 MLA 观察融合输入及写入物理槽的压缩 KV 和 RoPE。两种工具通过同一 `forward_id`、层和调用序号关联。遇到未知实现时，回执逐层标出缺失的内部状态并保留已取得的层边界。[后端适配与查询字段](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/runtime-capture.md#单卡同步-eager-的-mla-缓存)
+
 ## 4. 实际调用机制与流程
 
 ### 4.1 指令与脚本分工

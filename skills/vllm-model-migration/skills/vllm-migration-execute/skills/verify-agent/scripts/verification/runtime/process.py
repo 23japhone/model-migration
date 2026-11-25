@@ -6,6 +6,7 @@ import subprocess
 import time
 
 from .command import kill_group
+from .capture.launch import command as launch_command
 from ..evidence import write_json
 
 
@@ -31,7 +32,7 @@ def launch(request, resource, attempt):
     log = attempt / 'service.log'
     env = {**os.environ, **request['runtime']['env']}
     with log.open('ab') as stream:
-        process = subprocess.Popen(request['service']['command'], stdout=stream, stderr=stream,
+        process = subprocess.Popen(launch_command(request), stdout=stream, stderr=stream,
                                    stdin=subprocess.DEVNULL, start_new_session=True, env=env,
                                    cwd=request['runtime'].get('cwd'))
     resource['identity'] = identity(process.pid)
