@@ -63,7 +63,9 @@ class DefaultContractTests(unittest.TestCase):
         from customer_workflow.contract import FIELDS, normalize
         for group, keys in FIELDS.items():
             for key in keys:
-                for bad in ('', '  ', '-1', -1.0, True, False, [], {}):
+                invalid_list = [{}] if key == 'gpu_baselines' else []
+                invalid_object = {'unknown': 0} if key == 'tensor_alignment' else {}
+                for bad in ('', '  ', '-1', -1.0, True, False, invalid_list, invalid_object):
                     raw = customer()
                     raw[group][key] = bad
                     with self.subTest(field=key, bad=bad), self.assertRaises(ValueError):

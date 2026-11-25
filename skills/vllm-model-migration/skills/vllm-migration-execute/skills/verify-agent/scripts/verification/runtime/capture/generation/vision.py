@@ -79,15 +79,14 @@ def witness(directory, frame, worker, enabled, calls, errors):
     return info
 
 
-def bind_images(images, timeline, errors):
+def bind_images(images, timeline, errors, size):
     for image in images:
-        image['ranks'] = []
-        for rank in (0, 1):
-            image['ranks'].append(rank_image(image, timeline, rank, errors))
-        if image['ranks'][0]['feature'] != image['ranks'][1]['feature']:
-            errors.append('图像的两个 rank 绑定了不同的处理器结果或位置')
+        members = [rank_image(image, timeline, rank, errors) for rank in range(size)]
+        image['ranks'] = members
+        for member in members[1:]:
+            if member['feature'] != members[0]['feature']:
+                errors.append(f"图像的 rank{member['rank']} 与 rank0 绑定了不同的处理器结果或位置")
     return images
-
 
 
 def required_snapshots(info, points, calls, layer_paths, errors):

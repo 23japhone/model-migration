@@ -41,8 +41,16 @@ class EagerCalls:
         cls = type(module); original = cls.__call__
         @wraps(original)
         def invoked(instance, *args, **kwargs):
-            if instance is module and recorder.frame is not None:
+            if instance is module and module_hooks_enabled(recorder.frame):
                 if instance.do_not_compile is not True: raise ValueError('直接 Eager 模式已变化')
                 return Module._call_impl(instance, *args, **kwargs)
             return original(instance, *args, **kwargs)
         cls.__call__ = invoked
+
+
+def module_hooks_enabled(frame):
+    if frame is None:
+        return False
+    if frame.get('profile') == 'tensor_alignment':
+        return frame.get('targeted') is True
+    return frame.get('profile') != 'token_prediction'

@@ -1,4 +1,6 @@
 """目标 worker 的 TP 组、可见设备及跨进程前向身份。"""
+import re
+
 from . import state
 
 EXECUTOR = 'vllm.v1.executor.multiproc_executor'
@@ -28,11 +30,15 @@ def worker_group(runner):
     import torch
     from vllm.distributed.parallel_state import get_tp_group
     group = get_tp_group()
-    mapping = state.read(path)['devices']
+    topology = state.read(path)
+    mapping = topology['devices']
+    size = len(mapping)
+    expected_ranks = list(range(size))
     index = torch.npu.current_device()
-    if (config.world_size != 2 or config.tensor_parallel_size != 2 or config.pipeline_parallel_size != 1
-            or group.world_size != 2 or list(group.ranks) != [0, 1] or group.rank_in_group != rank):
-        raise ValueError('实际进程组与单机 TP=2 声明不符')
+    sizes = {topology['world_size'], config.world_size, config.tensor_parallel_size, group.world_size, dist.get_world_size()}
+    if (size < 2 or sizes != {size}
+            or list(group.ranks) != expected_ranks or rank not in expected_ranks or group.rank_in_group != rank):
+        raise ValueError('实际 TP 进程组与声明的物理设备数或成员不符')
     check_parallel_dimensions(config)
     backend = str(dist.get_backend(group.device_group))
     if backend != 'hccl':
@@ -43,9 +49,9 @@ def worker_group(runner):
 
 
 def check_parallel_dimensions(config):
-    extra_sizes = ('data_parallel_size', 'prefill_context_parallel_size', 'decode_context_parallel_size', 'nnodes', 'nnodes_within_dp')
+    extra_sizes = ('pipeline_parallel_size', 'data_parallel_size', 'prefill_context_parallel_size', 'decode_context_parallel_size', 'nnodes', 'nnodes_within_dp')
     if getattr(config, 'enable_expert_parallel', False) or any(getattr(config, key, 1) != 1 for key in extra_sizes):
-        raise ValueError('双卡仅适配纯张量并行')
+        raise ValueError('多卡采集仅适配单机纯张量并行')
 
 
 def select_frame(rec, schedule, internal):
@@ -59,7 +65,7 @@ def select_frame(rec, schedule, internal):
 
 
 def request_folder(folder):
-    return folder.parent if folder.name in ('rank0', 'rank1') else folder
+    return folder.parent if re.fullmatch(r'rank(0|[1-9][0-9]*)', folder.name) else folder
 
 
 def share(rec, amount):

@@ -58,6 +58,7 @@
 
 - [策略](../.codex/code-structure-policy.toml)使用 version 1，覆盖 `skills/` 和 `.agents/skills/` 内 `.py`、`.sh`、`.template`；JSON/Markdown 不作为源码复杂度指标，仍接受语法、链接及契约检查。缓存、Git、构建目录仅按审计工具默认排除规则处理，无业务或开发技能目录例外。
 - [基线](../.codex/code-structure-baseline.json)必须用 [TESTING 中的命令](TESTING.md#结构审计与基线)生成，不能手工编辑。普通验证不得带 `--write-baseline`；不能通过覆盖基线让增长违规消失。
+- 任务质量的软提示集中在公开归档核验、原生报告解析、跨子集逐题配对和相应测试。归档查找归客户入口，原生评测归验证任务，分差与目标归比较任务。各自保留模型或题库身份、样本覆盖和缺项处理分支，以便单独回归；跨 Skill 通过公开 CLI 交换证据。[任务质量验收](TESTING.md#2026-11-25-任务质量对齐单题验收)
 - 当前基线体量、测试集合及审计结果统一见[验证基准](TESTING.md#当前验证基准)，本页不重复维护数量快照。EvalScope 环境复用改动纳入新增模块并缩小编排和准备 CLI 热点，未调整阈值或上调硬热点；软提示的保留理由见[实现记录](CUSTOMER_WORKFLOW_IMPLEMENTATION.md#2026-10-29-evalscope-环境复用)，基础改造的历史理由保留在该记录的结构审查节。
 - 本次共用安装改造的 Change Shape Map、前后指标与软阈值理由见[实现记录](CUSTOMER_WORKFLOW_IMPLEMENTATION.md#2026-11-01-evalscope-共用环境安装)。原版脚本字节保持一致；未新增阈值豁免。
 - 本次续接继承和安装前核验的职责图、失败边界、21 项新增回归及结构审查见[续接记录](CUSTOMER_WORKFLOW_IMPLEMENTATION.md#2026-11-01-evalscope-续接继承与安装前核验)。测试按同一环境能力归组以避免平铺目录超限，原阈值不变；新增选择合成与探测校验的软提示按实际职责审查。

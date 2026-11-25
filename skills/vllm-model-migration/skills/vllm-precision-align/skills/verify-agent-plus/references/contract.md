@@ -1,6 +1,6 @@
 # 请求、产物和验收契约
 
-公开入口为 `scripts/validator.py`；控制脚本使用 Python3.10+ 标准库，评测解释器独立指定。统一参数为 `--request --work-root --run-id --action run|analyze|preflight --plan`。JSON 重复键、未知字段、非有限数字、非法路径及输出越界在运行前拒绝。所有路径属于执行主机，使用规范绝对路径；`{path,sha256}` 固定原始文件字节。
+公开入口 `scripts/validator.py` 使用 Python 3.10+ 标准库，评测解释器独立指定。通过 `--request`、`--work-root` 和 `--run-id` 传入请求与输出位置，可加 `--plan` 做静态检查。`--action` 支持普通测评的 `run`（默认）、`analyze`、`preflight`，任务质量的 `quality-run`、`quality-analyze`，以及按题定向复测的 `token-run` 与 `tensor-run`。运行前检查 JSON 重复键、未知字段、非有限数字、非法路径及输出边界。路径采用执行主机上的规范绝对路径，`{path,sha256}` 固定原始文件字节。
 
 ## 无推理数据预检
 
@@ -85,3 +85,15 @@ EvalScope 在固定输出预算下保留原生评分：HTTP `finish_reason=lengt
 原始请求、配置、评测环境、任务/进程回执、HTTP 正文、predictions、results 或 reviews/reports、原生逐样本详情与解析报告保留在包外。指标合法但任务执行失败不能通过；分析不能把历史失败洗成有效测量。每项完成立即保存结果；取消或后续项失败仍保留已完成项。共享上下文通过单独 context_validation 记录，历史分析不会因某项失败抹去其他独立有效项，也不会把服务身份失败提升为有效。
 
 本任务只复用模型服务。取消、超时和异常仅回收自有评测进程组及回环记录器，不停止 PID/CID 交接的服务，不调用历史启动、性能或全局清理脚本。完成后重新核对资源、监听者和实际设备进程；服务变更则不能交付本次有效测量。单次报告的原子写入不构成多文件事务，磁盘不可写时退出失败，不保证能够保存最终报告。
+
+针对 GPU 基线的指定 EvalScope scope，另见[任务质量测量与只读复核](quality-measurement.md)。
+
+## Token 定向重跑
+
+`validator.py --action token-run --request /abs/request.json --work-root /abs/output --run-id ID` 消费 `schema_version="1.0"`、首轮的完整 `native_request`、质量报告和阶段选题的 `quality_report`、`selection` 两份 path/sha256 引用。请求中的原生协议须与首轮 NPU 质量测量一致。
+
+评测器通过准备回执将稳定题号映射到原生 subset/index，核对原生样本的提示、few-shot 和答案。在已准备的单卡同步 Eager 服务上，每题用独立租约关联实际 HTTP、worker 预测和原生 review。每次只接受一个成功的正式生成请求。输出 `evidence.token_bundle` 绑定成功题目的单题记录与同轮评分。当个别题失败，进程以非零结束，`detailed_report.case_errors` 逐项列明原因。只有前后服务和资产仍一致时才发布成功题的包。
+
+## 张量定向重跑
+
+`validator.py --action tensor-run` 复用首轮 NPU 的 `native_request`、`quality_report` 和阶段的 `selection`。请求另传 `tensor_plans` 引用列表，每道入选题对应一份冻结清单，绑定其首异常位置与两端预测。回执的 `evidence.tensor_bundles` 与 `evidence.replay_reviews` 分别指向成功题的 NPU 张量包和此次原生评分，失败题的原因见 `detailed_report.case_errors`。[阶段采集与续接](../../../references/tensor.md)

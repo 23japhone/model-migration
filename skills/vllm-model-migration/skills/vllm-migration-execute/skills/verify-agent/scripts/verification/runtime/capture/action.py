@@ -44,8 +44,8 @@ def validate(request, action):
 
 
 def validate_forward_selector(request):
-    if 'rank' in request and (type(request['rank']) is not int or request['rank'] not in (0, 1)):
-        raise ValueError('rank 须为 0 或 1')
+    if 'rank' in request and (type(request['rank']) is not int or request['rank'] < 0):
+        raise ValueError('rank 须为非负整数')
     if len(set(request) & {'view', 'forward_id', 'prompt_position', 'output_index'}) > 1:
         raise ValueError('只能使用一个前向选择条件')
     if 'view' in request and (request['view'] != 'timeline' or set(request) - {'view', 'source', 'request_id', 'rank'}):
@@ -100,7 +100,7 @@ def capture(request, declared, handoff, prep, attempt):
         if ready.get('mode') == 'aclgraph':
             raise ValueError('ACLGraph 使用 capture-session 完整请求入口')
         if 'rank_workers' in ready:
-            raise ValueError('TP=2 使用 capture-session 完整请求入口')
+            raise ValueError('多卡 TP 使用 capture-session 完整请求入口')
         folder = root / ('request-' + uuid.uuid4().hex)
         folder.mkdir(mode=0o700)
         write_json(attempt / 'capture-session.json', {'path': str(folder), 'request_id': request['request_id']})
@@ -169,11 +169,11 @@ def lookup(request, target, run_id):
     if receipt.get('mode') == 'aclgraph':
         from .aclgraph.reader import lookup as graph_lookup
         return 0, graph_lookup(receipt, request)
-    if receipt.get('tensor_parallel_size') == 2:
+    if 'tensor_parallel_size' in receipt:
         from .parallel.reader import lookup as parallel_lookup
         return 0, parallel_lookup(receipt, request)
     if set(request) & {'event_index', 'image_index', 'image_snapshot', 'stack'}:
-        raise ValueError('生成扩展选择器要求双卡回执')
+        raise ValueError('生成扩展选择器要求多卡回执')
     if request.get('rank', 0) != 0:
         raise ValueError('单卡回执缺少所选 rank')
     if set(request) & {'view', 'forward_id', 'prompt_position'}:

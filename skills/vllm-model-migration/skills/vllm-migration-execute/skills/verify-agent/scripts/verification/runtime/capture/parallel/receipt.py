@@ -1,4 +1,4 @@
-"""用调度顺序和引擎接受输出封存一次双卡请求，分别核验各个 worker。"""
+"""用调度顺序和引擎接受输出封存一次张量并行请求，分别核验各个 worker。"""
 from concurrent.futures import ThreadPoolExecutor
 import re
 
@@ -60,12 +60,15 @@ def scheduled_entries(folder, mapped, tokens, intent, interrupted=False):
 
 def collect(root, folder, intent, ready, mapped, tokens, interrupted=False):
     timeline, errors = [], []
-    previous = [{}, {}]
-    seen_steps = [set(), set()]
+    workers = ready['rank_workers']
+    previous = [{} for _ in workers]
+    seen_steps = [set() for _ in workers]
 
     def local(worker, entry, dispatch):
         rank = worker['rank']
         try:
+            if 'binding_error' in worker:
+                raise ValueError(worker['binding_error'])
             member = rank_frame(root, folder, worker, entry, dispatch, intent, mapped, tokens, previous[rank])
             if member['step'] in seen_steps[rank]:
                 raise ValueError('rank 内重复 msProbe step')
@@ -75,13 +78,13 @@ def collect(root, folder, intent, ready, mapped, tokens, interrupted=False):
             previous[rank].clear()
             return missing_member(root, folder, worker, entry, dispatch, intent, error)
 
-    # 两套独立原生文件可同时核验；下一前向必须等待本前向的每卡状态承接检查。
-    with ThreadPoolExecutor(max_workers=2) as pool:
+    # 各卡独立原生文件可同时核验；下一前向必须等待本前向的每卡状态承接检查。
+    with ThreadPoolExecutor() as pool:
         for entry, dispatch in scheduled_entries(folder, mapped, tokens, intent, interrupted):
-            jobs = [pool.submit(local, worker, entry, dispatch) for worker in ready['rank_workers']]
+            jobs = [pool.submit(local, worker, entry, dispatch) for worker in workers]
             members = [job.result() for job in jobs]
             compare_position_axes(members)
-            for member, worker in zip(members, ready['rank_workers'], strict=True):
+            for member, worker in zip(members, workers, strict=True):
                 member['device'] = device_identity(worker)
                 errors.extend(f"{entry['forward_id']} rank{member['rank']}: {e}" for e in member['errors'])
             timeline.append({**entry, 'ranks': members})
@@ -95,20 +98,21 @@ def seal_parallel(request, authority, handoff, root, folder, intent, ready):
     timeline, errors = collect(root, folder, intent, ready, mapped, tokens, not engine.get('finished', True))
     errors.extend(ready.get('service_errors', []))
     errors.extend(str(read(p)['error']) for p in folder.rglob('error-*.json'))
+    size = len(ready['rank_workers'])
     totals = [{key: sum(entry['ranks'][rank].get(key, 0) for entry in timeline)
-               for key in ('msprobe_bytes', 'snapshot_bytes', 'observer_seconds', 'msprobe_window_seconds')} for rank in range(2)]
+               for key in ('msprobe_bytes', 'snapshot_bytes', 'observer_seconds', 'msprobe_window_seconds')} for rank in range(size)]
     check_budgets(intent, ready, timeline, totals, errors)
     from ..generation.receipt import generation_evidence
-    generation = generation_evidence(folder, sampling, response, timeline, errors, request['http'])
+    generation = generation_evidence(folder, sampling, response, timeline, errors, request['http'], size)
     refs, elapsed, timing_source = frontend_metadata(folder, generation)
     path = folder / 'capture-receipt.json'
     status = 'incomplete' if errors else 'complete'
-    result = {**generation, 'inference_status': 'completed' if engine.get('finished', True) else 'interrupted', 'tensor_parallel_size': 2, 'request_id': intent['request_id'], 'token_ids': tokens,
+    result = {**generation, 'inference_status': 'completed' if engine.get('finished', True) else 'interrupted', 'tensor_parallel_size': size, 'request_id': intent['request_id'], 'token_ids': tokens,
               'output_rank': ready['output_rank'], 'timeline': timeline, 'cache_status': status, 'cache_errors': errors,
               'capture_totals': {'by_rank': totals, 'request_wall_seconds': elapsed, 'wall_time_source': timing_source,
                                  'msprobe_bytes': sum(r['msprobe_bytes'] for r in totals),
                                  'snapshot_bytes': sum(r['snapshot_bytes'] for r in totals)},
-              'workers': ready.get('worker_refs') or [file_ref(root / f'worker-rank{i}.json', root) for i in range(2)],
+              'workers': ready.get('worker_refs') or [file_ref(root / f'worker-rank{i}.json', root) for i in range(size)],
               'executor': file_ref(root / 'executor.json', root), 'engine': file_ref(root / 'engine.json', root),
               'preparation': handoff['worker_capture']['receipt'], 'derived_config': authority['derived_config'],
               'source': authority['source'], 'sampling_parameters': sampling, 'response_id': response['id'],
@@ -129,9 +133,11 @@ def check_budgets(intent, ready, timeline, totals, errors):
     from types import SimpleNamespace
     for worker, total in zip(ready['rank_workers'], totals, strict=True):
         rank = worker['rank']
-        limit = share(SimpleNamespace(rank=rank, world_size=2), intent['cache_capture']['max_request_snapshot_bytes'])
+        limit = share(SimpleNamespace(rank=rank, world_size=len(ready['rank_workers'])), intent['cache_capture']['max_request_snapshot_bytes'])
         if total['snapshot_bytes'] > limit:
             errors.append(f'rank{rank} 请求实际快照字节超过分配额度')
+        if 'binding_error' in worker:
+            continue
         cap = worker['decode_cache']['max_snapshot_bytes']
         for entry in timeline:
             local = entry['ranks'][rank]
@@ -174,7 +180,7 @@ def frontend_metadata(folder, generation):
 
 def compare_position_axes(members):
     axes = [member['position_axes'] for member in members if 'position_axes' in member]
-    if len(axes) == 2 and axes[0] != axes[1]:
+    if any(axis != axes[0] for axis in axes[1:]):
         for member in members:
             member['status'] = 'incomplete'
-            member['errors'].append('两个 rank 实收的 M-RoPE 位置轴不同')
+            member['errors'].append('各 rank 实收的 M-RoPE 位置轴不同')

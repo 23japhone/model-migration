@@ -19,7 +19,7 @@ def parser():
     value.add_argument('--request',type=Path,help='包外请求 JSON')
     value.add_argument('--work-root',type=Path,help='包外证据根')
     value.add_argument('--run-id',help='运行标识')
-    value.add_argument('--action',choices=('run','analyze','preflight'),default='run')
+    value.add_argument('--action',choices=('run','analyze','preflight','quality-run','quality-analyze','token-run','tensor-run'),default='run')
     value.add_argument('--plan',action='store_true',help='只检查形状与输出边界')
     for flag in ('model-path','model-name','hardware-type','report-path','dataset','host'):
         value.add_argument('--'+flag)
@@ -50,13 +50,49 @@ def legacy_constraints(args,request):
     return request
 
 
+def is_quality(action, value):
+    if action.startswith('quality-'):
+        return True
+    return action == 'analyze' and isinstance(value, dict) and 'expected' in value
+
+
+def quality_command(args, raw):
+    from .quality import contract, history, run
+    from .runtime.process import handling_signals
+    action = 'quality-analyze' if args.action == 'analyze' else args.action
+    request = contract.validate(raw, action)
+    parent = output_parent(args.work_root, args.run_id)
+    if args.plan:
+        result = record(request, args.run_id, action, 'not_run')
+        result['evidence_parent'] = str(parent)
+        code = 0
+    else:
+        operation = run.run if action == 'quality-run' else history.analyze
+        with handling_signals():
+            code, result = operation(request, parent, args.run_id)
+    print(json.dumps(result, ensure_ascii=False))
+    return code
+
+
 def main(argv=None):
     args=parser().parse_args(argv)
     if not args.request and os.environ.get('PRECISION_REQUEST'):args.request=Path(os.environ['PRECISION_REQUEST'])
     if not args.request:return blocked('旧精度入口需要完整部署交接、数据身份及评测工具配置；未启动服务或安装依赖',args)
     if not args.work_root or not args.run_id:return blocked('请提供 --work-root 和 --run-id',args)
     try:
-        request=validate(load(args.request),args.action)
+        raw=load(args.request)
+        if args.action in ('token-run', 'tensor-run'):
+            from .token_run.run import run as token_run, validate as validate_token
+            from .runtime.process import handling_signals
+            validate_token(raw, args.action)
+            parent = output_parent(args.work_root, args.run_id)
+            with handling_signals():
+                code, result = (0, record(raw,args.run_id,args.action,'not_run')) if args.plan else token_run(raw,parent,args.run_id)
+            print(json.dumps(result, ensure_ascii=False))
+            return code
+        if is_quality(args.action, raw):
+            return quality_command(args, raw)
+        request=validate(raw,args.action)
         if args.action!='analyze':request=legacy_constraints(args,request)
         parent=output_parent(args.work_root,args.run_id)
     except (OSError,ValueError,TypeError,KeyError) as error:

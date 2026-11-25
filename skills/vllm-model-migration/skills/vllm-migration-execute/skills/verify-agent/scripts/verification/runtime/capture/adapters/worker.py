@@ -7,18 +7,28 @@ import uuid
 from . import parallel as tp
 
 from . import state
+from .alignment import worker as targeted
 from .decode_cache.runtime import observe_decode, prepare_worker, selected
 from .coverage import Coverage
 from .eager_calls import EagerCalls
 
 
-def save_vector(path, tensor, size):
+def vector_snapshot(tensor, size):
     import torch
     if tensor.ndim != 2 or tensor.shape != (1, size):
         raise ValueError(f'全词表行形状不符 {tensor.shape}，预期 (1,{size})')
     row = tensor[0].detach().cpu().contiguous().clone()
-    path.write_bytes(row.view(torch.uint8).numpy().tobytes())
-    return {'file': path.name, 'dtype': str(row.dtype), 'size': size}
+    return row.view(torch.uint8).numpy().tobytes(), {'dtype': str(row.dtype), 'size': size}
+
+
+def persist_vector(path, snapshot):
+    data, meta = snapshot
+    path.write_bytes(data)
+    return {'file': path.name, **meta}
+
+
+def save_vector(path, tensor, size):
+    return persist_vector(path, vector_snapshot(tensor, size))
 
 
 class Recorder:
@@ -29,6 +39,7 @@ class Recorder:
         self.runner = runner
         self.debugger = None
         self.frame = self.pending = self.folder = None
+        self.pending_vectors = {}
         self.size = runner.model_config.get_vocab_size()
         model = runner.get_model()
         self.modules = [name for name, _ in model.named_modules() if name]
@@ -43,7 +54,7 @@ class Recorder:
         self.rank = identity['rank']
         self.world_size = identity.get('world_size', 1)
         role = 'worker' if self.world_size == 1 else f'worker-rank{self.rank}'
-        if self.world_size == 2:
+        if self.world_size > 1:
             identity['state_shards'] = tp.shards(model, runner.model_config.hf_text_config, self.world_size)
         if self.rank == 0:
             self.install_sampler()
@@ -53,7 +64,8 @@ class Recorder:
         install_images(self, model)
         state.ready(role, **prepare_worker(self, model), **identity, mode='eager', synchronous=True, vocab_size=self.size, layers=layers,
                     modules=self.modules, architecture=self.architecture, direct_eager_modules=self.direct_calls.paths,
-                    coverage_capability='modules_and_registered_apis',
+                    coverage_capability='modules_and_registered_apis', token_prediction=self.world_size == 1,
+                    tensor_alignment=self.world_size == 1 and targeted.can_arm(),
                     hooks=['_model_forward', 'compute_logits', 'sample_tokens', 'greedy_sample'] if self.rank == 0 else ['_model_forward'])
 
     def install_sampler(self):
@@ -67,7 +79,7 @@ class Recorder:
                 self.observe(self.candidate, result)
             return result
         sampler.greedy_sample = greedy
-        if hasattr(sampler, 'topk_topp_sampler') and self.world_size == 2:
+        if hasattr(sampler, 'topk_topp_sampler') and self.world_size > 1:
             from .random_sampling import install
             install(self, save_vector)
 
@@ -81,6 +93,14 @@ class Recorder:
     def scores(self, logits):
         if not self.runner.input_batch.sampling_metadata.all_greedy:
             raise ValueError('实际请求未进入纯 greedy 分支')
+        if self.frame.get('profile') == 'tensor_alignment' and not self.frame.get('targeted'):
+            return
+        if targeted.requests_prediction(self.frame):
+            import torch
+            # Greedy does not sample probabilities. Normalize the real pre-argmax scores in host FP64.
+            probabilities = torch.softmax(logits.detach().to(device='cpu', dtype=torch.float64), dim=-1)
+            self.pending_vectors['processed_probs'] = vector_snapshot(probabilities, self.size)
+            return
         self.frame['scores'] = save_vector(self.folder / (self.frame['forward_id'] + '-scores.bin'), logits, self.size)
 
     def candidate(self, result):
@@ -88,17 +108,23 @@ class Recorder:
 
     def select(self, schedule):
         self.frame = self.pending = None
+        self.pending_vectors = {}
         self.folder, internal = state.mapped()
         if internal not in schedule.num_scheduled_tokens:
             return
         if len(schedule.num_scheduled_tokens) != 1:
             raise ValueError('目标前向混入其他请求')
-        if self.world_size == 2:
+        if self.world_size > 1:
             self.frame = tp.select_frame(self, schedule, internal)
         else:
             self.frame = {'internal_id': internal, 'forward_id': uuid.uuid4().hex,
                           'count': schedule.num_scheduled_tokens[internal]}
-        selected(self, schedule)
+        intent = state.read(tp.request_folder(self.folder) / 'intent.json')
+        if intent.get('profile') in ('token_prediction', 'tensor_alignment'):
+            self.frame['profile'] = intent['profile']
+            self.cache_selection = None
+        else:
+            selected(self, schedule)
 
     def start(self, ids, positions):
         frame = self.frame
@@ -112,7 +138,9 @@ class Recorder:
         else:
             self.input_metadata(ids, positions)
         state.write(self.folder / ('begin-' + frame['forward_id'] + '.json'), frame)
-        if 'step' not in frame:
+        if frame.get('profile') == 'tensor_alignment':
+            targeted.start(self)
+        elif 'step' not in frame and frame.get('profile') != 'token_prediction':
             self.start_probe()
 
     def input_metadata(self, ids, positions):
@@ -128,13 +156,17 @@ class Recorder:
                      logits_indices=runner.logits_indices.tolist(),
                      output_index=len(runner.requests[frame['internal_id']].output_token_ids))
 
-    def start_probe(self):
+    def prepare_probe(self):
         from msprobe.pytorch import PrecisionDebugger
-        frame, runner = self.frame, self.runner
         if self.debugger is None:
             self.direct_calls.validate()
             self.debugger = PrecisionDebugger(str(state.root() / 'capture-config.json'))
             self.coverage.attach(self.debugger)
+        return self.debugger
+
+    def start_probe(self):
+        frame, runner = self.frame, self.runner
+        self.prepare_probe()
         self.coverage.start()
         self.probe_started = perf_counter()
         self.debugger.start(model=runner.get_model(), rank_id=self.rank)
@@ -143,6 +175,10 @@ class Recorder:
         frame['dump'] = str(Path(service.dump_iter_dir).relative_to(state.root()) / f'rank{self.rank}')
 
     def close(self):
+        if self.frame.get('profile') == 'tensor_alignment':
+            return targeted.close(self)
+        if self.frame.get('profile') == 'token_prediction':
+            return
         if self.debugger is not None:
             try:
                 self.debugger.stop()
@@ -157,16 +193,33 @@ class Recorder:
         if pending is None or pending.logits is None:
             return
         self.pending = pending
-        self.frame['raw'] = save_vector(self.folder / (self.frame['forward_id'] + '-raw.bin'), pending.logits, self.size)
+        if self.frame.get('profile') == 'tensor_alignment' and not self.frame.get('targeted'):
+            return
+        if targeted.requests_prediction(self.frame):
+            self.pending_vectors['raw'] = vector_snapshot(pending.logits, self.size)
+        else:
+            self.frame['raw'] = save_vector(self.folder / (self.frame['forward_id'] + '-raw.bin'), pending.logits, self.size)
+
+    def commit_prediction_vectors(self, frame, ids):
+        snapshots, self.pending_vectors = self.pending_vectors, {}
+        if not ids:
+            return
+        for field, suffix in (('raw', 'raw'), ('processed_probs', 'probs')):
+            path = self.folder / (frame['forward_id'] + '-' + suffix + '.bin')
+            frame[field] = persist_vector(path, snapshots[field])
 
     def finish(self, result):
         frame = self.frame
         ids = result.sampled_token_ids[result.req_id_to_index[frame['internal_id']]]
-        state.write(self.folder / (frame['forward_id'] + '.json'), frame)
+        frame_path = self.folder / (frame['forward_id'] + '.json')
+        if ids and ids != [frame['candidate']]:
+            state.write(frame_path, frame)
+            raise ValueError('runner 的候选与送往引擎的采样结果不同')
+        if targeted.requests_prediction(frame):
+            self.commit_prediction_vectors(frame, ids)
+        state.write(frame_path, frame)
         if not ids:
             return
-        if ids != [frame['candidate']]:
-            raise ValueError('runner 的候选与送往引擎的采样结果不同')
         index = frame['output_index']
         dest = self.folder / f'prediction-{index}.json'
         if dest.exists():

@@ -20,6 +20,8 @@ def initialize(rec, schedule):
     features = rec.runner.requests[rec.frame['internal_id']].mm_features
     if not features:
         return
+    if rec.frame.get('profile') == 'tensor_alignment':
+        raise ValueError('定向张量采集仅支持文本')
     if len(features) != 1 or features[0].modality != 'image':
         raise ValueError('图文采集仅支持单张图片')
     rec.start_probe()
@@ -89,7 +91,7 @@ def bind(rec, obj, method, after, before=None):
 
 def install(rec, model):
     runner = rec.runner
-    if rec.world_size != 2 or 'visual.blocks' not in rec.architecture.get('other_stacks', {}):
+    if rec.world_size <= 1 or 'visual.blocks' not in rec.architecture.get('other_stacks', {}):
         return
     # Install the adapter only on a model whose merge and encoder implementations were inspected.
     if type(model).__module__ != 'vllm.model_executor.models.qwen3_5':

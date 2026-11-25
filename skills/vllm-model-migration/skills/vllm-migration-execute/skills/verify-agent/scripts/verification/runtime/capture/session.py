@@ -7,18 +7,26 @@ import uuid
 from ... import outputs, request as schema
 from ...evidence import read_bound, write_json
 from .adapters.state import read
+from .generation import tensor_alignment, token_prediction
 from .lease import identity, locked, no_lease, owned
 from .service import deployment, live
 from .tensors import file_ref
 
 
 def validate(request):
-    schema.fields(request, ['operation', 'source'], ['owner_pid', 'sample_key', 'native_id', 'trace_id', 'http', 'cache_output_index', 'cache_capture'])
+    schema.fields(request, ['operation', 'source'], ['owner_pid', 'sample_key', 'native_id', 'trace_id', 'http', 'cache_output_index', 'cache_capture', 'profile', 'tensor_plan'])
     schema.fields(request['source'], ['path', 'sha256']); schema.absolute(request['source']['path'])
     if not schema.HASH.fullmatch(str(request['source']['sha256'])): raise ValueError('来源摘要无效')
     op = request['operation']
     permitted = {'begin': {'owner_pid'}, 'arm': {'sample_key', 'native_id', 'trace_id'},
                  'seal': {'trace_id', 'http'}, 'end': set(), 'status': set()}
+    profile = request.get('profile')
+    if profile == 'tensor_alignment':
+        tensor_alignment.validate_selection(request)
+        permitted['arm'].update(('profile', 'tensor_plan'))
+    elif 'profile' in request:
+        token_prediction.validate_selection(request)
+        permitted['arm'].add('profile')
     if 'cache_output_index' in request:
         validate_cache_selection(request)
         permitted['arm'].add('cache_output_index')
@@ -46,11 +54,16 @@ def validate_full_request(request):
         raise ValueError('全程采集需要独立的 arm 选择和正整数请求预算')
 
 
+def valid_sample_key(request):
+    value = request['sample_key']
+    return (isinstance(value, str) and bool(value)) or (request.get('profile') in ('token_prediction','tensor_alignment') and type(value) is int)
+
+
 def validate_operation(request):
     op = request['operation']
     if op in ('arm', 'seal') and not re.fullmatch(r'[a-zA-Z0-9_-]{1,96}', str(request['trace_id'])):
         raise ValueError('trace_id 无效')
-    if op == 'arm' and (not isinstance(request['sample_key'], str) or not request['sample_key'] or
+    if op == 'arm' and (not valid_sample_key(request) or
                         not isinstance(request['native_id'], (str, int)) or isinstance(request['native_id'], bool)):
         raise ValueError('必须提供原生样本身份')
     if op == 'seal':
@@ -96,6 +109,10 @@ def begin(request, target, run_id):
 
 
 def verify_arm(request, root, ready, preparation):
+    if request.get('profile') == 'tensor_alignment':
+        return tensor_alignment.verify_worker(ready)
+    if 'profile' in request:
+        return token_prediction.verify_worker(ready)
     if ready.get('mode') == 'aclgraph':
         if ('cache_capture' in request) != ready['graph']['observe_cache'] or 'cache_output_index' in request:
             raise ValueError('图采集的全程观测范围须匹配捕图时的配置')
@@ -106,7 +123,7 @@ def verify_arm(request, root, ready, preparation):
         for worker in ready.get('rank_workers', [ready]):
             check_ready(root, worker, preparation)
     if 'rank_workers' in ready and 'cache_output_index' in request:
-        raise ValueError('TP=2 缓存采集要求 full_request')
+        raise ValueError('多卡 TP 缓存采集要求 full_request')
 
 
 def arm(request, root, lease, ready, preparation):
@@ -114,6 +131,8 @@ def arm(request, root, lease, ready, preparation):
     if any(row['trace_id'] == request['trace_id'] for row in lease['sealed']): raise ValueError('trace_id 已使用')
     verify_arm(request, root, ready, preparation)
     folder = root / ('request-' + uuid.uuid4().hex); folder.mkdir(mode=0o700)
+    if request.get('profile') == 'tensor_alignment':
+        tensor_alignment.snapshot_plan(request, folder)
     write_json(folder / 'intent.json', {**request, 'request_id': request['trace_id'], 'session_mode': True})
     if 'rank_workers' in ready:
         from .parallel.topology import bind_at_arm
@@ -148,8 +167,9 @@ def operate(request, target):
             from .aclgraph.receipt import seal_worker
             ready = seal_worker(lease['graph_worker'], lambda: live(handoff, prep, attempt))
         elif request['operation'] == 'seal' and 'members' in lease:
-            from .parallel.topology import seal_members
-            ready = seal_members(root / lease['directory'], lease['members'], lambda: live(handoff, prep, attempt))
+            from .parallel.topology import group_size, seal_members
+            size = group_size(read_bound(prep['parallel']))
+            ready = seal_members(root / lease['directory'], lease['members'], lambda: live(handoff, prep, attempt), size=size)
         else:
             ready = live(handoff, prep, attempt)
         if request['operation'] == 'arm': return arm(request, root, lease, ready, prep)

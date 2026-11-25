@@ -2,12 +2,13 @@
 import copy
 
 from coordination.runtime import sources
+from ..tensor_alignment import tolerance_change
 
 
 def begin(session, task):
     previous = session.previous or {}
     declared = previous.get('declared_inputs', previous.get('effective_inputs', task))
-    if declared != task:
+    if declared != task and not tolerance_change(declared, task):
         raise ValueError('续接不能改变已冻结的 prompt 实际参数')
     session.value['declared_inputs'] = copy.deepcopy(task)
     session.value['effective_inputs'] = copy.deepcopy(task)

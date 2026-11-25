@@ -1,4 +1,4 @@
-"""按逻辑前向查本地 rank 的原值；一个 rank 的坏文件保留另一个 rank 的结果。"""
+"""按逻辑前向读取各 rank 本地原值，隔离单个成员的证据缺失。"""
 from pathlib import Path
 from ....evidence import read_bound
 from .. import cache_evidence
@@ -7,7 +7,7 @@ from ..generation.delivery import load_response
 from ..generation.query import event_view, image_detail, image_for
 from ..timeline import select_entry
 from .frames import DATA_ERRORS
-from .topology import device_identity
+from .topology import device_identity, group_size
 
 
 def rank_view(result, entry, member, request, folder):
@@ -44,7 +44,7 @@ def rank_view(result, entry, member, request, folder):
 def bound_member(result, entry, member, rank, fid):
     ref = member['row']
     row = read_bound(ref)
-    worker = read_bound(result['workers'][rank])
+    worker = bound_worker(result, member, Path(ref['path']).parent.parent)
     if (row['rank'], worker['rank'], row['forward_id'], row['client_request_id'], row['output_index'],
             row['positions'], row['input_ids'], row['architecture']) != (
             rank, rank, fid, result['request_id'], entry['output_index'], list(range(*entry['position_range'])),
@@ -62,6 +62,18 @@ def bound_member(result, entry, member, rank, fid):
     if row.get('dispatch', end['dispatch']) != end['dispatch']:
         raise ValueError('worker 与调度前向不符')
     return row
+
+
+def bound_worker(result, member, folder):
+    rank = member['rank']
+    ref = result['workers'][rank]
+    allowed = (folder / f'member-rank{rank}.json', folder.parent / f'worker-rank{rank}.json')
+    if Path(ref['path']) not in allowed:
+        raise ValueError('worker 身份引用跨请求或 rank')
+    worker = read_bound(ref)
+    if 'device' in member and member['device'] != device_identity(worker):
+        raise ValueError('rank 设备身份与 worker 凭证不同')
+    return worker
 
 
 def inspect_cache(row, member, directory, fid, result):
@@ -111,10 +123,22 @@ def verify_request(result):
     if result.get('delivery', {}).get('frontend_engine_result_observed', True):
         read_bound(result['engine_output'])
     preparation = read_bound(result['preparation'])
-    read_bound(preparation['parallel'])
+    size = group_size(read_bound(preparation['parallel']))
+    if size != result['tensor_parallel_size']:
+        raise ValueError('回执的 TP 大小与部署证据不符')
     if 'cache_capture' in result:
         read_bound(preparation['decode_cache'])
     load_response(result['http'], partial=result.get('cache_status') == 'incomplete')
+    return size
+
+
+def local_members(entry, ranks):
+    by_rank = {}
+    for member in entry['ranks']:
+        rank = member['rank']
+        by_rank[rank] = None if rank in by_rank else member
+    return [by_rank.get(rank) or {'rank': rank, 'status': 'incomplete',
+            'errors': [f"{entry['forward_id']} rank{rank}: 缺少唯一成员记录"]} for rank in ranks]
 
 
 def timeline(result, ranks):
@@ -123,16 +147,18 @@ def timeline(result, ranks):
         read_bound(item['dispatch'])
         if 'accepted' in item:
             read_bound(item['accepted'])
-        items.append({**item, 'ranks': [item['ranks'][r] for r in ranks]})
+        items.append({**item, 'ranks': local_members(item, ranks)})
     return {**result, 'timeline': items}
 
 
 def lookup(result, request):
     if result['request_id'] != request['request_id']:
-        raise ValueError('请求 ID 与双卡回执不匹配')
+        raise ValueError('请求 ID 与多卡回执不匹配')
     folder = Path(request['source']['path']).parent
-    verify_request(result)
-    ranks = (request['rank'],) if 'rank' in request else (0, 1)
+    size = verify_request(result)
+    if request.get('rank', 0) not in range(size):
+        raise ValueError(f'所选 rank 超出回执范围 0..{size - 1}')
+    ranks = (request['rank'],) if 'rank' in request else range(size)
     if 'image_index' in request and request.keys() <= {'image_index', 'request_id', 'source', 'rank'}:
         image = image_for(result, request)
         return {'request_id': result['request_id'], 'image': {**image, 'ranks': [image['ranks'][r] for r in ranks]}}
@@ -142,11 +168,9 @@ def lookup(result, request):
         return timeline(result, ranks)
     entry, linked = resolve_entry(result, request, ranks)
     members = []
-    for rank in ranks:
-        member = entry['ranks'][rank]
+    for member in local_members(entry, ranks):
+        rank = member['rank']
         try:
-            if member['rank'] != rank:
-                raise ValueError('rank 索引错误')
             members.append(rank_view(result, entry, member, request, folder))
         except DATA_ERRORS as error:
             members.append({'rank': rank, 'status': 'incomplete', 'errors': [f"{entry['forward_id']} rank{rank}: {error}"]})

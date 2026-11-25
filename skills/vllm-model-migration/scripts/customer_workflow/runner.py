@@ -5,8 +5,10 @@ import signal
 
 from coordination.runtime import sources
 from coordination.runtime.evidence import EvidenceError, defer_interrupts
+from .token_alignment import deployment as token_deployment
 from . import context, effects, recovery, model_identity
 from .compile import assets, accuracy, deployment
+from .quality.stage import compare_all
 from .delivery import deliver
 from .invoke import execute
 from .defaults import model as default_model, devices as default_devices, state as default_state
@@ -106,7 +108,7 @@ def migrate(session, task, observations, jobs, work_root, supplied):
                                             'observation': session.value['steps']['host_observation']['receipt']}, work_root)
     recovery.container(session, task['environment'], host, supplied.get('decisions', {}), work_root)
     verification = deployment.verify(task, asset, prepared, observations, allocation, host['port'], context_length, functional)
-    verification['npu']['allocation'] = session.value['steps']['allocation']['receipt']
+    token_deployment.attach(session, task, verification)
     verify_ref = session.artifact('verify', verification)
     request = {'schema_version': '1.0', 'preparation': session.value['steps']['preparation']['receipt'],
                'precheck': check, 'verify': verify_ref, **deployment.extensions(recipe)}
@@ -199,15 +201,24 @@ def discover(session, task, observations, work_root, install=None):
     guarded(session, default_image.STEP, lambda: default_image.discover(session, task, observations, work_root))
 
 
-def workflow(session, task, supplied, work_root, install):
-    if install is not None and install.is_preview:
-        return effects.preview(session, task, work_root, install)
+def previous_observations(session, supplied):
     observations = copy.deepcopy(supplied['observations'])
-    for name, value in session.value.get('resolved_observations', {}).items():
-        value = recovery.frozen_observation(name, value)
+    for name, prior in session.value.get('resolved_observations', {}).items():
+        value = recovery.frozen_observation(name, prior)
         if name in observations and recovery.frozen_observation(name, observations[name]) != value:
             raise ValueError('已冻结的 Agent 观察不能在续接时改变：' + name)
         observations[name] = value
+    return observations
+
+
+def workflow(session, task, supplied, work_root, install):
+    if install is not None and install.is_preview:
+        return effects.preview(session, task, work_root, install)
+    from .tensor_alignment.continuation import resume
+    resumed = resume(session, task, supplied, work_root, guarded)
+    if resumed is not None:
+        return resumed
+    observations = previous_observations(session, supplied)
     discover(session, task, observations, work_root, install)
     guarded(session, 'default_model', lambda: default_model.resolve(session, task, observations))
     prepared = guarded(session, 'preparation', lambda: prepare(session, task, observations, work_root))
@@ -223,6 +234,7 @@ def workflow(session, task, supplied, work_root, install):
             guarded(session, 'entry', lambda: precision(session, task, observations, jobs, work_root,
                                                        {**recovery.evaluations(session.previous),
                                                         **supplied.get('evaluation_results', {})}))
+    guarded(session, 'task-quality', lambda: compare_all(session, task, observations, supplied, work_root, guarded))
     result = guarded(session, 'delivery', lambda: complete(session, task, observations, supplied, work_root, jobs))
     return result or session.finish('blocked', next_action=context.next_actions(['resolve_failed_steps']))
 

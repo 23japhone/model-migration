@@ -101,7 +101,7 @@ def missing_member(root, folder, worker, entry, dispatch, intent, error):
     directory = folder / f'rank{rank}'
     result = {'rank': rank, 'status': 'incomplete', 'errors': [str(error)], 'missing_layers': list(worker['layers']),
               'msprobe_status': 'incomplete', 'cache_observation_status': 'incomplete' if 'cache_capture' in intent else 'not_requested',
-              'snapshot_bytes': disk_bytes(directory / f'cache-{fid}')}
+              'snapshot_bytes': disk_bytes(directory / f'cache-{fid}') + disk_bytes(directory / f'vision-{fid}')}
     for name in ('end', 'begin'):
         path = directory / f'{name}-{fid}.json'
         if not path.is_file():

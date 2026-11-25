@@ -1,0 +1,14 @@
+{
+  "baseline": {
+    "dataset": "ceval",
+    "evaluator": "evalscope",
+    "subset_list": ["accountant"],
+    "prompt_config": {"request_format": "chat"},
+    "generation_config": {"temperature": 0},
+    "scores": [{"subset": "accountant", "metric": "accuracy", "gpu_score": 0.75, "target": {"max_drop": 0.005}}]
+  },
+  "measurement": "/artifacts/npu/quality-evidence.json",
+  "receipt": "/artifacts/npu/precision-manifest.json",
+  "source": "rerun",
+  "gpu_evidence": "/artifacts/gpu/precision-manifest.json"
+}

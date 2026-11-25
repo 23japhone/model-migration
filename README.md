@@ -16,7 +16,7 @@
 - **使用原生评测**：新测量默认 EvalScope，兼容显式 AISBench；保留原生模板、评分和数据身份，分别判断测量有效性、GPU/NPU 可比性和目标达标情况。
 - **共用环境与证据**：客户 EvalScope 每次有效正式准备调用原版安装脚本，续接继承环境并核对实际绑定；性能启动前另行核验 Python、venv、CLI、版本和当前 PATH，实际两端共用须有进程证据。
 - **交付可核验配置**：完整 EvalScope 客户流程联合校验、整体发布三个 JSON，保留独立导出回执、文件路径和 SHA256。
-- **按输出 Token 回查运行数据**，通过 `verify-agent` 可找到产生该 Token 的实际前向、msProbe 张量及已适配层的缓存原值。同步 Eager 支持单卡和单机 TP=2，单卡文本请求还支持 ACLGraph。MLA 缓存适配范围为单卡同步 Eager。[运行时采集工具](skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/runtime-capture.md)
+- **按输出 Token 回查运行数据**，通过 `verify-agent` 可找到产生该 Token 的实际前向、msProbe 张量及已适配层的缓存原值。同步 Eager 按所选物理卡数处理单机张量并行，双卡已有实机记录，四卡和八卡已做离线验证，单卡文本请求还支持 ACLGraph。MLA 缓存适配范围为单卡同步 Eager。[运行时采集工具](skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/runtime-capture.md)
 
 本仓交付的是包含指令、脚本、契约和模板的 Skills。Agent 负责需求理解、资料核对、源码适配与语义复核；脚本负责确定性执行和证据记录。使用本项目无需启动 MoFix 后端。
 
@@ -41,7 +41,7 @@
 
 ### 3. 准备 prompt 与 task.json
 
-将[客户模板](skills/vllm-model-migration/assets/template.json)复制到技能资源目录之外，填写实际模型和数据集信息。`model.model_name` 同时用于任务记录、结果标识、展示和 API 服务名，JSON 严格使用模板中的 `model`、`environment`、`accuracy` 三组及子字段；不兼容旧客户字段和旧结构回执。`task.json` 中的路径属于实际执行主机；证据工作根和 `run-id` 也须明确提供。
+将示例复制到技能资源目录之外，按实际执行主机填写 `model`、`environment`、`accuracy` 三组信息，另指定证据工作根和 `run-id`。`model.model_name` 同时用于任务记录、展示和 API 服务名。普通部署与精度评测可以使用基础模板；已有 GPU 成绩时，可直接参照任务质量示例填写 `accuracy.gpu_baselines`。[基础模板](skills/vllm-model-migration/assets/template.json) · [含 GPU 基线的完整示例](skills/vllm-model-migration/assets/task-quality.example.json)
 
 例如，交给 Agent 的任务描述可以是：
 
@@ -54,7 +54,7 @@
 
 填写时注意：
 
-- 三个分组对象必须存在；允许默认的字段支持**缺失、`null`、JSON 整数 `-1`**。`-1.0`、`"-1"`、空字符串、布尔值和显式空列表不能代替；模型名与全部 NPU 候选池按实际证据解析。
+- 支持默认值的字段可以省略、填 `null` 或 JSON 整数 `-1`。显式指定设备、普通评测数据集或子集时，列表须非空。`accuracy.gpu_baselines` 也接受 `[]`，与未提供基线等价。有精度评测意图时，Agent 会按模型查找公开 GPU 基线。[客户字段契约](skills/vllm-model-migration/references/customer-task.md#字段)
 - 三个分组允许空对象；显式数据集列表的每项必须提供 name。模型名可按契约自动确定，ceval/gsm8k 的路径可采用默认值，其他数据集须明确路径。模型、设备、样本范围和资源预算以本次任务为准。
 - 数据路径不存在时，Agent 查阅官方来源，优先读取有依据的默认本地位置；可用则复用，默认位置缺失或未提供时下载到客户指定路径。已有坏数据保留并报错，用户无需增加字段；详见[数据来源选择](skills/vllm-model-migration/skills/vllm-migration-prepare/skills/vllm-dataset-prepare/references/contract.md#指定路径缺失时的来源选择)。
 - `environment` 使用 `image_name`、`container_name`、`available_npu_devices`。设备列表限定允许范围，优先选择满足逐卡预算的全空闲组合；不足时允许共享占用卡，共享组合中每张卡额外预留剩余显存的5%。选卡不要求用满列表，也不代表性能最优 TP，详见[共享部署契约](skills/vllm-model-migration/references/customer-observations.md#空闲优先与共享部署)。EvalScope 默认安装到共享 /data/evalscope-venv，安装选项仅放在可选内部 context，见[共用环境契约](skills/vllm-model-migration/references/evalscope-installation.md)。
@@ -87,7 +87,7 @@ python3 -B skills/vllm-model-migration/scripts/migrate.py \
 
 ## 工作流程
 
-交付采用 **1 个总入口 → 3 个阶段 → 8 个任务，共 12 个 Skill**。下图表示依赖，实际执行范围由本次请求决定。
+交付采用 **1 个总入口 → 3 个阶段 → 10 个任务，共 14 个 Skill**。下图表示依赖，实际执行范围由本次请求决定。
 
 ```mermaid
 flowchart TD
@@ -95,9 +95,14 @@ flowchart TD
     E --> P[准备：模型与镜像]
     E --> D[准备：数据集]
     P --> M[迁移：预检、按需适配和注册、部署功能验证]
-    M --> A[精度：原生评测、比较与目标判定]
+    M --> A[普通原生精度评测]
     D --> A
-    A --> H[独立导出：三个交付 JSON]
+    A --> H[部署与普通精度满足交付条件时导出三个 JSON]
+    E --> Q[任务质量对齐：选取 GPU 基线，复用或复测 NPU 成绩]
+    Q --> R[质量报告或缺项原因]
+    R -. 启用 Token 对齐且有可比的未达标分项 .-> T[选取退化题或失败子集]
+    T -. 取得双端预测后 .-> C[逐题报告首个异常输出位置]
+    C -. 启用张量对齐且该位置有双端预测差异 .-> X[按共同清单比较该步的模块和算子张量]
 ```
 
 | 层级 | Skill | 职责 |
@@ -108,7 +113,9 @@ flowchart TD
 | 迁移阶段 | `vllm-migration-execute` | 按支持路线组织适配、注册和部署验证 |
 | ↳ 迁移任务 | `vllm-model-precheck`、`adapt-agent`、`vllm-model-register`、`verify-agent` | 分别负责预检、源码适配、框架注册、部署功能验收；verify-agent 另提供可选运行时采集 |
 | 精度阶段 | `vllm-precision-align` | 组织测量或历史分析，汇总比较与目标结论 |
-| ↳ 精度任务 | `verify-agent-plus` | 原生精度评测和已有结果分析 |
+| ↳ 精度任务 | `verify-agent-plus` | 执行原生精度评测、复核已有成绩，按选题清单重跑并关联同一请求的评分和预测 |
+| ↳ 精度任务 | `vllm-precision-compare` | 比较总分、分项和逐题评分，定位首个异常 Token，按调用比较 GPU/NPU 张量及适用的 CPU 参考 |
+| ↳ 精度任务 | `three-step-demarcation` | 按需对服务链路做三步定界 |
 
 阶段通过公开 CLI 和文件契约调用任务。`verify-agent` 唯一管理模型服务，精度任务只管理自有评测进程，borrowed 服务保持运行。独立步骤失败时保留其他有效成果，仅阻塞其实际消费者。
 
@@ -137,9 +144,15 @@ flowchart TD
 
 测量有效、GPU/NPU 可比和目标达标分别判断。有效精度测量可能未达到目标，交接成功也不表示性能优化完成。详细规则见[三文件交付契约](skills/vllm-model-migration/references/tuning-handoff.md)。
 
+任务质量结果保存在本次运行的 `customer-manifest.json` 中，其路径见入口输出的 `evidence.manifest`。打开 `task_quality[]` 中的报告引用 `report`，可查看成绩、逐题变化或缺项原因。自动搜索未取得完整 GPU 基线时，该项记为 `not_evaluated`（无法判断是否对齐），流程继续检查三份 JSON 的交付条件。[任务质量对齐契约](skills/vllm-model-migration/references/task-quality.md)
+
+需要定位首个异常输出 Token 时，在 `accuracy.token_alignment` 下填写两项绝对容差。按失败分项选题并取得二遍预测包后，查看客户回执中的 `token_alignment[].token_report`。[字段、二遍选择与续接](skills/vllm-model-migration/references/task-quality.md#从未达标分项进入-token-预测对齐)
+
+若 Token 报告已定位同一前文下的预测差异，可用 `accuracy.tensor_alignment` 对比该步的模块和算子。在客户回执的 `tensor_alignment[].tensor_report` 中查看超限调用、元素坐标和缺项。当前覆盖单卡、单请求、同步 Eager 文本贪心生成，离线用例使用合成 GPU/NPU 证据。[采集、客户证据和复算](skills/vllm-model-migration/skills/vllm-precision-align/references/tensor.md)
+
 ## 支持范围与当前限制
 
-- 当前面向 vLLM / vLLM-Ascend；SGLang、框架自动选择、重新量化、训练、多机调度及逐层诊断不在范围内。
+- 当前面向 vLLM / vLLM-Ascend；SGLang、框架自动选择、重新量化、训练、多机调度及自动算子根因定位不在当前范围内。
 - 提供性能测试配置交接，不执行正式压测、性能优化或性能目标验收；不提供自动异常修复循环。
 - 显式 AISBench 可执行精度测试，当前不支持三个 JSON 的完整交付；不会自动切换到 EvalScope。
 - 不提供 Agent 宿主插件发布、HTTP 服务或后台调度。vLLM 模型注册的 `mode=plugin` 仍是业务能力。
@@ -157,7 +170,7 @@ model_migration/
 │   ├── scripts/                    # 总入口与共享路径能力
 │   ├── references/                 # 契约、Schema 与布局
 │   ├── assets/                     # 客户模板和静态示例
-│   └── skills/                     # 三阶段及八个任务
+│   └── skills/                     # 阶段与任务 Skill
 ├── tests/vllm-model-migration/      # 离线回归
 ├── .agents/skills/                 # 随仓库提供的开发工作流技能
 └── .codex/                         # 结构质量策略与基线

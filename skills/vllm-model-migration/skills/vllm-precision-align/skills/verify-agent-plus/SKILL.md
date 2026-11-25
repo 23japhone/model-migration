@@ -1,6 +1,6 @@
 ---
 name: verify-agent-plus
-description: 默认使用 EvalScope，兼容 AISBench，结合指定开源数据集对已有 vLLM/vLLM-Ascend 模型服务执行精度测试，或核验既有评测产物、比较基线和判定精度目标时使用。
+description: 在已有 vLLM/vLLM-Ascend 服务上执行数据集精度测试（默认 EvalScope，兼容 AISBench）、复核历史结果、比较基线和判定目标时使用。也可按选题清单用 EvalScope 复测，将同一请求的评分与 Token 预测关联。
 ---
 
 # 数据集精度测试
@@ -14,6 +14,8 @@ catalog 发现指定路径不存在时仍由 Agent 查官方来源；source_reso
 EvalScope 配置中的 `limit` 可选，由用户输入正整数作为每个 subset 的题数上限；省略或 null 表示所选 split/subset 全量。超过实际题数时只测现有题目，拒绝 0、负数、布尔值、字符串和小数。数据选择与 sample_ids 必须按实际行数生成，并与原生 loader 逐题核对；不能把未填写视为待确认、默认小样本或改动已冻结基线。这里的 limit 不控制回答长度，max_tokens 仍按原规则显式配置。
 
 EvalScope 输出触及已配置长度上限时，保留原生评分和全部样本，记录 `output_truncation`，不单凭截断判整个评测失败。原生 `max_tokens` 必须与 HTTP `length` 对应，生成 token 数须等于请求上限；推理错误、覆盖、内容一致性、上下文及其他校验照常生效。仅记录截断不代表样本答对或模型达标。AISBench 结束策略保持不变；冻结基线及历史失败报告不改写。
+
+当任务质量对齐交接失败题号时，`scripts/validator.py --action token-run` 执行已选题的原生重跑，绑定同一请求的 Token 预测及逐题评分。见[Token 定向重跑契约](references/contract.md#token-定向重跑)。若阶段已冻结目标前向的采集清单，使用 `--action tensor-run` 取得 NPU 张量包和同题重放评分。[张量定向重跑契约](references/contract.md#张量定向重跑)
 
 ## 执行步骤
 
@@ -40,6 +42,10 @@ python3 /完整资源/skills/vllm-model-migration/skills/vllm-precision-align/sk
 ```
 
 `analyze` 重新核验固定产物和文件摘要，不访问模型服务、不需要现存权重、不重发推理、不改写来源报告。源产物不足时保留实际指标与复核原因，不能把历史执行失败改写成成功。
+
+## 任务质量对齐的 NPU 测量
+
+当比较阶段按 GPU 基线的 EvalScope 口径复测时，使用 `validator.py --action quality-run`。一次原生运行覆盖该 benchmark 的完整选定范围。读取同一份原生报告里的数据集和子集分数，并用原始文件的样本 ID 关联原生逐题结果。已有候选通过 `--action analyze` 携带 `source` 和 `expected` 复核。测量与只读复核分别写入独立尝试，分数差值和业务目标归比较任务处理。输入和证据格式见[测量与复核契约](references/quality-measurement.md)。
 
 ## 兼容与当前边界
 

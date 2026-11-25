@@ -4,7 +4,7 @@
 
 ## 公开入口
 
-下表脚本相对于对应 Skill 目录；每行链接指向权威契约。13 个主入口保留 --request --work-root --run-id 和 --plan；总入口另有互斥 --task。8 个辅助入口不计为新 Skill；resolve.py 使用 --model/--request；原版 install_evalscope.py 使用自身安装参数和 --dry-run/--help，其他参数按各自契约读取。
+下表脚本相对于对应 Skill 目录；每行链接指向权威契约。14 个主入口保留 --request --work-root --run-id 和 --plan；总入口另有互斥 --task。8 个辅助入口不计为新 Skill；resolve.py 使用 --model/--request；原版 install_evalscope.py 使用自身安装参数和 --dry-run/--help，其他参数按各自契约读取。
 
 | Skill / 契约 | 公开脚本 | 操作或职责 |
 | --- | --- | --- |
@@ -23,8 +23,9 @@
 | [adapt-agent](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/adapt-agent/reference/contract.md) | `scripts/adapt.py` | `--action capture/check`，不自动生成适配代码 |
 | [vllm-model-register](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/vllm-model-register/references/contract.md) | `scripts/register.py`、`scripts/check.py` | 注册与只读载体复验 |
 | [verify-agent](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/contract.md) | `scripts/verify.py` | `--action verify/review/stop/inspect-devices/capture-one/capture-session/capture-read`；采集会话消费部署报告并交付独立采集回执，见[输入输出](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/runtime-capture.md) |
-| [vllm-precision-align](../skills/vllm-model-migration/skills/vllm-precision-align/references/contract.md) | `scripts/precision.py` | `--action run/analyze` |
-| [verify-agent-plus](../skills/vllm-model-migration/skills/vllm-precision-align/skills/verify-agent-plus/references/contract.md) | `scripts/validator.py` | `--action run/analyze/preflight`；preflight 仅原生本地数据核验，兼容参数按契约约束 |
+| [vllm-precision-align](../skills/vllm-model-migration/skills/vllm-precision-align/references/contract.md) | `scripts/precision.py` | `--action run/analyze/quality/token/tensor`，其中 `tensor` 按单题冻结采集计划并调度比较。[张量阶段契约](../skills/vllm-model-migration/skills/vllm-precision-align/references/tensor.md) |
+| [verify-agent-plus](../skills/vllm-model-migration/skills/vllm-precision-align/skills/verify-agent-plus/references/contract.md) | `scripts/validator.py` | `--action run/analyze/preflight/quality-run/quality-analyze/token-run/tensor-run`。preflight 仅原生本地数据核验，tensor-run 按计划复测并采集 NPU 证据 |
+| [vllm-precision-compare](../skills/vllm-model-migration/skills/vllm-precision-align/skills/vllm-precision-compare/SKILL.md) | `scripts/compare.py` | `--action quality/token/tensor` 分别比较任务成绩、逐题 Token 预测和逐调用张量。tensor 支持单端证据预检及双端离线比较。[张量比较契约](../skills/vllm-model-migration/skills/vllm-precision-align/skills/vllm-precision-compare/references/tensor.md) |
 | [three-step-demarcation](../skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/references/contract.md) | `scripts/demarcation.py` | `--action run/analyze`；服务链路三步定界（请求校验 → 渲染反解 → 原始生成对照） |
 
 `--plan` 表示无业务执行效果的检查，但读取范围不同：例如总入口只读顶层形状，准备阶段还会委托子任务计划。不得将某一入口的计划行为推广到全部入口，不能从 `ready=true` 或退出 0 推断资产、服务或评测已有效。
@@ -38,17 +39,17 @@
 - 共享执行状态为 `not_run/running/completed/failed/blocked/skipped`；结论为 `pass/fail/not_evaluated/review_required`。内部台账可以有契约规定的其他状态，不机械套用共享枚举。
 - 回执须核对 task/run/operation、原始输入、stdout 与落盘结果、文件引用及摘要；摘要固定字节身份，不证明执行可信、当前服务存活或模型能力。
 - 原请求和已完成尝试不改写；绑定或续接形成新副本、摘要与独立尝试。资产路径属于实际执行主机或容器，不自动转换开发机路径。
-- 总入口退出码为 0 完成且适用目标通过、1 执行/证据失败或目标未通过、2 输入/边界无效、3 必需条件不足。有效精度目标 `fail` 可以同时 `status=completed`、退出 1；子任务按自身契约解释，不能统一以退出码替代业务结论。
+- 旧 `migrate.py --request` 的精度目标失败时可同时返回 `status=completed` 和退出码 1。总入口输入无效返回 2，必需条件不足返回 3。客户 `migrate.py --task` 完成交付返回 0，任务质量是否达标要读取 `task_quality[]` 所引用报告的 `conclusions.precision_target`。[总入口退出码](../skills/vllm-model-migration/references/contract.md#静态计划输出与退出码) · [精度阶段契约](../skills/vllm-model-migration/skills/vllm-precision-align/references/contract.md#任务质量对齐)
 
 ## 精度与交接兼容性
 
-客户三组对象必须存在；组内字段按[客户默认契约](../skills/vllm-model-migration/references/customer-task.md#字段)支持缺失/null/整数 -1。输入结构、三个交付 JSON 不增加字段。静态默认归一化与动态发现分开：--plan 只列待解析项，实际模型名及全部 NPU 候选池绑定来源证据后才供消费者使用。显式数据选择不扩大，旧字段仍拒绝；客户默认标记不扩展到内部 evalscope_install 参数。
+客户 `task.json` 必须包含 `model`、`environment` 和 `accuracy` 三组对象。可选的 `accuracy.gpu_baselines` 用于任务质量对齐。普通精度测试的 `accuracy.datasets[].limit` 只约束普通测试的样本范围。评测结果和缺项记录在客户回执中，三个交付 JSON 沿用既有结构。[客户字段与默认值](../skills/vllm-model-migration/references/customer-task.md#字段) · [基线字段及示例](../skills/vllm-model-migration/references/task-quality.md)
 
 执行时先校验显式 JSON，再由 context 一次合成 prompt、应用静态默认；前置检查与业务执行共享实际参数。inputs 保留原归一化快照用于续接比较。--plan 不读取 context，仅作尚未合成 prompt 的 JSON 预览，其后端与默认参数不表示最终执行选择。
 
 accuracy.datasets 的 prompt 仍为列表：两边均已选择时 name 序列须一致，条目内部 path/subset_list/limit 按明确值与未指定项合成；prompt 可省略未改字段，但不能省略已选名称。选择增删/重排或明确字段不同沿用集中冲突，非法结构沿用 invalid_input；不增加数组索引接口。完整语义以[数据集补值契约](../skills/vllm-model-migration/references/customer-task.md#prompt-补齐数据集字段)为准。
 
-旧内部请求默认 EvalScope，显式 backend/version 优先，旧 .py 保留 AISBench 识别；省略版本或 latest 才查询稳定版本。客户 JSON 仍只含 model/environment/accuracy 三组及模板子字段。客户 EvalScope 每次有效正式准备调用共用安装脚本，续接继承基础 Python/venv 并固定首次成功版本，本次开关不继承；向精度传递实际 Python 与版本，不额外查询 latest。已有绑定先只读核验，实际变化不可先安装恢复。原版安装回执仅凭一致请求/结果/绑定恢复选择；证据不足和更早 selection 回执须新 run-id。历史 analyze 不联网重选版本、不重新评分。
+旧内部请求默认 EvalScope，显式 backend/version 优先，旧 .py 保留 AISBench 识别；省略版本或 latest 才查询稳定版本。客户普通 EvalScope 评测每次有效正式准备调用共用安装脚本，续接继承基础 Python/venv 并固定首次成功版本，本次开关不继承；向精度传递实际 Python 与版本，不额外查询 latest。已有绑定先只读核验，实际变化不可先安装恢复。原版安装回执仅凭一致请求/结果/绑定恢复选择；证据不足和更早 selection 回执须新 run-id。历史 analyze 不联网重选版本、不重新评分。
 
 保持原生指标、单位、数据选择、模板和生成条件。EvalScope 的正整数 limit 是每个所选 subset 的上限，省略或 null 表示所选范围全量。缺 GPU 不声明对齐，缺目标不声明达标；截断按现行任务契约记录，不能另加未经要求的零截断门槛。
 

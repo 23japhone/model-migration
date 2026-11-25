@@ -41,15 +41,17 @@ def load_config(path):
     return yaml.load(path.read_text(encoding='utf-8'), Loader=UniqueLoader)
 
 
-def generation(config):
+def generation(config, *, allow_native_budget=False):
     value = object_field(config, 'generation_config')
     if set(value) - GENERATION_FIELDS:
         raise ValueError('generation_config 含未支持或原生 OpenAI 接口不生效的字段')
     single = all(type(value.get(key)) == int and value[key] == 1 for key in ('n', 'retries'))
     if value.get('stream') is not False or not single:
         raise ValueError('须显式 stream=false、n=1、retries=1，禁止隐式重复请求')
-    if type(value.get('max_tokens')) != int or value['max_tokens'] <= 0:
-        raise ValueError('须显式配置正整数 max_tokens')
+    maximum = value.get('max_tokens')
+    if maximum is not None or not allow_native_budget:
+        if type(maximum) is not int or maximum <= 0:
+            raise ValueError('须显式配置正整数 max_tokens')
     extra = object_field(value, 'extra_body')
     forbidden = {'model', 'messages', 'stream', 'n', 'max_tokens', 'max_completion_tokens',
                  'truncate_prompt_tokens', 'best_of', 'tools', 'tool_choice', 'modalities', 'audio'}
@@ -81,10 +83,10 @@ def execution(config):
     validate_limit(config.get('limit'))
 
 
-def validate(config, tasks, handoff):
+def validate(config, tasks, handoff, *, allow_native_budget=False):
     if not isinstance(config, dict):
         raise ValueError('TaskConfig 必须为对象')
-    execution(config); generation(config)
+    execution(config); generation(config, allow_native_budget=allow_native_budget)
     if config.get('api_key', 'EMPTY') not in ('EMPTY', ''):
         raise ValueError('首版不接受认证凭据配置')
     if config.get('model') != handoff['model']['name']:

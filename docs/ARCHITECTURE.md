@@ -1,10 +1,10 @@
 # 模型迁移 Skills 架构
 
-本文面向 `model_migration` 的维护者，说明技能职责、调用关系、资源边界和当前迁入状态。核对日期：**2026-11-01（Asia/Shanghai）**。具体输入字段、CLI 参数和任务完成条件以各 Skill 的现行契约及源码为准。
+本文面向 `model_migration` 的维护者，说明技能职责、调用关系、资源边界和当前迁入状态。精度比较部分于 2026-11-25 核对。具体输入字段、CLI 参数和任务完成条件以各 Skill 的现行契约及源码为准。
 
 维护规则从 [AGENTS.md](../AGENTS.md) 进入；[项目简介](PROJECT_BRIEF.md)索引文档职责，[代码质量](CODE_QUALITY.md)唯一维护源码组织与增长约束，[接口索引](INTERFACES.md)、[工作流程](WORKFLOWS.md)、[验证](TESTING.md)和[安全边界](SAFETY_POLICY.md)分别维护对应规则。本文继续负责实际架构和资源路径契约，不重复维护 Git 审批与质量阈值。
 
-**当前状态：客户默认值与 prompt 补值、阶段请求/续接、三文件整体发布、EvalScope 共用安装与性能启动前核验均已合入本地 dev。路径、布局、导入、输出保护及资源复制保留兼容。真实客户全流程、模型/NPU、SDK 组合、两端环境共用及宿主发现仍待验收。** Git 与验证状态见[项目当前状态](PROJECT_BRIEF.md#当前状态)和[验证基准](TESTING.md#当前验证基准)；目标服务器的验收范围以实测记录为准。
+**当前状态：客户默认值与 prompt 补值、阶段请求/续接、三文件整体发布、EvalScope 共用安装与性能启动前核验、EvalScope 任务质量、Token 预测和逐调用张量比较均已合入本地 dev。路径、布局、导入、输出保护及资源复制保留兼容。客户总入口到三文件交付的实机全流程、其他模型和 SDK 组合、两端环境共用及宿主发现仍待验收。** Git 与验证状态见[项目当前状态](PROJECT_BRIEF.md#当前状态)和[验证基准](TESTING.md#当前验证基准)；目标服务器的验收范围以实测记录为准。
 
 ## 1. 项目定位与范围
 
@@ -19,7 +19,7 @@
 - SGLang 迁移路线、框架自动选择、MoFix 后端接口接入。
 - 性能优化执行、正式压测、容量或性能目标验收、参数搜索。
 - 算子、通信、内存等运行异常的自动诊断修复和重试循环。
-- 重新量化、训练、多机调度，以及“标准三步走问题定界”“逐层激活值诊断”。
+- 重新量化、训练、多机调度，以及由逐层误差自动判定算子根因。
 
 性能目标可以记录为 `not_evaluated`；模型部署与精度基线完成后可导出三个交付配置。这不等于本仓执行性能优化，也不能由单机实例推导多机支持。
 
@@ -60,21 +60,22 @@ model_migration/
             └── vllm-precision-align/
                 └── skills/
                     ├── verify-agent-plus/
+                    ├── vllm-precision-compare/
                     └── three-step-demarcation/
 ```
 
-仓库根另有 `.agents/skills/` 保存团队开发工作流技能，`.codex/` 保存质量策略和基线；两者的使用见 [开发技能索引](DEVELOPMENT_SKILLS.md)。它们属于维护资源，不属于上图的 13 个模型迁移业务 Skill，不计入业务运行资源或模型运行载体。
+仓库根另有 `.agents/skills/` 保存团队开发工作流技能，`.codex/` 保存质量策略和基线；两者的使用见 [开发技能索引](DEVELOPMENT_SKILLS.md)。它们属于维护资源，不属于上图的 14 个模型迁移业务 Skill，不计入业务运行资源或模型运行载体。
 
 子 Skill 的内部资源在图中省略。每个 Skill 都有自己的 `SKILL.md`；`scripts/` 承担确定性操作，`references/` 保存契约与知识，`assets/` 保存模板和静态示例。`adapt-agent` 沿用单数 `reference/`，资源枚举与维护时需要保留这一实际目录。
 
-截至本次核对，技能树有 **13 个 Skill**，资源数量由当前目录枚举，实测记录见 TESTING.md；文件由布局和静态资源规则从当前目录枚举，不保留构建资源清单。本架构文档与仓库测试位于技能树之外。模型权重、数据集实体、镜像归档、实际请求、日志及运行证据由用户指定位置保存，不纳入技能静态资源。
+截至本次核对，技能树有 **14 个 Skill**，资源数量由当前目录枚举，实测记录见 TESTING.md；文件由布局和静态资源规则从当前目录枚举，不保留构建资源清单。本架构文档与仓库测试位于技能树之外。模型权重、数据集实体、镜像归档、实际请求、日志及运行证据由用户指定位置保存，不纳入技能静态资源。
 
 ### 2.1 路径支持与布局
 
 | 文件 | 实际职责 | 当前状态 |
 | --- | --- | --- |
 | [scripts/skill_paths.py](../skills/vllm-model-migration/scripts/skill_paths.py) | 技能根、直属资源、完整副本及实际字节快照 | 根据自身位置、布局和明确的静态资源规则工作，不依赖 cwd、Git 或构建入口 |
-| [references/skill-layout.json](../skills/vllm-model-migration/references/skill-layout.json) | 记录 13 个入口的名称、相对路径、层级和入口资料 | Skill 路径相对总 Skill 根，总入口 path 为 .；入口脚本仍相对各自 Skill |
+| [references/skill-layout.json](../skills/vllm-model-migration/references/skill-layout.json) | 记录 14 个入口的名称、相对路径、层级和入口资料 | Skill 路径相对总 Skill 根，总入口 path 为 .；入口脚本仍相对各自 Skill |
 
 `owned_files()` 枚举所选 Skill 直接拥有的当前资源，不收入嵌套子 Skill；`bundle_files()` 验证并枚举全部声明 Skill。准备阶段和两条注册复制链路使用同一套纳入规则，实际摘要保留在原有回执中。角色、类型、必需项和拒绝边界以[总入口契约](../skills/vllm-model-migration/references/contract.md#静态资源路径契约)及源码为准。
 
@@ -103,7 +104,9 @@ model_migration/
 | 迁移任务 | [adapt-agent](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/adapt-agent/SKILL.md) | 指导 Agent 实现模型、权重映射与必要 processor；脚本固定上下文及校验适配证据 | `scripts/adapt.py` |
 | 迁移任务 | [vllm-model-register](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/vllm-model-register/SKILL.md) | 建立或核验 architecture 到实现的映射，提供开发初检及载体内复验入口 | `scripts/register.py`、`scripts/check.py` |
 | 迁移任务 | [verify-agent](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/SKILL.md) | 部署或核验已有服务、最终载体注册复验、真实权重功能验证及服务生命周期 | `scripts/verify.py` |
-| 精度任务 | [verify-agent-plus](../skills/vllm-model-migration/skills/vllm-precision-align/skills/verify-agent-plus/SKILL.md) | 使用原生评测工具测量或分析已有结果，记录有效性、可比性和目标结论 | `scripts/validator.py` |
+| 精度任务 | [verify-agent-plus](../skills/vllm-model-migration/skills/vllm-precision-align/skills/verify-agent-plus/SKILL.md) | 执行原生测量或复核已有结果，记录有效性、可比性和目标结论。定向复测时关联原生评分与同一请求的预测，按张量计划采集 NPU 证据 | `scripts/validator.py` |
+| 精度任务 | [vllm-precision-compare](../skills/vllm-model-migration/skills/vllm-precision-align/skills/vllm-precision-compare/SKILL.md) | 比较 GPU 与 NPU 的总分、分项和可选逐题评分。按相同前文定位首个异常 Token，再按单题计划对照两端张量与适用的 CPU 参考 | `scripts/compare.py` |
+| 精度任务 | [three-step-demarcation](../skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/SKILL.md) | 针对可复现的异常 Chat 请求独立执行服务链路三步定界 | `scripts/demarcation.py` |
 
 独立任务可以直接调用；这不表示把单个子目录复制出去就足够，跨技能定位、公共 Schema 和注册复验等依赖仍须一并满足。
 
@@ -117,7 +120,7 @@ model_migration/
 
 Agent 阅读总入口或用户指定任务的 `SKILL.md`，结合现行契约准备包外请求。确定性脚本按固定公开 CLI 委托，核对原始回执与内容摘要，再形成自己的结果；不同层级不复制下载、部署或评分实现。调用不依赖宿主提供 subagent。
 
-总入口通过 Python 子进程调用阶段 CLI，先计划再执行。三个阶段对应总入口的四个依赖节点：`preparation`、`dataset_preparation`、`migration`、`precision`；前两个复用同一个准备阶段 Skill，但分别承担模型/镜像与数据准备。
+总入口通过 Python 子进程调用阶段 CLI，先计划再执行。旧 `--request` 流程的三个阶段对应四个依赖节点：`preparation`、`dataset_preparation`、`migration`、`precision`；前两个复用同一个准备阶段 Skill，但分别承担模型/镜像与数据准备。
 
 当前脚本按顺序执行就绪步骤，独立项采用失败隔离。**依赖独立不等于并发执行承诺**，本仓没有新增并发 DAG 调度服务。
 
@@ -126,14 +129,18 @@ flowchart TD
     E[总入口：确定范围与显式输入] --> P[准备阶段：模型与镜像]
     E --> D[准备阶段：数据集]
     P --> M[迁移阶段：预检、注册、部署功能验收]
-    M --> A[精度阶段：测量、比较与目标判定]
+    M --> A[普通精度评测]
     D --> A
     A --> H[独立导出：三个交付 JSON]
+    E -. 客户任务的 GPU 基线或精度意图 .-> Q[任务质量对齐]
+    Q --> S[客户回执中的质量报告]
+    S -. 启用 Token 对齐且有可比失败分项 .-> T[定界选题并比较首个异常输出位置]
+    T -. 启用张量对齐且目标位置有双端预测差异 .-> X[按单题计划核验并比较模块和算子张量]
     M -. 需要适配回执 .-> R[Agent 按 adapt-agent 完成实现与公开检查]
     R -. 新请求显式续接 .-> M
 ```
 
-图中的箭头表示依赖与交接，不表示所有场景都执行全部节点，也不表示这些节点并行运行。
+客户 `migrate.py --task` 在普通精度步骤后、三文件交付前调度任务质量对齐，将质量报告引用写入 `customer-manifest.json` 的 `task_quality[]`。启用 `accuracy.token_alignment` 后，精度阶段从可比的未达标分项选题。已有双端预测的题可直接比较。有 GPU 预测、缺 NPU 记录且具备首轮冻结请求的题委托原生评测重跑。客户通过 `token_alignment[]` 查看选题和比较报告。启用 `accuracy.tensor_alignment` 时，阶段使用本次生成或外部提供的同题 Token 报告，从 `tensor_alignment[]` 可查逐调用结果。三文件交付按普通精度、部署和导出回执独立判定。[定向重跑与比较的阶段契约](../skills/vllm-model-migration/skills/vllm-precision-align/references/contract.md#token-预测对齐)
 
 ### 4.2 支持度分流与明确续接
 
@@ -160,7 +167,7 @@ flowchart TD
 
 ## 5. 输入、静态契约与运行证据
 
-客户 JSON 严格限定为 model、environment、accuracy 三组及模板子字段，不兼容旧客户结构；环境字段为 image_name/container_name/available_npu_devices，设备池只允许在指定范围内分配。服务地址和空闲端口由内部策略生成。
+客户 JSON 由 `model`、`environment`、`accuracy` 三组组成，任务质量对齐使用可选的 `accuracy.gpu_baselines`。环境字段为 image_name/container_name/available_npu_devices，设备池只允许在指定范围内分配。服务地址和空闲端口由内部策略生成。
 
 客户模式从 prompt + [task.json](../skills/vllm-model-migration/assets/template.json) 开始。总入口 customer_workflow 负责按字段的缺失/null/整数 -1 语义、Agent 观察绑定、逐阶段请求生成及续接：contract 先校验显式值，context 合成一次 prompt 后应用静态默认，前置检查和 runner 共享结果；原 inputs 快照只用于追溯。自然语言、官方资料、源码适配和语义判断仍归 Agent。准备阶段拥有模型/镜像/数据准备，客户 EvalScope 每次调用共用安装脚本，AISBench/资产 SDK 保留既有流程；verify-agent 唯一操作服务，精度任务只操作自有评测进程，tuning_handoff 从有效证据生成并联合校验三文件。全流程和独立任务共用原公开 CLI，不导入兄弟私有模块。详细流程见[客户契约](../skills/vllm-model-migration/references/customer-task.md)。
 
@@ -209,19 +216,23 @@ flowchart TD
 
 ### 6.1 精度工具边界
 
-新评测默认 EvalScope；显式 AISBench 与旧 Python 配置按原契约处理。客户 EvalScope 每次有效正式准备调用随包原版 install_evalscope.py，首次默认共享 /data/evalscope-venv。可选 context.evalscope_install 传递原脚本六个参数；续接省略环境字段继承原选择，成功后固定实际版本，操作开关仅本次有效。customer_workflow/evaluation 分别拥有选择证据恢复、参数合成、30 秒只读前检及绑定生命周期；context 与执行消费同一安装计划。task.json 和三份交付 JSON 不变。安装回执保留日志、实际 Python/版本/CLI 与性能环境交接；help/dry_run 独立记录并停止业务，正式环境失败不阻止独立资产步骤。显式换配置在安装前拒绝且不修改原绑定；确认实际变化则永久失效。旧原版安装回执仅凭一致请求/结果/绑定恢复，证据不足或更早 selection 须新任务。资产 SDK 单独准备，本地模型不以评测环境为前提。旧 --request 的 latest 规则不变；完整依赖与行为见[安装契约](../skills/vllm-model-migration/references/evalscope-installation.md)。
+新评测默认 EvalScope；显式 AISBench 与旧 Python 配置按原契约处理。客户 EvalScope 每次有效正式准备调用随包原版 install_evalscope.py，首次默认共享 /data/evalscope-venv。可选 context.evalscope_install 传递原脚本六个参数；续接省略环境字段继承原选择，成功后固定实际版本，操作开关仅本次有效。customer_workflow/evaluation 分别拥有选择证据恢复、参数合成、30 秒只读前检及绑定生命周期；context 与执行消费同一安装计划。安装选项写在 Agent context 中。安装回执保留日志、实际 Python/版本/CLI 与性能环境交接；help/dry_run 独立记录并停止业务，正式环境失败不阻止独立资产步骤。显式换配置在安装前拒绝且不修改原绑定；确认实际变化则永久失效。旧原版安装回执仅凭一致请求/结果/绑定恢复，证据不足或更早 selection 须新任务。资产 SDK 单独准备，本地模型不以评测环境为前提。旧 --request 的 latest 规则不变；完整依赖与行为见[安装契约](../skills/vllm-model-migration/references/evalscope-installation.md)。
 
 精度任务使用已有独立评测环境和原生配置、模板及评分。当前契约描述的服务测量范围是 EvalScope Native/openai_api 与 AISBench、同执行主机 HTTP（含运行时核验的本机其他 IP）、非流式和单次生成；不扩写成任意认证方式、多模态或远程评测协议已经验证。详细边界见[精度任务契约](../skills/vllm-model-migration/skills/vllm-precision-align/skills/verify-agent-plus/references/contract.md)。
 
 数据来源选择归 dataset-prepare：catalog 只返回缺路径指引，Agent 核对官方来源及默认本地位置，准备任务通过 default_local 先读取，明确缺失或未提供默认位置时才下载到客户指定路径；已有坏数据保留失败。C-Eval/GSM8K 的 layout=evalscope 在包外生成独立数据目录和原生元数据，原文件不改。正式 catalog、预算和评测配置绑定准备回执 asset.path；preflight 检查原生加载与样本身份，正式运行再次核验摘要。准备、原生预检和实际评分分别报告，详细字段与来源身份边界见[数据准备契约](../skills/vllm-model-migration/skills/vllm-migration-prepare/skills/vllm-dataset-prepare/references/contract.md)。
 
-EvalScope 的 `limit` 为正整数时表示每个所选 subset 的题数上限；未填或为 `null` 时表示所选范围全量。数据选择、实际 sample_ids、评测配置和交接保持一致，不能用示例的小样本数量替代用户输入。输出达到配置上限时保留原生分数并记录截断，不能擅自增加“零截断才算完成”的门槛。
+普通精度测试中，EvalScope 的 `limit` 为正整数时表示每个所选 subset 的题数上限；未填或为 `null` 时表示所选范围全量。数据选择、实际 sample_ids、评测配置和交接保持一致，不能用示例的小样本数量替代用户输入。输出达到配置上限时保留原生分数并记录截断，不能擅自增加“零截断才算完成”的门槛。 任务质量重跑按 GPU 基线选择的数据范围和原生配置单独预检提示长度与生成预算。
 
-指标保留原生名称、聚合方式和单位，ratio 与 percent 不混用；相对比较要求实际工具、版本和关键条件可比，不把跨工具分数直接相减。缺 GPU 基线可形成有效 NPU 测量，但不能声称 GPU/NPU 对齐；缺目标不声明达标。目标未达标不触发自动调参、重测或精度诊断。
+任务质量对齐只使用 EvalScope 的评分证据。报告按原生名称、聚合方式、单位与方向匹配指标。未设置目标时可报告分差。客户提供基线时，精度阶段按评测条件核验已有 NPU 成绩，或委托原生重跑；每次按当前 GPU 分数和目标重新比较。有精度意图且缺少客户基线时，先检索同模型的公开 GPU 基线，查无可核验资料即记录 `not_evaluated` 并继续后续任务。质量评测只留评分及复核所需的证据。对未达标样本，Token 定向复测通过单卡同步 Eager 服务，在同一次贪心生成中关联原生评分和逐步预测。跨端比较使用相同样本和前文，报告首个异常位置。单题张量比较沿用这里确定的题目、前文和异常位置。[客户质量与 Token 复测契约](../skills/vllm-model-migration/references/task-quality.md#从未达标分项进入-token-预测对齐)
 
 历史 `analyze` 按原报告或 native 来源身份处理，不查询当前最新版本、不导入评测 SDK、不产生新推理或重新评分；缺失的历史来源不能用新默认值补齐。
 
 性能启动前，Agent 通过独立 check_evalscope_handoff.py 核验客户环境回执和当前 Python/venv/CLI/版本，再使用返回环境调用性能入口。实现归属 customer_workflow/evaluation，保留原始回执并输出独立证据；不自动执行性能任务或修改性能插件。契约见[只读核验](../skills/vllm-model-migration/references/evalscope-installation.md#性能启动前只读核验)。
+
+#### 运行时张量与算子诊断
+
+张量阶段根据第二遍的首个异常位置生成 GPU/NPU 共用的采集清单。阶段先核验 GPU 证据，再按需委托原生评测在 NPU 上单题复测。确认两端在同一前文复现目标步预测后，再比较该步张量。单卡同步 Eager worker 通过 msProbe 回调保存清单内的张量，离线比较器对照两端输入、输出和可用的 CPU 参考。[阶段输入和比较结果](../skills/vllm-model-migration/skills/vllm-precision-align/references/tensor.md)
 
 ### 6.2 三个交付 JSON
 
@@ -270,7 +281,7 @@ Python 控制入口要求 Python 3.10+；总入口与阶段本身按契约使用
 
 ## 9. 路径与资源契约
 
-资源根固定为完整 `vllm-model-migration/` 目录，不能扩大到维护仓库根。`plugin_root()` 和调用方 `release_root` 沿用兼容名称，不表示宿主插件能力。20 个调用模块通过其固定嵌套层级定位总 Skill 的 `scripts/skill_paths.py`，不查找旧 `runtime/`，不依赖 PYTHONPATH。
+资源根固定为完整 `vllm-model-migration/` 目录，不能扩大到维护仓库根。`plugin_root()` 和调用方 `release_root` 沿用兼容名称，不表示宿主插件能力。调用模块通过其固定嵌套层级定位总 Skill 的 `scripts/skill_paths.py`，不查找旧 `runtime/`，不依赖 PYTHONPATH。
 
 - 布局 JSON 保存在 `references/skill-layout.json`。`root` 保留 Skill 名称，总入口 `path` 为 `.`；其他 Skill 路径及运行资源证据键相对总 Skill 根，入口 `script`/`plan` 仍相对所属 Skill。
 - 仅根 Skill 定位允许 `.`；普通相对路径继续拒绝绝对路径、`..`、非规范分隔与符号链接重定向。根资源枚举使用空前缀，父级不重复收集子 Skill。
@@ -282,17 +293,19 @@ Python 控制入口要求 Python 3.10+；总入口与阶段本身按契约使用
 
 ## 10. 验证与当前证据
 
-2026-11-02 已核对本地 `dev` 合入后的实现；版本见 [项目当前状态](PROJECT_BRIEF.md#当前状态)，具体命令、数量和结果统一见 [TESTING](TESTING.md#当前验证基准)。
+项目版本见[当前状态](PROJECT_BRIEF.md#当前状态)，各次实机和离线检查的时间、范围与结果见[验证基准](TESTING.md#当前验证基准)。
 
 | 验证层 | 当前证据与边界 |
 | --- | --- |
 | 客户输入与三文件生成 | 按字段支持缺失/null/整数 -1，prompt 一次合成、来源优先级/冻结、容量与请求、子集和数据摘要、恢复及整体发布有离线回归；外部 SDK/Docker 边界使用模拟，完整实机流程待验收 |
-| 路径与离线调用 | 20 个公开 help 及主入口 plan、不同 cwd、中文/空格路径搬迁、索引/资源枚举和输出隔离；具体版本与结果见 TESTING |
+| 路径与离线调用 | 公开入口 help 及主入口 plan、不同 cwd、中文/空格路径搬迁、索引/资源枚举和输出隔离；具体版本与结果见 TESTING |
 | 本地准备与失败隔离 | 合成 metadata 与 JSONL 数据准备通过；模型项阻塞时独立数据仍完成，最终状态保留 blocked |
 | 注册资源复制 | 本地资源快照复制与模拟 Docker 调用捕获验证通过；只交付业务资源，旧平铺入口定位仍兼容；未调用真实 Docker |
 | 容器注册续接与导出 | 合成回执经过实际传输模块、迁移结果复用校验及导出 CLI 发布三 JSON；请求、来源映射或公开计划不一致时拒绝；仅模拟 Docker，不代表真实注册或精度验收 |
 | 结构与文档 | 语法、文档链接、结构策略和基线检查；软提示与未覆盖项见验证文档 |
 | 实际目标资产、模型/NPU 与精度 | 镜像、catalog、长度/预算和退出容器替换已有原服务器证据；Qwen3.5-27B 复用及新建服务功能通过，一项 C-Eval 子集有效。后续服务被停止，完整精度及三文件未完成；具体范围见 TESTING，不推导当前服务存活 |
+| 任务质量对齐 | Qwen3.5-27B 的 GSM8K 单题原生重跑和同题只读复用已在 NPU 验收。GPU 合成分数用于核验比较逻辑，真实双端精度结论仍待可比 GPU 实测证据。[单题验收](TESTING.md#2026-11-25-任务质量对齐单题验收) |
+| 张量与算子对齐 | 两端合成证据已覆盖单题比较、误差坐标和 CPU 复核，真实 GPU/NPU 联合采集仍待实机验收。[离线验收与运行条件](TESTING.md#2026-11-25-运行时张量与算子对齐) |
 | 宿主发现、取消与超时专项 | 本次未验证；不从目录嵌套或路径回归推断 |
 
 ### 原生目录输入长度核验
