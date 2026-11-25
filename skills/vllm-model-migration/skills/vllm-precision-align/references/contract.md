@@ -1,6 +1,6 @@
 # 阶段请求、结果和资源契约
 
-`scripts/precision.py` 使用 `--request`、`--work-root` 和 `--run-id`。`--action` 支持 `run`（默认）、`analyze`、`quality` 和 `token`，可加 `--plan` 做静态检查。阶段使用 Python 3.10+ 标准库，通过 Skill 布局定位并调用 `prepare.py`、`verify.py`、`validator.py` 和 `compare.py` 的公开入口。远程运行时由调用方在目标主机执行本 CLI。
+`scripts/precision.py` 使用 `--request`、`--work-root` 和 `--run-id`。`--action` 支持 `run`（默认）、`analyze`、`quality`、`token` 和 `tensor`，可加 `--plan` 做静态检查。阶段使用 Python 3.10+ 标准库，通过 Skill 布局定位并调用 `prepare.py`、`verify.py`、`validator.py` 和 `compare.py` 的公开入口。远程运行时由调用方在目标主机执行本 CLI。
 
 ## 输入
 
