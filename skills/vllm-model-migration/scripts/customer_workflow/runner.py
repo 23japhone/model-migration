@@ -7,6 +7,7 @@ from coordination.runtime import sources
 from coordination.runtime.evidence import EvidenceError, defer_interrupts
 from . import context, effects, recovery, model_identity
 from .compile import assets, accuracy, deployment
+from .quality.stage import compare_all
 from .delivery import deliver
 from .invoke import execute
 from .defaults import model as default_model, devices as default_devices, state as default_state
@@ -223,6 +224,7 @@ def workflow(session, task, supplied, work_root, install):
             guarded(session, 'entry', lambda: precision(session, task, observations, jobs, work_root,
                                                        {**recovery.evaluations(session.previous),
                                                         **supplied.get('evaluation_results', {})}))
+    guarded(session, 'task-quality', lambda: compare_all(session, task, observations, supplied, work_root, guarded))
     result = guarded(session, 'delivery', lambda: complete(session, task, observations, supplied, work_root, jobs))
     return result or session.finish('blocked', next_action=context.next_actions(['resolve_failed_steps']))
 

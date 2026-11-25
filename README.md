@@ -87,7 +87,7 @@ python3 -B skills/vllm-model-migration/scripts/migrate.py \
 
 ## 工作流程
 
-交付采用 **1 个总入口 → 3 个阶段 → 8 个任务，共 12 个 Skill**。下图表示依赖，实际执行范围由本次请求决定。
+交付采用 **1 个总入口 → 3 个阶段 → 10 个任务，共 14 个 Skill**。下图表示依赖，实际执行范围由本次请求决定。
 
 ```mermaid
 flowchart TD
@@ -109,6 +109,8 @@ flowchart TD
 | ↳ 迁移任务 | `vllm-model-precheck`、`adapt-agent`、`vllm-model-register`、`verify-agent` | 分别负责预检、源码适配、框架注册、部署功能验收；verify-agent 另提供可选运行时采集 |
 | 精度阶段 | `vllm-precision-align` | 组织测量或历史分析，汇总比较与目标结论 |
 | ↳ 精度任务 | `verify-agent-plus` | 原生精度评测和已有结果分析 |
+| ↳ 精度任务 | `vllm-precision-compare` | 按 GPU 基线比较数据集总分、子集和逐题评分 |
+| ↳ 精度任务 | `three-step-demarcation` | 按需对服务链路做三步定界 |
 
 阶段通过公开 CLI 和文件契约调用任务。`verify-agent` 唯一管理模型服务，精度任务只管理自有评测进程，borrowed 服务保持运行。独立步骤失败时保留其他有效成果，仅阻塞其实际消费者。
 

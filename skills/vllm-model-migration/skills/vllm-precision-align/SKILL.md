@@ -37,3 +37,5 @@ python3 /完整资源/skills/vllm-model-migration/skills/vllm-precision-align/sc
 评测能力与实际运行环境边界以 `verify-agent-plus` 为准；当前支持 EvalScope Native/openai_api 与 AISBench，采用独立评测环境、同执行主机 HTTP、非流式和单次生成；本机其他 IP 在运行时验证本地归属。具体配置、样本与原生证据见[精度任务契约](skills/verify-agent-plus/references/contract.md)。analyze 按原工具和版本只读核验，不联网重选版本、不重新评分。完整资源副本运行不等于宿主发现或真实模型验收。
 
 客户流程可为 evaluation 提供 `blocked_reason` 保存未就绪项，并让其他独立项继续；也可提供 `result` 引用复用同一完整输入的有效原 run。复用前委托 verify-agent-plus 的公开 analyze 核验，再保留原 run 引用，不生成新测量。结果/来源变化阻塞该项；契约见 references/contract.md。
+
+客户声明 GPU 基线或总入口查到完整的公开基线时，使用阶段的 `--action quality`。先按冻结的测量条件复核候选，再按需运行 EvalScope。将同一轮原生分数、逐题评分与 GPU 历史证据交给 [vllm-precision-compare](skills/vllm-precision-compare/SKILL.md)。单题验收使用专用单题题库，分别记录首次测量的正式请求数和第二次复用所引用的原回执。字段与输出路径见[阶段契约](references/contract.md#任务质量对齐)。

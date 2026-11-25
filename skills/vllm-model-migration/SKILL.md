@@ -92,3 +92,5 @@ Agent 负责意图、适配和语义复核；确定性脚本负责阶段委托�
 执行状态与验收结论分开：有效精度结果目标 fail 仍可 completed；缺 GPU 不宣布对齐、缺目标不宣布达标。交付真实验收、离线测试、未验证项及服务观察时间。静态计划、历史分析和包结构检查均不证明当前服务存活或模型能力。
 
 完整流程以精度 evaluations 的 id 显式声明 bindings；deployment 只能绑定 migration，dataset 只能绑定 dataset_preparation。共享数据准备只选一个 dataset 任务；被注入字段必须在原评测请求及阶段条目中留空。原请求不被改写，冻结副本重新计算摘要。完整示例的 keep 可显式改为 stop；先完成所有消费者再收尾，历史分析禁止 stop。
+
+有精度评测意图时，优先使用客户填写的 `accuracy.gpu_baselines[]`，否则按顶层模型名称或仓库 ID 搜索公开 GPU 评测资料。来源明确且关键条件齐全时，委托精度阶段复用或重跑 NPU 评测。搜索无结果或资料缺项时，把原因和 `not_evaluated` 写入客户回执的 `task_quality`，继续下一项任务。总分、分项和可选逐题变化见[精度阶段契约](skills/vllm-precision-align/references/contract.md#任务质量对齐)。

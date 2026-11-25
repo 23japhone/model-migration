@@ -41,6 +41,10 @@ python3 /完整资源/skills/vllm-model-migration/skills/vllm-precision-align/sk
 
 `analyze` 重新核验固定产物和文件摘要，不访问模型服务、不需要现存权重、不重发推理、不改写来源报告。源产物不足时保留实际指标与复核原因，不能把历史执行失败改写成成功。
 
+## 任务质量对齐的 NPU 测量
+
+当比较阶段按 GPU 基线的 EvalScope 口径复测时，使用 `validator.py --action quality-run`。一次原生运行覆盖该 benchmark 的完整选定范围。读取同一份原生报告里的数据集和子集分数，并用原始文件的样本 ID 关联原生逐题结果。已有候选通过 `--action analyze` 携带 `source` 和 `expected` 复核。测量与只读复核分别写入独立尝试，分数差值和业务目标归比较任务处理。输入和证据格式见[测量与复核契约](references/quality-measurement.md)。
+
 ## 兼容与当前边界
 
 旧 `validator.py` 参数及两个精度 shell 文件保留入口。完整请求之外的旧参数只作一致性约束，不能覆盖新请求。只有旧模型/端口参数时返回 `blocked` 和所缺交接，不启动一站式流程。部署、量化和性能参数须显式转交相应任务；旧 `report-path` 不用于覆盖原报告，实际报告由独立尝试目录交付。

@@ -4,7 +4,7 @@
 
 ## 字段
 
-客户 JSON 只接受 `model`、`environment`、`accuracy` 三组；三组必须存在且为对象，允许空对象。字段集合及数据集子字段仍与模板一致，不新增客户字段；按下表允许省略。未知字段、重复 JSON 键，以及旧 `served_model_name`、`vllm_ascend_image`、`evaluator_python`、`deployment` 均拒绝。完整显式模板继续可用；模板中的具体模型和设备值不作为默认。
+客户 JSON 只接受 `model`、`environment`、`accuracy` 三组；三组必须存在且为对象，允许空对象。普通精度测试字段见模板。可选的 accuracy.gpu_baselines 用于任务质量对齐，按下表及专项契约填写。未知字段、重复 JSON 键，以及旧 `served_model_name`、`vllm_ascend_image`、`evaluator_python`、`deployment` 均拒绝。完整显式模板继续可用；模板中的具体模型和设备值不作为默认。
 
 下表的“未指定”统一指字段缺失、null 或整数 -1。-1.0、true/false、空串、纯空白及字符串 "-1" 均不能替代；显式空设备列表、空数据集列表和空子集列表也拒绝。绝对路径可含空格；不能包含 `..`。路径代表实际执行主机，模型缓存中受控的官方 blobs 链接按专门规则核验。迁移保留 -1 写法不意味着性能 Skill 的输入记录器也支持该写法。
 
@@ -19,6 +19,7 @@
 | environment.container_name | 合法 Docker 名称，最长 101 字符 | 根据最终 model_name 生成合法且稳定的名称 |
 | environment.available_npu_devices | 本任务允许使用的 NPU 范围；非空、唯一、非负整数列表 | 当前执行主机实际发现的全部 NPU 候选池；不等于固定 TP |
 | accuracy.evaluator | evalscope / aisbench，大小写不敏感 | evalscope；每次准备调用共用环境安装脚本，绑定实际版本 |
+| accuracy.gpu_baselines | GPU 基线数组，空数组也视作未提供，详见[任务质量对齐](task-quality.md) | 有精度意图时依模型名称查找 GPU 基线，缺项时记录未评估并继续后续任务 |
 | accuracy.datasets | 非空对象列表；名称唯一；显式选择及顺序保持 | 按 ceval、gsm8k 顺序生成两项 |
 | accuracy.datasets[].name | 原生评测工具数据集标识 | 不允许 |
 | accuracy.datasets[].path | 实际本地绝对路径 | ceval 为 /data/ceval，gsm8k 为 /data/gsm8k；其他数据集须明确路径 |
@@ -98,7 +99,7 @@ subset_list 的 -1 不控制题数。limit 为正整数 N 时取 test.jsonl 的�
 
 ## 精度方案
 
-客户模式固定 few_shot_num=0、temperature=0、top_p=1、seed=42、eval_batch_size=1、max_tokens=8192，stream=false、n=1、retries=1、model_args.max_retries=0、rule judge。支持 enable_thinking 时关闭，不支持时记录能力。用原生 loader 得到实际样本并以本模型 tokenizer 计算 prompt 长度；上下文不足明确阻塞，不截断输入、不降低 8192 输出预算。
+普通精度测试固定 few_shot_num=0、temperature=0、top_p=1、seed=42、eval_batch_size=1、max_tokens=8192，stream=false、n=1、retries=1、model_args.max_retries=0、rule judge。支持 enable_thinking 时关闭，不支持时记录能力。用原生 loader 得到实际样本并以本模型 tokenizer 计算 prompt 长度；上下文不足明确阻塞，不截断输入、不降低 8192 输出预算。
 
 每个数据集/子集生成独立评测项，使用真实原文件前 min(N,行数) 或全部样本身份。不得自改原生模板、答案解析或评分器。多个数据集完整汇总，同一数据集的子集在条件相同后合并到交付对象。输入端重复数据集名称拒绝。
 

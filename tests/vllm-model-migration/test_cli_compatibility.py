@@ -74,7 +74,7 @@ class CliCompatibilityTests(unittest.TestCase):
     def test_all_public_help_entries_without_pythonpath(self):
         for root in (ROOT, self.copy):
             entries = self.public_entries(root)
-            self.assertEqual(len(entries), 21)
+            self.assertEqual(len(entries), 22)
             for entry in entries:
                 with self.subTest(root=root, entry=entry):
                     result = self.invoke(entry, '--help')
