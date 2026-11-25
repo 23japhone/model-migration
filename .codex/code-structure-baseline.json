@@ -38,7 +38,7 @@
         "kind": "source"
       },
       "skills/vllm-model-migration/scripts/customer_workflow/quality": {
-        "files": 12,
+        "files": 13,
         "kind": "source"
       },
       "skills/vllm-model-migration/scripts/customer_workflow/quality/baseline_search": {
@@ -298,7 +298,7 @@
         "kind": "test"
       },
       "tests/vllm-model-migration/task_quality": {
-        "files": 14,
+        "files": 15,
         "kind": "test"
       },
       "tests/vllm-model-migration/tensor_alignment": {
@@ -441,7 +441,7 @@
       },
       "skills/vllm-model-migration/scripts/customer_workflow/cli.py": {
         "kind": "source",
-        "lines": 43
+        "lines": 45
       },
       "skills/vllm-model-migration/scripts/customer_workflow/compile/__init__.py": {
         "kind": "source",
@@ -465,7 +465,7 @@
       },
       "skills/vllm-model-migration/scripts/customer_workflow/context.py": {
         "kind": "source",
-        "lines": 96
+        "lines": 99
       },
       "skills/vllm-model-migration/scripts/customer_workflow/contract.py": {
         "kind": "source",
@@ -587,6 +587,10 @@
         "kind": "source",
         "lines": 152
       },
+      "skills/vllm-model-migration/scripts/customer_workflow/quality/conclusion.py": {
+        "kind": "source",
+        "lines": 164
+      },
       "skills/vllm-model-migration/scripts/customer_workflow/quality/discover.py": {
         "kind": "source",
         "lines": 35
@@ -617,7 +621,7 @@
       },
       "skills/vllm-model-migration/scripts/customer_workflow/quality/stage.py": {
         "kind": "source",
-        "lines": 103
+        "lines": 110
       },
       "skills/vllm-model-migration/scripts/customer_workflow/quality/upstream.py": {
         "kind": "source",
@@ -633,7 +637,7 @@
       },
       "skills/vllm-model-migration/scripts/customer_workflow/state.py": {
         "kind": "source",
-        "lines": 88
+        "lines": 98
       },
       "skills/vllm-model-migration/scripts/customer_workflow/tensor_alignment/__init__.py": {
         "kind": "source",
@@ -2251,9 +2255,13 @@
         "kind": "test",
         "lines": 313
       },
+      "tests/vllm-model-migration/task_quality/test_customer_conclusion.py": {
+        "kind": "test",
+        "lines": 220
+      },
       "tests/vllm-model-migration/task_quality/test_delivery.py": {
         "kind": "test",
-        "lines": 232
+        "lines": 242
       },
       "tests/vllm-model-migration/task_quality/test_inputs.py": {
         "kind": "test",
@@ -2333,11 +2341,11 @@
       },
       "tests/vllm-model-migration/tensor_stage_cases/build_tensor_stage_fixture.py": {
         "kind": "test",
-        "lines": 137
+        "lines": 138
       },
       "tests/vllm-model-migration/tensor_stage_cases/test_customer_resume.py": {
         "kind": "test",
-        "lines": 69
+        "lines": 75
       },
       "tests/vllm-model-migration/tensor_stage_cases/test_tensor_stage.py": {
         "kind": "test",
@@ -3923,7 +3931,7 @@
       "skills/vllm-model-migration/scripts/customer_workflow/cli.py::main": {
         "branches": 4,
         "complexity": 5,
-        "line": 23,
+        "line": 25,
         "path": "skills/vllm-model-migration/scripts/customer_workflow/cli.py",
         "statements": 18
       },
@@ -3932,7 +3940,7 @@
         "complexity": 3,
         "line": 12,
         "path": "skills/vllm-model-migration/scripts/customer_workflow/cli.py",
-        "statements": 1
+        "statements": 2
       },
       "skills/vllm-model-migration/scripts/customer_workflow/compile/accuracy.py::context_tokens": {
         "branches": 1,
@@ -4126,14 +4134,14 @@
       "skills/vllm-model-migration/scripts/customer_workflow/context.py::declaration": {
         "branches": 2,
         "complexity": 3,
-        "line": 57,
+        "line": 60,
         "path": "skills/vllm-model-migration/scripts/customer_workflow/context.py",
         "statements": 8
       },
       "skills/vllm-model-migration/scripts/customer_workflow/context.py::installation": {
         "branches": 4,
         "complexity": 6,
-        "line": 79,
+        "line": 82,
         "path": "skills/vllm-model-migration/scripts/customer_workflow/context.py",
         "statements": 11
       },
@@ -4147,23 +4155,23 @@
       "skills/vllm-model-migration/scripts/customer_workflow/context.py::next_actions": {
         "branches": 0,
         "complexity": 1,
-        "line": 93,
+        "line": 96,
         "path": "skills/vllm-model-migration/scripts/customer_workflow/context.py",
         "statements": 1
       },
       "skills/vllm-model-migration/scripts/customer_workflow/context.py::preflight": {
         "branches": 2,
         "complexity": 5,
-        "line": 68,
+        "line": 71,
         "path": "skills/vllm-model-migration/scripts/customer_workflow/context.py",
         "statements": 8
       },
       "skills/vllm-model-migration/scripts/customer_workflow/context.py::start": {
         "branches": 7,
-        "complexity": 8,
+        "complexity": 9,
         "line": 34,
         "path": "skills/vllm-model-migration/scripts/customer_workflow/context.py",
-        "statements": 19
+        "statements": 21
       },
       "skills/vllm-model-migration/scripts/customer_workflow/contract.py::accuracy": {
         "branches": 7,
@@ -5362,6 +5370,97 @@
         "path": "skills/vllm-model-migration/scripts/customer_workflow/quality/compiler.py",
         "statements": 11
       },
+      "skills/vllm-model-migration/scripts/customer_workflow/quality/conclusion.py::amount": {
+        "branches": 5,
+        "complexity": 4,
+        "line": 95,
+        "path": "skills/vllm-model-migration/scripts/customer_workflow/quality/conclusion.py",
+        "statements": 4
+      },
+      "skills/vllm-model-migration/scripts/customer_workflow/quality/conclusion.py::check_differences": {
+        "branches": 4,
+        "complexity": 8,
+        "line": 75,
+        "path": "skills/vllm-model-migration/scripts/customer_workflow/quality/conclusion.py",
+        "statements": 6
+      },
+      "skills/vllm-model-migration/scripts/customer_workflow/quality/conclusion.py::checked_report": {
+        "branches": 2,
+        "complexity": 6,
+        "line": 13,
+        "path": "skills/vllm-model-migration/scripts/customer_workflow/quality/conclusion.py",
+        "statements": 7
+      },
+      "skills/vllm-model-migration/scripts/customer_workflow/quality/conclusion.py::complete_entries": {
+        "branches": 3,
+        "complexity": 6,
+        "line": 143,
+        "path": "skills/vllm-model-migration/scripts/customer_workflow/quality/conclusion.py",
+        "statements": 9
+      },
+      "skills/vllm-model-migration/scripts/customer_workflow/quality/conclusion.py::describe": {
+        "branches": 6,
+        "complexity": 10,
+        "line": 102,
+        "path": "skills/vllm-model-migration/scripts/customer_workflow/quality/conclusion.py",
+        "statements": 17
+      },
+      "skills/vllm-model-migration/scripts/customer_workflow/quality/conclusion.py::measurements": {
+        "branches": 6,
+        "complexity": 12,
+        "line": 23,
+        "path": "skills/vllm-model-migration/scripts/customer_workflow/quality/conclusion.py",
+        "statements": 15
+      },
+      "skills/vllm-model-migration/scripts/customer_workflow/quality/conclusion.py::only_differences": {
+        "branches": 0,
+        "complexity": 4,
+        "line": 122,
+        "path": "skills/vllm-model-migration/scripts/customer_workflow/quality/conclusion.py",
+        "statements": 1
+      },
+      "skills/vllm-model-migration/scripts/customer_workflow/quality/conclusion.py::project": {
+        "branches": 5,
+        "complexity": 7,
+        "line": 57,
+        "path": "skills/vllm-model-migration/scripts/customer_workflow/quality/conclusion.py",
+        "statements": 13
+      },
+      "skills/vllm-model-migration/scripts/customer_workflow/quality/conclusion.py::project_score": {
+        "branches": 2,
+        "complexity": 6,
+        "line": 85,
+        "path": "skills/vllm-model-migration/scripts/customer_workflow/quality/conclusion.py",
+        "statements": 7
+      },
+      "skills/vllm-model-migration/scripts/customer_workflow/quality/conclusion.py::reasons": {
+        "branches": 1,
+        "complexity": 4,
+        "line": 42,
+        "path": "skills/vllm-model-migration/scripts/customer_workflow/quality/conclusion.py",
+        "statements": 3
+      },
+      "skills/vllm-model-migration/scripts/customer_workflow/quality/conclusion.py::report_dataset": {
+        "branches": 2,
+        "complexity": 5,
+        "line": 48,
+        "path": "skills/vllm-model-migration/scripts/customer_workflow/quality/conclusion.py",
+        "statements": 6
+      },
+      "skills/vllm-model-migration/scripts/customer_workflow/quality/conclusion.py::summarize": {
+        "branches": 1,
+        "complexity": 6,
+        "line": 157,
+        "path": "skills/vllm-model-migration/scripts/customer_workflow/quality/conclusion.py",
+        "statements": 7
+      },
+      "skills/vllm-model-migration/scripts/customer_workflow/quality/conclusion.py::verdict": {
+        "branches": 7,
+        "complexity": 9,
+        "line": 127,
+        "path": "skills/vllm-model-migration/scripts/customer_workflow/quality/conclusion.py",
+        "statements": 13
+      },
       "skills/vllm-model-migration/scripts/customer_workflow/quality/discover.py::inspect": {
         "branches": 0,
         "complexity": 4,
@@ -5645,9 +5744,16 @@
       "skills/vllm-model-migration/scripts/customer_workflow/quality/stage.py::compare_all": {
         "branches": 9,
         "complexity": 15,
+        "line": 77,
+        "path": "skills/vllm-model-migration/scripts/customer_workflow/quality/stage.py",
+        "statements": 32
+      },
+      "skills/vllm-model-migration/scripts/customer_workflow/quality/stage.py::pending_reports": {
+        "branches": 0,
+        "complexity": 2,
         "line": 72,
         "path": "skills/vllm-model-migration/scripts/customer_workflow/quality/stage.py",
-        "statements": 30
+        "statements": 1
       },
       "skills/vllm-model-migration/scripts/customer_workflow/quality/stage.py::recent_measurements": {
         "branches": 3,
@@ -5881,44 +5987,51 @@
         "statements": 22
       },
       "skills/vllm-model-migration/scripts/customer_workflow/state.py::Session.__init__": {
-        "branches": 7,
-        "complexity": 8,
+        "branches": 9,
+        "complexity": 9,
         "line": 34,
         "path": "skills/vllm-model-migration/scripts/customer_workflow/state.py",
-        "statements": 16
+        "statements": 18
       },
       "skills/vllm-model-migration/scripts/customer_workflow/state.py::Session.artifact": {
         "branches": 3,
         "complexity": 3,
-        "line": 55,
+        "line": 59,
         "path": "skills/vllm-model-migration/scripts/customer_workflow/state.py",
         "statements": 9
       },
       "skills/vllm-model-migration/scripts/customer_workflow/state.py::Session.finish": {
         "branches": 0,
         "complexity": 1,
-        "line": 83,
+        "line": 91,
         "path": "skills/vllm-model-migration/scripts/customer_workflow/state.py",
-        "statements": 5
+        "statements": 6
+      },
+      "skills/vllm-model-migration/scripts/customer_workflow/state.py::Session.quality_conclusion": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 87,
+        "path": "skills/vllm-model-migration/scripts/customer_workflow/state.py",
+        "statements": 2
       },
       "skills/vllm-model-migration/scripts/customer_workflow/state.py::Session.ready": {
         "branches": 3,
         "complexity": 3,
-        "line": 77,
+        "line": 81,
         "path": "skills/vllm-model-migration/scripts/customer_workflow/state.py",
         "statements": 4
       },
       "skills/vllm-model-migration/scripts/customer_workflow/state.py::Session.save": {
         "branches": 0,
         "complexity": 1,
-        "line": 67,
+        "line": 71,
         "path": "skills/vllm-model-migration/scripts/customer_workflow/state.py",
         "statements": 1
       },
       "skills/vllm-model-migration/scripts/customer_workflow/state.py::Session.step": {
         "branches": 2,
         "complexity": 3,
-        "line": 70,
+        "line": 74,
         "path": "skills/vllm-model-migration/scripts/customer_workflow/state.py",
         "statements": 5
       },
@@ -23975,6 +24088,160 @@
         "path": "tests/vllm-model-migration/task_quality/test_compare.py",
         "statements": 2
       },
+      "tests/vllm-model-migration/task_quality/test_customer_conclusion.py::CustomerConclusionTests.deliver": {
+        "branches": 1,
+        "complexity": 2,
+        "line": 173,
+        "path": "tests/vllm-model-migration/task_quality/test_customer_conclusion.py",
+        "statements": 14
+      },
+      "tests/vllm-model-migration/task_quality/test_customer_conclusion.py::CustomerConclusionTests.deliver.use_upstream": {
+        "branches": 1,
+        "complexity": 2,
+        "line": 179,
+        "path": "tests/vllm-model-migration/task_quality/test_customer_conclusion.py",
+        "statements": 5
+      },
+      "tests/vllm-model-migration/task_quality/test_customer_conclusion.py::CustomerConclusionTests.invoke": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 158,
+        "path": "tests/vllm-model-migration/task_quality/test_customer_conclusion.py",
+        "statements": 10
+      },
+      "tests/vllm-model-migration/task_quality/test_customer_conclusion.py::CustomerConclusionTests.report": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 40,
+        "path": "tests/vllm-model-migration/task_quality/test_customer_conclusion.py",
+        "statements": 3
+      },
+      "tests/vllm-model-migration/task_quality/test_customer_conclusion.py::CustomerConclusionTests.result": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 47,
+        "path": "tests/vllm-model-migration/task_quality/test_customer_conclusion.py",
+        "statements": 4
+      },
+      "tests/vllm-model-migration/task_quality/test_customer_conclusion.py::CustomerConclusionTests.score": {
+        "branches": 3,
+        "complexity": 3,
+        "line": 33,
+        "path": "tests/vllm-model-migration/task_quality/test_customer_conclusion.py",
+        "statements": 4
+      },
+      "tests/vllm-model-migration/task_quality/test_customer_conclusion.py::CustomerConclusionTests.setUp": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 23,
+        "path": "tests/vllm-model-migration/task_quality/test_customer_conclusion.py",
+        "statements": 8
+      },
+      "tests/vllm-model-migration/task_quality/test_customer_conclusion.py::CustomerConclusionTests.test_all_targets_pass": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 74,
+        "path": "tests/vllm-model-migration/task_quality/test_customer_conclusion.py",
+        "statements": 5
+      },
+      "tests/vllm-model-migration/task_quality/test_customer_conclusion.py::CustomerConclusionTests.test_cancellation_keeps_completed_report_and_unvisited_baseline": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 135,
+        "path": "tests/vllm-model-migration/task_quality/test_customer_conclusion.py",
+        "statements": 9
+      },
+      "tests/vllm-model-migration/task_quality/test_customer_conclusion.py::CustomerConclusionTests.test_cancellation_keeps_completed_report_and_unvisited_baseline.run_once": {
+        "branches": 1,
+        "complexity": 2,
+        "line": 139,
+        "path": "tests/vllm-model-migration/task_quality/test_customer_conclusion.py",
+        "statements": 5
+      },
+      "tests/vllm-model-migration/task_quality/test_customer_conclusion.py::CustomerConclusionTests.test_confirmed_performance_only": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 199,
+        "path": "tests/vllm-model-migration/task_quality/test_customer_conclusion.py",
+        "statements": 3
+      },
+      "tests/vllm-model-migration/task_quality/test_customer_conclusion.py::CustomerConclusionTests.test_failure_survives_missing_peer_and_blocked_delivery": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 53,
+        "path": "tests/vllm-model-migration/task_quality/test_customer_conclusion.py",
+        "statements": 10
+      },
+      "tests/vllm-model-migration/task_quality/test_customer_conclusion.py::CustomerConclusionTests.test_inconsistent_native_pass_cannot_accept_an_unverified_target": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 129,
+        "path": "tests/vllm-model-migration/task_quality/test_customer_conclusion.py",
+        "statements": 4
+      },
+      "tests/vllm-model-migration/task_quality/test_customer_conclusion.py::CustomerConclusionTests.test_malformed_report_does_not_hide_failed_peer": {
+        "branches": 0,
+        "complexity": 2,
+        "line": 120,
+        "path": "tests/vllm-model-migration/task_quality/test_customer_conclusion.py",
+        "statements": 6
+      },
+      "tests/vllm-model-migration/task_quality/test_customer_conclusion.py::CustomerConclusionTests.test_missing_or_changed_report_prevents_pass": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 81,
+        "path": "tests/vllm-model-migration/task_quality/test_customer_conclusion.py",
+        "statements": 6
+      },
+      "tests/vllm-model-migration/task_quality/test_customer_conclusion.py::CustomerConclusionTests.test_no_threshold_displays_signed_difference": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 101,
+        "path": "tests/vllm-model-migration/task_quality/test_customer_conclusion.py",
+        "statements": 9
+      },
+      "tests/vllm-model-migration/task_quality/test_customer_conclusion.py::CustomerConclusionTests.test_partial_legacy_list_cannot_pass_all_declared_baselines": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 89,
+        "path": "tests/vllm-model-migration/task_quality/test_customer_conclusion.py",
+        "statements": 9
+      },
+      "tests/vllm-model-migration/task_quality/test_customer_conclusion.py::CustomerConclusionTests.test_pass_is_limited_to_targets_across_reports": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 65,
+        "path": "tests/vllm-model-migration/task_quality/test_customer_conclusion.py",
+        "statements": 7
+      },
+      "tests/vllm-model-migration/task_quality/test_customer_conclusion.py::CustomerConclusionTests.test_public_customer_cli_delivers_three_files_with_failed_quality": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 204,
+        "path": "tests/vllm-model-migration/task_quality/test_customer_conclusion.py",
+        "statements": 10
+      },
+      "tests/vllm-model-migration/task_quality/test_customer_conclusion.py::CustomerConclusionTests.test_public_customer_cli_delivers_three_files_with_failed_quality.quality_stage": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 211,
+        "path": "tests/vllm-model-migration/task_quality/test_customer_conclusion.py",
+        "statements": 3
+      },
+      "tests/vllm-model-migration/task_quality/test_customer_conclusion.py::CustomerConclusionTests.test_unavailable_gpu_keeps_measured_npu_score": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 112,
+        "path": "tests/vllm-model-migration/task_quality/test_customer_conclusion.py",
+        "statements": 5
+      },
+      "tests/vllm-model-migration/task_quality/test_customer_conclusion.py::CustomerConclusionTests.test_unknown_intent_is_not_a_performance_only_task": {
+        "branches": 0,
+        "complexity": 1,
+        "line": 153,
+        "path": "tests/vllm-model-migration/task_quality/test_customer_conclusion.py",
+        "statements": 3
+      },
       "tests/vllm-model-migration/task_quality/test_delivery.py::AutomaticBaselineTests.setUp": {
         "branches": 0,
         "complexity": 1,
@@ -24064,21 +24331,21 @@
         "complexity": 2,
         "line": 187,
         "path": "tests/vllm-model-migration/task_quality/test_delivery.py",
-        "statements": 5
+        "statements": 8
       },
       "tests/vllm-model-migration/task_quality/test_delivery.py::DiscoveryDeliveryIntegrationTests.test_public_gpu_target_reaches_comparison_in_customer_delivery": {
         "branches": 0,
         "complexity": 1,
-        "line": 194,
+        "line": 197,
         "path": "tests/vllm-model-migration/task_quality/test_delivery.py",
-        "statements": 8
+        "statements": 12
       },
       "tests/vllm-model-migration/task_quality/test_delivery.py::DiscoveryDeliveryIntegrationTests.test_public_network_unavailable_keeps_real_three_file_publication": {
         "branches": 2,
         "complexity": 3,
-        "line": 204,
+        "line": 211,
         "path": "tests/vllm-model-migration/task_quality/test_delivery.py",
-        "statements": 26
+        "statements": 29
       },
       "tests/vllm-model-migration/task_quality/test_inputs.py::QualityContractTests.test_absent_empty_and_duplicate_details_preserve_total_score": {
         "branches": 1,
@@ -24993,14 +25260,14 @@
       "tests/vllm-model-migration/tensor_stage_cases/build_tensor_stage_fixture.py::common_scope": {
         "branches": 0,
         "complexity": 1,
-        "line": 75,
+        "line": 76,
         "path": "tests/vllm-model-migration/tensor_stage_cases/build_tensor_stage_fixture.py",
         "statements": 4
       },
       "tests/vllm-model-migration/tensor_stage_cases/build_tensor_stage_fixture.py::generate": {
         "branches": 1,
         "complexity": 3,
-        "line": 109,
+        "line": 110,
         "path": "tests/vllm-model-migration/tensor_stage_cases/build_tensor_stage_fixture.py",
         "statements": 17
       },
@@ -25035,14 +25302,14 @@
       "tests/vllm-model-migration/tensor_stage_cases/build_tensor_stage_fixture.py::tensor_bundle": {
         "branches": 1,
         "complexity": 3,
-        "line": 85,
+        "line": 86,
         "path": "tests/vllm-model-migration/tensor_stage_cases/build_tensor_stage_fixture.py",
         "statements": 17
       },
       "tests/vllm-model-migration/tensor_stage_cases/build_tensor_stage_fixture.py::token_bundle": {
         "branches": 3,
         "complexity": 5,
-        "line": 57,
+        "line": 58,
         "path": "tests/vllm-model-migration/tensor_stage_cases/build_tensor_stage_fixture.py",
         "statements": 10
       },
@@ -25051,7 +25318,7 @@
         "complexity": 7,
         "line": 20,
         "path": "tests/vllm-model-migration/tensor_stage_cases/test_customer_resume.py",
-        "statements": 37
+        "statements": 42
       },
       "tests/vllm-model-migration/tensor_stage_cases/test_tensor_stage.py::TensorStage.get": {
         "branches": 0,

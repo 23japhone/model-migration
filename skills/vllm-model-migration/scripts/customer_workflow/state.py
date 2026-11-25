@@ -31,7 +31,7 @@ def load_previous(previous, source, task, run_id):
 
 
 class Session:
-    def __init__(self, parent, source, task, run_id, previous=None, *, effective_task=None):
+    def __init__(self, parent, source, task, run_id, previous=None, *, effective_task=None, quality_requested=None):
         self.parent = Path(parent)
         self.source = sources.ref(source)
         assets = task if effective_task is None else effective_task
@@ -40,11 +40,15 @@ class Session:
             roots.append(Path(assets['model']['path']))
         sources.protect(self.parent, roots)
         self.previous = load_previous(previous, self.source, task, run_id)
+        self.quality_requested = quality_requested
+        self.quality_baselines = assets['accuracy'].get('gpu_baselines', []) if quality_requested else []
         self.attempt = self.parent / 'attempts' / uuid.uuid4().hex
         self.attempt.mkdir(parents=True)
         self.path = self.attempt / 'customer-manifest.json'
         self.value = {'schema_version': '1.0', 'task_id': 'vllm-model-migration-customer', 'run_id': run_id,
-                      'status': 'running', 'success': False, 'task_source': self.source, 'inputs': copy.deepcopy(task),
+                      'status': 'running', 'success': False,
+                      'task_quality_conclusion': self.quality_conclusion('running', [], {}),
+                      'task_source': self.source, 'inputs': copy.deepcopy(task),
                       'steps': dict(self.previous['steps']) if self.previous else {}, 'deliverables': {},
                       'evidence': {'manifest': str(self.path)}, 'uncovered': []}
         for field in ('evalscope_environment', 'evalscope_install_selection', 'declared_inputs', 'effective_inputs', 'default_resolutions'):
@@ -80,9 +84,15 @@ class Session:
             return None
         return sources.bound(row['receipt']) if row.get('receipt') else row.get('value')
 
+    def quality_conclusion(self, status, entries, steps):
+        from .quality.conclusion import summarize
+        return summarize(status, entries, steps, self.quality_requested, self.quality_baselines)
+
     def finish(self, status, **details):
         from .recovery import resources
         self.value['resources'] = resources(self.value['steps'])
         self.value.update(status=status, success=status == 'completed', **details)
+        self.value['task_quality_conclusion'] = self.quality_conclusion(
+            status, self.value.get('task_quality', []), self.value['steps'])
         self.save()
         return {'completed': 0, 'failed': 1, 'blocked': 3, 'not_run': 0}[status], self.value

@@ -46,11 +46,14 @@ def start(args, source, raw, parent):
     snapshot = normalize_task(raw)
     previous = load_previous(prior, task_source, snapshot, args.run_id)
     install = None
+    quality_requested = None
     if supplied is not None and not conflicts:
+        quality_requested = supplied['intent']['accuracy'] or bool(effective['accuracy'].get('gpu_baselines'))
         install = preflight(supplied, effective, args, parent, previous)
     if sources.ref(source) != task_source:
         raise ValueError('客户输入在参数合成后变化，请重新读取任务')
-    session = Session(parent, source, snapshot, args.run_id, prior, effective_task=effective)
+    session = Session(parent, source, snapshot, args.run_id, prior, effective_task=effective,
+                      quality_requested=quality_requested)
     return supplied, session, effective, conflicts, install
 
 

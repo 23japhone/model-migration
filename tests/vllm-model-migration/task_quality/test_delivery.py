@@ -187,6 +187,9 @@ class DiscoveryDeliveryIntegrationTests(unittest.TestCase):
     def test_found_complete_baseline_dispatches_public_quality_once_without_a_target(self):
         report = self.reported_alignment()
         self.assertEqual('not_evaluated', report['conclusions']['precision_target'])
+        conclusion = self.session.finish('blocked')[1]['task_quality_conclusion']
+        self.assertEqual('not_evaluated', conclusion['precision_target'])
+        self.assertIn('已取得分差，尚无达标判据', conclusion['summary'])
         for row in report['scores']:
             self.assertNotIn('target', row)
             self.assertEqual(0.5, row['npu_minus_gpu'])
@@ -198,6 +201,10 @@ class DiscoveryDeliveryIntegrationTests(unittest.TestCase):
         self.assertEqual('not_evaluated', total['precision_target'])
         self.assertEqual('pass', subset['precision_target'])
         self.assertEqual('publisher', subset['target_evidence']['kind'])
+        conclusion = self.session.finish('blocked')[1]['task_quality_conclusion']
+        self.assertEqual('pass', conclusion['precision_target'])
+        self.assertIn('a acc 已达标', conclusion['summary'])
+        self.assertIn('总分 acc 未设阈值', conclusion['summary'])
         original = self.sources.bound(subset['target_evidence']['source'])
         self.assertEqual({'max_drop':0}, original['scores'][0]['target'])
 
@@ -224,6 +231,9 @@ class DiscoveryDeliveryIntegrationTests(unittest.TestCase):
         self.assertEqual('not_evaluated', quality['status'])
         self.assertFalse(quality['quality_measurement_started'])
         self.assertTrue(quality['missing'])
+        conclusion = customer['task_quality_conclusion']
+        self.assertEqual('not_evaluated', conclusion['precision_target'])
+        self.assertIn(quality['missing'][0], conclusion['summary'])
         self.assertEqual(0, code)
         self.assertEqual('ready', self.sources.read(customer['export_manifest'])['status'])
         self.assertEqual({'benchmark_plan', 'accuracy_plan', 'deployment'}, set(customer['deliverables']))

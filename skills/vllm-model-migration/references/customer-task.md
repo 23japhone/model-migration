@@ -135,3 +135,5 @@ work-root/run-id/
 进入常规准备时，已准备文件重新核对摘要，已执行配方冻结，环境继承原选择。每次有效正式准备仍调用安装脚本，安装前后核对实际 Python 与 EvalScope 版本绑定。迁移和评测原始引用均保留；有效评测通过公开 analyze 只读复核后复用。导出重试不部署、不重新评测；发布前仍重新核验完整来源。
 
 退出码：0=计划/安装帮助/安装预览有效或完整交付完成；2=客户字段/顶层引用错误；3=依赖、人工决策、语义复核、AISBench 交付边界或其他未完成；1=执行/证据失败或取消。以 status、steps 和独立回执共同判断，计划 not_run 不表示执行成功。资源状态以原始 verify 回执及本次观察为准，历史 retained 不等于当前存活。
+
+客户汇报首句取自 `task_quality_conclusion.summary`。自动化确认任务质量达标时，检查 `task_quality_conclusion.precision_target` 是否为 `pass`。[客户回执中的任务质量结论](task-quality.md#客户回执中的任务质量结论)
