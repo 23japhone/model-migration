@@ -29,7 +29,7 @@
 
 成功标准按所选任务判断：资产身份齐备、支持路线有据、适配/注册进入最终载体、真实权重功能通过、原生评测有效，以及适用的比较与目标结论。完整 `deployment_precision/run` 还需独立导出三个交付 JSON。测量有效但目标未达标时，应交付真实 `fail`，不追求把报告改成通过。
 
-任务质量对齐使用 EvalScope 总分、分项和可选逐题成绩，结果写入客户回执的 `task_quality[]`。有精度意图且未提供 GPU 基线时，先按模型检索公开资料；资料不足则记录缺项并继续交付。粗粒度评测只留评分与复核证据。对未达标范围重跑并采集 Token 或张量数据属于后续诊断规划。[任务质量契约](../skills/vllm-model-migration/references/task-quality.md)
+任务质量对齐使用 EvalScope 总分、分项和可选逐题成绩，结果写入客户回执的 `task_quality[]`。有精度意图且未提供 GPU 基线时，先按模型检索公开资料，资料不足则记录缺项并继续交付。质量评测保留评分和复核证据。对未达标分项选定的题目，单卡同步 Eager 文本贪心复测可从同一请求取得原生评分和逐步 Token 预测。逐层张量与算子比较仍待开发。[任务质量与 Token 复测契约](../skills/vllm-model-migration/references/task-quality.md#从未达标分项进入-token-预测对齐)
 
 本仓不承担 SGLang 迁移、框架自动选择、正式性能测试和优化、自动异常修复循环、重新量化、训练、多机调度或宿主插件发布。保留的旧文件契约不改变当前框架范围。
 
@@ -37,7 +37,7 @@
 
 2026-11-25，EvalScope 任务质量对齐经 `9966590` 合入本地 `dev`。客户流程已接入，实机验收覆盖精度阶段的 Qwen3.5-27B 单题重跑与复用。[验收范围](TESTING.md#2026-11-25-任务质量对齐单题验收)
 
-截至 2026-11-25，`verify-agent` 可独立采集 msProbe 张量并通过 mindie-debugger 观察已适配层的缓存状态。固定版本的 NPU 实测覆盖 Llama 普通注意力、Qwen 普通注意力与 GDN，以及 DeepSeek-V2-Lite-Chat 的单卡同步 Eager MLA。Llama 和 Qwen 另有单机 TP=2 与单卡 ACLGraph 的分项验收记录。[使用契约](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/runtime-capture.md) · [按模型和模式查看实测证据](MSPROBE_RUNTIME_CAPTURE.md)
+截至 2026-11-25，`verify-agent` 可独立采集 msProbe 张量并通过 mindie-debugger 观察已适配层的缓存状态。普通注意力和 GDN 的单机同步 Eager 采集按所选物理卡数工作。Llama 和 Qwen 的单卡、双卡已有 NPU 实测，四卡和八卡已通过离线验证。单卡还分别验收了 Llama 和 Qwen 的 ACLGraph 文本请求，以及 DeepSeek-V2-Lite-Chat 的 Eager MLA 缓存。[使用契约](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/runtime-capture.md) · [按模型和模式查看实测证据](MSPROBE_RUNTIME_CAPTURE.md)
 
 2026-11-05，缺省镜像选择功能 `e6dc69e` 已通过 `1a21cf0` 合入本地 `dev`。客户未指定镜像时，准备阶段从官方 Quay 选版，客户入口将选中的标签和目标平台 digest 交给镜像任务。同一任务续接沿用冻结的选择。显式镜像和模板的用法见[缺省镜像选择](../skills/vllm-model-migration/references/customer-task.md#缺省镜像选择)。
 

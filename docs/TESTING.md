@@ -4,6 +4,8 @@
 
 ## 当前验证基准
 
+2026-11-25，两项采集改动合入本地 `dev`（`12c6238`）后，Python 3.12 全量离线回归 770 项通过，另行复跑的多卡专项 26 项、Token 对齐专项 50 项及 `source_contract` 52 项均通过。结构审计为 0 个错误、321 条软提示。下文各节的套件数量和设备结果对应各自验收时的版本。
+
 ### 2026-11-25 单机可变卡数 TP 采集（离线）
 
 运行 `python3 -B -m unittest discover -s tests/vllm-model-migration/worker_capture/parallel_cases -p 'test_*.py' -q`。2、4、8 个本地进程分别验证同一调度的前向编号传递。4、8 个模拟 worker 的完整会话从公开 CLI 封存后，按同一个输出 Token 查回每个 rank 独有的缓存值。八卡用例还用 CPU PyTorch 读取原生格式的张量，覆盖成员绑定被改写、文件串卡、缺前向和封存后文件丢失，逐项核对完好 rank 仍可读取。

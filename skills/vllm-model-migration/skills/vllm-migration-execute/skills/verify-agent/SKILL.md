@@ -32,7 +32,7 @@ python3 /实际技能目录/scripts/verify.py \
 
 公开入口另支持 --action review、--action stop 和只读 --action inspect-devices，沿用相同四个参数。详见契约及[输入模板](assets/request.example.json)。计划不读目标资产、构建镜像、启动服务或创建运行目录。实际执行的每次尝试写入独立目录。
 
-需要为后续精度采集准备 msProbe 时，在同一 verify 请求声明可选的 `worker_capture`。从最终部署交接核对准备回执、配置摘要及服务终态，见[采集准备契约](references/contract.md#msprobe-采集准备)。对有真实进程就绪证据的 retained 服务，用 `capture-one` 采集单条文本请求，再用 `capture-read` 按输出序号回查全部解码层。见[Eager 采集与回查](references/contract.md#eager-单请求采集与回查)。
+需要为后续精度采集准备 msProbe 时，在同一 verify 请求声明可选的 `worker_capture`。从最终部署交接核对准备回执、配置摘要及服务终态，见[采集准备契约](references/contract.md#msprobe-采集准备)。对有真实进程就绪证据的单卡同步 Eager retained 服务，用 `capture-one` 采集单条文本请求，再用 `capture-read` 按输出序号回查全部解码层。见[Eager 采集与回查](references/contract.md#eager-单请求采集与回查)。
 
 ## 证据与失败边界
 
@@ -54,4 +54,4 @@ python3 /实际技能目录/scripts/verify.py \
 
 单卡 ACLGraph 文本服务使用 `msprobe_pytorch_aclgraph` 适配器。通过 `capture-read` 回查每个前向的实际图重放、msProbe 原件和全层状态快照。部署模式、预算与查询字段见[图模式采集契约](references/runtime-capture.md#单卡-aclgraph-文本请求)。
 
-双卡图文、流式与固定 seed 的请求共用上述会话。按 SSE 事件、图像、视觉或文本层回查的方法见[双卡生成契约](references/runtime-capture.md#双卡图文流式与固定-seed-采样)。
+单机多卡同步 Eager 会话也可按 SSE 事件、图像、视觉或文本层回查。单图、流式和固定 seed 采样的双卡实测范围见[生成与回查示例](references/runtime-capture.md#双卡图文流式与固定-seed-采样)。

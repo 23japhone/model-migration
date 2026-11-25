@@ -1,10 +1,10 @@
 # 模型迁移特性开发规划汇总
 
-本文说明 `model_migration` 的需求来源、当前功能范围、输入要求和完成标准。原始需求核对日期为 **2026-10-28**，精度对齐专项规划于 **2026-11-12** 整理，任务质量对齐的实现状态于 **2026-11-25** 核对。具体字段与执行规则以各 Skill 的现行契约为准。
+本文说明 `model_migration` 的需求来源、当前功能范围、输入要求和完成标准。原始需求核对日期为 **2026-10-28**，精度对齐专项规划于 **2026-11-12** 整理，运行数据采集、任务质量及 Token 预测对齐的实现状态于 **2026-11-25** 核对。具体字段与执行规则以各 Skill 的现行契约为准。
 
 Codex 的开发与 Git 规则见 [AGENTS.md](../AGENTS.md)，完整治理文档从 [PROJECT_BRIEF.md](PROJECT_BRIEF.md) 导航。当前检查结果见 [TESTING.md](TESTING.md#当前验证基准)，后续缺口顺序见 [ROADMAP.md](ROADMAP.md)；这些文件不另行定义需求，也不把本文的需求描述转化为自动实施授权。
 
-当前工作树有 14 个嵌套 Skill。精度阶段新增任务质量比较，支持按模型查找 GPU 基线、复用或重跑 EvalScope，以及逐题分数比较。客户输入、精度续接和三文件交付仍使用原有入口。实机覆盖与离线验证范围见[验证记录](TESTING.md#2026-11-25-任务质量对齐单题验收)。
+当前有 14 个嵌套 Skill。精度阶段可比较任务成绩，并对明确未达标的样本做 Token 预测对齐。客户输入、精度续接和三文件交付沿用原有入口。[任务质量与预测采集契约](../skills/vllm-model-migration/references/task-quality.md)
 
 ## 1. 需求背景与文档用途
 
@@ -22,7 +22,7 @@ Codex 的开发与 Git 规则见 [AGENTS.md](../AGENTS.md)，完整治理文档�
 
 本套 Skills 面向昇腾环境中的 vLLM / vLLM-Ascend，覆盖资产准备、支持度预检、按需模型实现适配、框架注册、部署功能验收、精度测试及三文件交接。用户可以请求完整流程，也可以直接使用独立阶段或任务。
 
-精度阶段已纳入“精度测试”，以及“精度比较”中的 EvalScope 任务质量对齐。服务链路三步定界可独立调用。本次工作分支已实现从质量未达标分项到 Token 首个异常的定向比较，张量与算子对齐仍属后续规划。[专项进度及验收要求](#432-精度对齐专项开发规划)
+精度阶段已纳入“精度测试”，以及“精度比较”中的 EvalScope 任务质量对齐。服务链路三步定界可独立调用。已实现从质量未达标分项到 Token 首个异常的定向比较，张量与算子对齐仍属后续规划。[专项进度及验收要求](#432-精度对齐专项开发规划)
 
 SGLang 迁移与注册、框架自动选择、完整的运行异常分类诊断体系、自动修复重试、性能优化与正式压测均不属于当前范围。原规划中对应条目在第 6 节保留，不因此成为必须补齐的依赖。量化、训练、多机调度和 Agent 宿主插件发布也不纳入本仓交付。
 
@@ -90,7 +90,7 @@ SGLang 迁移与注册、框架自动选择、完整的运行异常分类诊断�
 - 新测量默认使用 EvalScope，兼容显式 AISBench 和旧 Python 配置；工具按现行任务契约识别与校验。明确版本按精确期望核验，省略版本或使用 `latest` 时才在实际运行环境核验官方最新稳定版，不把所有请求改成强制 latest。
 - 使用实际工具原生配置、模板和评分，保留数据、样本、生成条件、结果、日志和指标来源。客户 EvalScope 每次准备调用原版安装脚本，默认主机共享 /data/evalscope-venv；可选参数仅进入 Agent context。实际环境变化要求新任务；AISBench/资产 SDK 和旧内部请求的环境前提保留，不切换工具。安装检查不替代原生精度验收。
 - 对照 GPU 与 NPU 成绩时，核对模型与权重版本、数据集与样本范围、生成参数和评分方法。直接比较分数要求评测工具相同、指标含义和单位一致。引用公开成绩时，记录谁做了这次评测，以及来源是否说明了评测所用的设备。第三方明确使用 GPU 时，这一设备信息只适用于第三方公布的那组成绩。
-- 测量有效性、基线可比性和目标达标分别判定。有效评测未达到目标时可以完成任务并交付 `fail` 结论，不能改写成通过，也不自动进入诊断或修复。
+- 测量有效性、基线可比性和目标达标分别判定。有效评测未达到目标时交付 `fail`。Token 对齐从质量报告选择有据可查的题目，并按预测包的可用情况执行比较或定向重跑。
 - 缺少数据或评分配置时不能用任意聊天请求代替精度测试；缺 GPU 基线不宣称对齐，缺目标不宣称达标。
 
 公开数据的详细程度决定了任务质量能比较到哪一步。只有总分、分项分数或综合成绩时，可以对照相同条件下按同一方法计算的分数。若还公布了每道题或每个检查项的评分，可按题目或检查项编号核对哪些结果发生了变化。若同一轮评测还提供了完整原始回答和评分规则，就可以逐题复查回答及评分。每种比较只覆盖资料明确列出的测试范围。
@@ -108,9 +108,9 @@ SGLang 迁移与注册、框架自动选择、完整的运行异常分类诊断�
 | 准备工作 | 评测条件确认 | — | 已有基础，待完善 | 核对模型与权重版本、基线使用的 benchmark、数据集版本和样本范围，以及提示模板、生成参数和评分配置。 | 列出 GPU 基线与 NPU 评测条件的一致项、差异项和未知项，明确哪些成绩可以直接比较、哪些需要按基线条件重新评测。 | 1 |
 | 准备工作 | 对比基线准备 | — | 已有基础，待扩展 | 核验开源任务分数的版本和设备来源，接入 GPU 的 Token 预测、层与算子数据，以及对应的 CPU 高精度参考。 | 逐层列出基线来源、可用数据范围、缺项和比较标准。任务分数注明指标、单位、方向和精度目标，数值比较注明适用的误差指标及阈值。 | 1 |
 | 精度测试 | 数据集评测 | — | 已有基础，待扩展 | 按迁移任务指定的 benchmark、数据集及配置取得 NPU 成绩。若本次指定的就是开源基线的评测任务，沿用其评测条件。 | 已有 NPU 结果满足本次评测条件时可复用，否则运行本次指定的 benchmark，交付原生分数、实际样本范围及评分依据。任务质量对齐另按 GPU 基线选择评测。 | 1 |
-| 精度测试 | 运行数据采集 | — | 独立工具已实现，诊断重跑的同轮关联待开发 | V1 同步 Eager 可按输出 Token 或实际前向查询 msProbe 张量及可选的缓存状态。普通注意力和 GDN 的单机采集按实际 TP 卡数工作，单卡、双卡已有实测；四卡、八卡目前为离线验证。MLA 已验收单卡。单卡 ACLGraph 的文本请求、双卡单图与流式等场景分别按模型验收。 | 诊断重跑时须把目标题目与生成位置、rank、前向、调用及文件关联。[独立工具分项验收](MSPROBE_RUNTIME_CAPTURE.md) | 1 |
+| 精度测试 | 运行数据采集 | — | 独立工具与单卡 Token 定向重跑已实现 | V1 同步 Eager 可按输出 Token 或实际前向查询 msProbe 张量及可选的缓存状态。普通注意力和 GDN 的单机采集按实际 TP 卡数工作，单卡、双卡已有实测；四卡、八卡目前为离线验证。MLA 已验收单卡。单卡 ACLGraph 的文本请求、双卡单图与流式等场景分别按模型验收。 | 单卡 Token 定向重跑已关联原生评分、请求和预测。逐层或算子数据与题目评分的自动关联仍待开发。[独立工具分项验收](MSPROBE_RUNTIME_CAPTURE.md) | 1 |
 | 精度对齐 | 精度比较 | 任务质量对齐 | 已实现 EvalScope | 使用客户 GPU 基线，或按模型检索公开基线。自动检索缺少必要材料时记录未评估，继续其他任务。条件齐全时复用或重跑 NPU 评测。 | 按总分、分项和可选逐题评分分别报告有效性、可比性、目标和变化。后续诊断针对明确未达标的范围重跑并采集运行数据。 | 1 |
-| 精度对齐 | 精度比较 | Token 预测对齐 | 工作分支已实现，单题 NPU 与合成 GPU 验证 | 按题目和生成位置匹配 GPU、NPU 的记录。在前文 Token ID 序列相同的条件下，比较每一步全部候选 Token 的原始 logits、应用选词规则后的分数或概率，以及实际选中的下一 Token。结合相同前文下的 CPU 高精度预测分数核验。 | 在两类分数超过各自绝对容差或实际选词不同时，只报告最早异常位置和该步触发项。附题目标识、前文、生成位置、两端预测、选词规则、实际 Token 和停止原因。覆盖范围内未发现差异时，注明已比较到哪一步。 | 1 |
+| 精度对齐 | 精度比较 | Token 预测对齐 | 已实现，单题 NPU 与合成 GPU 验证 | 按题目和生成位置匹配 GPU、NPU 的记录。在前文 Token ID 序列相同的条件下，比较每一步全部候选 Token 的原始 logits、应用选词规则后的分数或概率，以及实际选中的下一 Token。结合相同前文下的 CPU 高精度预测分数核验。 | 在两类分数超过各自绝对容差或实际选词不同时，只报告最早异常位置和该步触发项。附题目标识、前文、生成位置、两端预测、选词规则、实际 Token 和停止原因。覆盖范围内未发现差异时，注明已比较到哪一步。 | 1 |
 | 精度对齐 | 精度比较 | 张量与算子对齐 | 待开发 | 按题目、Token 位置、模型层或算子、调用序号和多卡 rank 匹配完整输入输出张量。核对形状、布局和数据类型，在相同输入、权重及缓存等运行状态下，对照 CPU 高精度结果，分别评估 GPU 和 NPU 的数值误差。 | 按约定的误差指标和阈值报告已比较的调用、超限位置及对应的输入输出张量。列出漏采、截断或无法匹配的调用，使读者能复查结论覆盖了哪些计算。 | 1 |
 | 精度问题分析 | 问题定位 | 服务链路的问题定界 | 已有实现，待验收 | 将标准三步走并入本任务。以原评测的异常请求和响应建案，检查请求、渲染后的模型输入，再对照诊断重放得到的原始生成与 Chat 返回。 | 用各环节的记录指出最早可定位的差异，区分原请求现场与独立重放。若记录不全，标出已核实的环节以及仍需补取的证据。 | 2 |
 | 精度问题分析 | 问题定位 | 模型算子的问题定位 | 待开发 | 将逐层激活值诊断并入本任务。可用 L1 范数粗筛疑点，复用“张量与算子对齐”的逐调用比较结果，沿执行顺序追查输入、输出、权重及缓存状态。 | 区分最早出现偏差的调用与误差最大的调用，给出支持“输入已带入误差”或“同输入下本次计算出现误差”的对照证据。证据不足时，记录疑点和待验证项。 | 2 |
@@ -133,9 +133,9 @@ SGLang 迁移与注册、框架自动选择、完整的运行异常分类诊断�
 
 开发参考为 `model-agent` 仓库 `skills/verification/precision-alignment`（核对版本 `894442cd`）。复用范围是三步定界、逐层探针及比较工具。服务启停继续归 `verify-agent`，评测和样本证据归 `verify-agent-plus`，阶段结论由 `vllm-precision-align` 汇总。准备阶段共用一份条件和基线核对记录；数据集评测与任务质量对齐共用结果核验和评分证据，各自按上节规则选择 benchmark。
 
-1. **优先级 1 为诊断重跑接入同轮采集。** 任务质量评测只记录评分和复核条件。明确未达标后，后续诊断重跑需要将题号、服务请求以及 worker 的前向步、批内 Token 位置、rank 和层或算子文件关联起来。先用一个真实样本验证关联，再验证并发和多卡覆盖。外部 L1 启动器会启用 eager，默认只记录前两次前向；正式诊断还需在原部署模式下验收。
+1. **优先级 1 为扩展定向重跑的采集范围。** 单卡同步 Eager 文本贪心请求已能按题关联原生评分与逐步预测。多卡和并发下的定向重跑、逐层或算子数据与评分的关联均待开发及验收。外部 L1 启动器会启用 Eager，默认只记录前两次前向，仍需在原部署模式下验收。[Token 单题验收](TESTING.md#2026-11-25-token-首个异常定位)
 2. **优先级 2：将服务链路定界接入诊断流程。** 已有可复现的完整异常 Chat 请求时可独立调用 `three-step-demarcation`。先检查原始消息、工具和生成配置，再经服务端渲染取得 Token ID 并反解，最后用这些 ID 调 Completion 接口，将结果与原请求的 Chat 重放响应对照。两次生成分别保存输入、实际采样和停止参数。若回退到服务端 `/tokenize` 或本地模板，记录回退途径及尚未核实的工具、模板等请求字段。两次生成条件有差异时，报告注明哪些环节仍可定界。验收时用一条已知异常检查证据能否支持对应的请求、模板、生成或解析环节；九类定界标签用于选择排查方向，根因另行验证。
-3. **优先级 1：在同轮证据上独立验收 Token 和张量比较。** 两项共用样本、生成位置、调用和原始文件的索引，分别接入适用的 CPU 高精度参考。Token 层可复用 `logprobs-diff` 的候选排序和首个选词分歧分析；原工具只比较 API 返回的 top-k，两端自由生成分叉后前文也会不同。正式比较须核对相同前文，取得全词表原始 logits、选词规则调整后的分数及实际输出，分别记录首个分数超限、首个选词差异及提前停止的位置。张量层可复用 `msprobe-probe` 的定向 dump 配置和已有双端 dump 的比较工具，另需完成同一输入及状态下的 CPU 参考匹配、逐调用数值比较和漏采检查。
+3. **优先级 1 为在同轮证据上验收 Token 和张量比较。** `logprobs-diff` 提供 API 返回的 top-k 候选排序，可辅助检查选词分歧。已实现的 Token 比较在相同前文下核对全词表原始 logits、处理后分数和实际选词。分数超限、接受的 Token 不同或一端提前停止时，报告最早异常位置；停止原因的差异单列在结束边界。真实 GPU 与 NPU 的结果仍需同条件设备证据。张量比较拟复用 `msprobe-probe` 的定向 dump 和已有双端文件，另需在同一输入及状态下匹配 CPU 参考、逐调用比较数值并核对漏采。[Token 比较契约](../skills/vllm-model-migration/skills/vllm-precision-align/skills/vllm-precision-compare/references/token.md)
 4. **优先级 2：有可比张量后，接入算子定位和独立复现。** 可用 `l1-norm-probe` 对双端相同挂点的张量绝对值之和做粗筛，再按实际调用顺序用完整张量检查疑点。若某层输入已偏离，向上游追查；若输入、权重及缓存状态可比而输出首次超限，记录该调用为疑点。随后独立恢复异常输入和所需状态，保留参考结果与单变量对照实验，分别记录能否复现和原因是否得到验证。
 
 ##### 阶段交付与验收用例
@@ -150,11 +150,11 @@ Token 和张量比较使用两端各自在对应 benchmark 同一轮推理中采
 
 #### 4.3.3 精度对齐目录架构与任务归属
 
-精度对齐沿用“总入口 → 阶段 → 独立任务”三层结构。总入口按请求选择阶段，准备阶段交付固定版本的资产，迁移阶段交付已验证的模型服务，精度阶段按需使用服务、数据或历史证据。当前 `verify-agent-plus` 负责原生测量与历史复核，`vllm-precision-compare` 实现数据集与逐题评分比较，`three-step-demarcation` 负责服务链路三步定界。任务质量评分阶段直接调用 EvalScope，只有明确不达标的项目进入后续诊断候选。下图中的 token、张量比较与 `vllm-precision-diagnose` 仍按后续规划管理。[现行三层职责与公开入口](ARCHITECTURE.md#3-三层职责与公开入口)
+精度对齐沿用“总入口 → 阶段 → 独立任务”三层结构。`verify-agent-plus` 负责原生测量、历史复核和按题定向重跑，`vllm-precision-compare` 比较任务成绩与 Token 预测，`three-step-demarcation` 负责服务链路定界。下图中的张量比较与统一诊断入口仍属规划。[现行三层职责与公开入口](ARCHITECTURE.md#3-三层职责与公开入口)
 
 ##### 现有目录与复用位置
 
-下图只列专项开发要复用的现有路径。“拟扩展”表示该目录已存在，注释中的新增能力待开发。完整实现布局由[架构文档](ARCHITECTURE.md#2-当前目录与资源归属)维护，新模块落地后再更新该文档。
+下图只列本专项使用的现有路径。[完整实现布局](ARCHITECTURE.md#2-当前目录与资源归属)
 
 ```text
 skills/vllm-model-migration/
@@ -171,28 +171,30 @@ skills/vllm-model-migration/
         ├── scripts/precision.py                  精度阶段公开入口
         ├── scripts/alignment/                    旧精度流程的依赖委托、回执核验和汇总
         ├── scripts/quality_stage/                核验或重跑 NPU 测量，委托质量比较
+        ├── scripts/token_stage/                  按质量报告选题，按需委托重跑、比较与 CPU 复核
         └── skills/verify-agent-plus/
             ├── references/                       原生评测及历史结果分析契约
             ├── scripts/validator.py              评测任务公开入口
-            └── scripts/precision/runtime/        现有原生评测、HTTP 记录和样本核验；拟扩展外部 benchmark 和同轮采集关联
+            ├── scripts/precision/runtime/        原生评测、HTTP 记录和样本核验
+            └── scripts/precision/token_run/      单题复测并绑定评分、HTTP 请求和 worker 预测
 ```
 
 ##### 拟新增目录与模块
 
-`verify-agent` 的 `runtime/capture/` 已实现，见上图。下图列出比较与诊断的规划分工。任务质量比较已交付独立 Skill 和公开 CLI，其他比较能力及诊断目录仍属规划。比较算法与诊断方法是任务内部模块，可以按证据范围单独选用。
+`vllm-precision-compare` 已提供任务质量和 Token 比较。下图同时标出规划中的张量比较模块和统一诊断目录。
 
 ```text
 skills/vllm-model-migration/skills/
 └── vllm-precision-align/skills/                   现有父目录
     ├── vllm-precision-compare/
     │   ├── SKILL.md
-    │   ├── references/                           规划中的参考目录，现行比较契约见 SKILL.md
-    │   ├── scripts/compare.py                    现行任务质量比较入口；Token 和张量比较待开发
+    │   ├── references/token.md                   预测包、首异常位置和 CPU 复核契约
+    │   ├── scripts/compare.py                    任务质量和 Token 预测比较入口
     │   └── scripts/comparison/
     │       ├── quality.py                        对照原生分数、分项、逐题或逐检查项结果
-    │       ├── token.py                          规划：比较相同前文下的预测分数、选词和停止位置
+    │       ├── token.py                          比较相同前文下的预测分数、选词和停止位置
     │       └── tensor.py                         规划：比较同一输入及状态下逐次调用的张量
-    └── vllm-precision-diagnose/
+    └── vllm-precision-diagnose/                   规划中的统一诊断目录
         ├── SKILL.md
         ├── references/                           异常请求、定位证据和独立重放契约
         ├── scripts/diagnose.py                   选择服务定界、算子定位或异常复现
@@ -205,10 +207,10 @@ skills/vllm-model-migration/skills/
 ##### 调用与证据交接
 
 1. **阶段选择测量或复用。** `vllm-precision-align` 按[任务质量对齐的评测选择](#任务质量对齐的评测选择)核对 GPU 基线与已有 NPU 结果。条件一致时，委托 `validator.py` 只读核验并引用原生结果。原生工具相同而条件不符时，另建测量请求；GPU 使用专用 benchmark 时，由扩展后的 `verify-agent-plus` 在 NPU 上运行对应版本、数据和原评分器。迁移任务自身的精度测试独立交付。基线来源或复测材料不足，只将受影响的相对目标列为未评估。
-2. **待开发的诊断重跑将目标题与 worker 记录关联。** 阶段经公开入口复用数据集和服务，按需委托 `verify-agent` 在原部署模式的实际模型 worker 接入采集点。`verify-agent-plus` 记录“原生评分 → 样本 → 服务请求”，worker 记录“服务请求 → 批内 Token 位置、前向步、rank → 层或算子调用 → 采集文件”。各端用本轮请求 ID 关联本端的评测与 worker 记录。GPU 与 NPU 跨端配对使用固定样本身份、前文、生成位置及对应的调用和 rank，可接受两次运行使用不同请求 ID。借用服务缺少采集点时记录覆盖限制；独立诊断运行的产物单独归档。
-3. **阶段按证据委托比较与诊断。** 双方已有成绩时可委托 `compare.py` 核对评测条件，确认可比后才计算差值。规划中的 Token 和张量模块将读取诊断重跑的同轮记录和 CPU 参考。已有完整异常 Chat 请求时，可独立调用 `demarcation.py` 做服务定界，统一的 `diagnose.py` 入口仍待开发。有可比张量时，把逐调用比较回执交给算子定位；验证具体疑点时，再独立重放。测量、比较和诊断均向阶段交付带文件路径与 SHA256 的回执，模块之间通过回执交换结果。阶段把结论、证据范围及缺项写入台账、报告和交接文件；原始请求、张量及重放产物保存在包外工作目录。
+2. **Token 定向重跑关联评分与预测。** `verify-agent-plus` 对选中题目开启 `token_prediction` 会话，记录原生 EvalScope 请求及其实际响应，核对评分和 worker 的预测回执。GPU 与 NPU 按相同样本、前文和生成位置配对。后续逐层比较还需关联批内 Token 位置、前向步、rank、层或算子调用及张量文件。每端用本轮请求 ID 核对归属，双端请求 ID 可以不同。借用服务缺少挂点时记录覆盖限制，独立诊断产物单独归档。
+3. **阶段按证据委托比较与诊断。** `compare.py` 支持任务质量和 Token 比较。Token 首异常有可比分数时可进一步做 CPU 复核。逐调用张量比较、算子定位和统一的 `diagnose.py` 入口仍待开发。已有完整异常 Chat 请求时可独立调用 `demarcation.py` 做服务定界。后续将有可比张量的逐调用结果交给算子定位，独立重放只用于验证具体疑点。各模块向阶段交付带文件路径和 SHA256 的回执。阶段在台账、报告和交接文件中列出结论、覆盖范围和缺项。原始请求、张量及重放产物保存在包外工作目录。
 
-旧精度 `run` 和 `analyze` 继续按 `evaluations` 及原台账契约处理。任务质量对齐使用独立的 `--action quality` 请求，包含 `baseline`、`native_request` 及可选候选回执。客户入口调度该动作并保存质量报告，三文件按原交付条件导出。后续诊断的请求及回执仍待定义。[精度阶段契约](../skills/vllm-model-migration/skills/vllm-precision-align/references/contract.md)
+旧精度 `run` 和 `analyze` 继续按 `evaluations` 及原台账契约处理。任务质量对齐使用独立的 `--action quality` 请求，包含 `baseline`、`native_request` 及可选候选回执。客户入口调度该动作并保存质量报告，三文件按原交付条件导出。Token 对齐使用 `--action token`，选择和比较结果单独记录。[精度阶段契约](../skills/vllm-model-migration/skills/vllm-precision-align/references/contract.md)
 
 ##### PPT 第 3 页的 11 项任务与模块对照
 
@@ -219,7 +221,7 @@ skills/vllm-model-migration/skills/
 | 1 | 评测条件确认 | 精度阶段 `alignment/`，引用数据准备和测量回执 | 一份两端评测条件对照，标出一致、差异及未知项，供阶段选择复用或复测。 |
 | 2 | 对比基线准备 | 精度阶段 `alignment/`，沿用第 1 项核对记录 | 按任务、Token、张量登记基线来源、设备、可用范围、阈值和缺项，绑定 GPU 记录及适用的 CPU 高精度参考。 |
 | 3 | 数据集评测 | `verify-agent-plus`，按需复用 `vllm-dataset-prepare` | 本次迁移任务指定 benchmark 的有效 NPU 原生结果、实际样本范围和评分依据。 |
-| 4 | 运行数据采集 | `verify-agent` 的 `runtime/capture/` 采集 worker 数据；`verify-agent-plus` 的 `precision/runtime/` 关联样本 | 可从某题评分查到同轮生成位置、rank、调用和文件的索引，以及漏采、截断和写入失败清单。 |
+| 4 | 运行数据采集 | `verify-agent` 的 `runtime/capture/` 采集 worker 数据；`verify-agent-plus` 的 `precision/token_run/` 关联复测样本与预测 | Token 定向复测已关联评分与同一请求的预测。逐层数据后续须从题目评分查到同轮生成位置、rank、调用及文件，并列出漏采、截断和写入失败项。 |
 | 5 | 任务质量对齐 | 客户入口选择 GPU 基线，`quality_stage/` 选择 NPU 测量来源，`verify-agent-plus` 取得或核验原生成绩，`vllm-precision-compare` 比较 | 复用或重跑 NPU 测量，每次按本次 GPU 基线、目标和请求的题号计算比较结果。 |
 | 6 | Token 预测对齐 | `comparison/token.py`，可复用 `logprobs-diff` 的候选排序 | 相同前文下全词表原始 logits、选词规则处理后的分数及 CPU 参考对照，返回分数超限、实际选词分歧或提前停止三者中的首个异常，停因差异单列在终止边界。 |
 | 7 | 张量与算子对齐 | `comparison/tensor.py`，可复用 `msprobe-probe` 对已有双端 dump 的比较 | 按样本、Token 位置、rank 和调用配对，核对形状、布局、类型及状态，交付 GPU、NPU 分别相对 CPU 参考的误差和未匹配调用。 |
@@ -295,7 +297,7 @@ skills/vllm-model-migration/skills/
 
 ### 6.2 评测期间采集逐层数据的可行性
 
-`verify-agent-plus` 负责原生评测，`verify-agent` 的独立工具消费部署交接，在同一前向关联 msProbe 模块/API 张量和可选的 mindie-debugger 缓存快照。仅后续诊断重跑需要把目标题的评分关联到采集回执，该接入仍待开发。[精度测量契约](../skills/vllm-model-migration/skills/vllm-precision-align/skills/verify-agent-plus/references/contract.md#结果与生命周期)
+`verify-agent` 可在同一前向关联 msProbe 模块/API 张量和可选的 mindie-debugger 缓存快照。`verify-agent-plus` 的 Token 定向重跑已能按题关联原生评分与全词表预测，逐层或算子张量与评分之间的自动关联仍待开发。[Token 定向重跑契约](../skills/vllm-model-migration/skills/vllm-precision-align/skills/verify-agent-plus/references/contract.md#token-定向重跑)
 
 单次 decode 可按输出序号检查已适配文本层的状态。Qwen 第 3 层的 K/V 和第 0 层的 GDN 是回查示例。完整请求还可按 prompt 位置或 `forward_id` 查到无输出的 prefill 块。后端和模式覆盖以分项实测为准。[采集契约](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/runtime-capture.md#从完整请求回查每次前向) · [采集记录](MSPROBE_RUNTIME_CAPTURE.md)
 
@@ -312,9 +314,9 @@ Eager 在每次前向中调用模块和 API。图重放则一次提交已经捕�
 | [模块调用前后对照](https://github.com/mindie-agent/debugger/blob/831e03d64de24bda35a90f88e7b7dc8fe531e014/mindie_debugger/precision/lockstep_diff.py#L1) | 在模块调用前后记录输入、输出和可达状态，按模块、调用序号和 rank 对照基线 | 快照读取会同步设备。启用 healing 会用基线状态或输出替换现场值，适用于独立诊断 |
 | [单次算子或函数调用](https://github.com/mindie-agent/debugger/blob/831e03d64de24bda35a90f88e7b7dc8fe531e014/mindie_debugger/precision/call_repro.py#L94) | 包装选定调用，保存实参、返回值、可达状态的前后快照及 RNG 信息，供复现 | 采集粒度由调用边界决定。融合 kernel 内部中间值需要单独的可观察点 |
 
-后续诊断重跑可复用已实现的 worker 采集点及 `capture-session`。调用方需提供样本标识、按序执行 arm/发送/seal，并将评分关联到采集回执；工具再关联实际请求 ID、rank、前向和张量。当前评测 HTTP 记录器只转发 `Content-Type`、`Accept` 和 `User-Agent` 三种传入请求头，尚未贯通会话要求的 `X-Precision-Trace`，不能视为正式评测已接入。见[记录器实现](../skills/vllm-model-migration/skills/vllm-precision-align/skills/verify-agent-plus/scripts/precision/runtime/capture.py)。
+首轮任务质量评测直接请求服务。对选中题目执行 Token 定向重跑时，HTTP 记录器将本题的 `X-Precision-Trace` 加入实际推理请求。调用方按序登记采集、执行原生评测、封存预测，再用同一请求的响应核对评分。[定向复测实现](../skills/vllm-model-migration/skills/vllm-precision-align/skills/verify-agent-plus/scripts/precision/token_run/measurement.py)
 
-全量采集的验收应先列明预期样本、rank、步和采集点，再逐项核对张量文件是否落盘，记录跳过、截断、覆盖和写入失败。固定 NPU Eager 请求已有模块/API 覆盖、逐 Token 关联及采集开关输出一致性的实测；GPU 侧、其他执行模式、正式评测样本归属及延迟/设备内存开销仍须独立验证。后续若使用环形缓冲区，还需在槽位复用前导出快照。
+全量采集的验收应先列明预期样本、rank、步和采集点，再逐项核对张量文件是否落盘，记录跳过、截断、覆盖和写入失败。固定 NPU Eager 请求已有模块/API 覆盖、逐 Token 关联及采集开关输出一致性的实测；GPU 侧、其他执行模式、逐层张量的评测样本归属及延迟/设备内存开销仍须独立验证。后续若使用环形缓冲区，还需在槽位复用前导出快照。
 
 ## 7. 当前迁入状态与验证边界
 
