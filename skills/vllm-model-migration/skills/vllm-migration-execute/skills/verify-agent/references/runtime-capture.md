@@ -12,11 +12,11 @@
 | 调用模型 | 一条带 `X-Precision-Trace: <trace_id>` 的真实请求 | 调用方保存的原始 HTTP JSON 请求、JSON 或 SSE 响应字节及摘要 |
 | `capture-session seal` | session 引用、trace_id、`http.request/response` 摘要引用 | `receipt={path,sha256}`、实际 Token 数、样本身份 |
 | `capture-session end` | session 引用 | 封存清单、释放本次租约；模型服务继续原生命周期 |
-| `capture-read` | 采集 receipt、request_id=trace_id、零基 output_index | 前文、预测向量、接受 Token、前向和完整调用文件索引 |
+| `capture-read` | 采集回执、`request_id=trace_id`，按零基 `output_index` 查输出；全程回执也可按 `forward_id` 或零基 `prompt_position` 查前向，或用 `view=timeline` 列出时间线 | 所选前向的输入位置、调用和文件索引，以及适用的输出预测与缓存快照 |
 
 所有动作通过同一个 `scripts/verify.py`，保留 `--request --work-root --run-id --plan`。`--plan` 只做静态检查，不验证来源材料、进程或设备。真实调用在部署的 Linux 宿主侧执行；Docker 使用已有显式可写 bind mount，配置同时记录宿主路径与容器路径。调用方与运行材料必须在同一可见路径空间；不存在自动 SSH 或跨机文件传输。
 
-适用自有、retained、单卡或单机 TP=2、单请求、同步 Eager 的服务。文本 greedy 可用单卡或双卡。图文、SSE 与固定 seed 采样扩展使用双卡会话。完整总 Skill 资源必须可访问，既有共享设备合同是依赖；单独复制 `capture/` 不足以部署。目标解释器必须已经安装兼容 msProbe。工具核对适配器源码、目标 vLLM/vLLM-Ascend 源码及挂点，不自动安装、升级或改变服务并行/图模式。`prepared` 仅证明准备成功，开始会话还需实际 worker、engine、frontend 就绪记录及当前服务身份。
+会话要求自有且 retained 的单请求服务。同步 Eager 文本 greedy 支持单卡和单机 TP=2，单卡文本服务也可使用 ACLGraph 适配器。图文、SSE 与固定 seed 采样扩展使用双卡 Eager 会话。完整总 Skill 资源必须可访问，既有共享设备合同是依赖；单独复制 `capture/` 不足以部署。目标解释器必须已经安装兼容 msProbe。工具核对适配器源码、目标 vLLM/vLLM-Ascend 源码及挂点，不自动安装、升级或改变服务并行/图模式。`prepared` 仅证明准备成功，开始会话还需实际 worker、engine、frontend 就绪记录及当前服务身份。
 
 ## 无评测器的会话调用
 
@@ -70,7 +70,7 @@ seal 不重发推理。成功后用相同 session 调用 `operation=end`；多�
 4. 使用 GDN 层的层号和 `conv.before/after`、`ssm.before/after` 中的具体名称读两种状态。`cache_snapshot="input"` 或 `"output"` 读逻辑层入口首个浮点激活（优先 hidden_states）或出口首个浮点张量；msProbe 另保存其实际支持的其他张量。重复调用可传零基 `occurrence`，多个状态模块可用完整子模块路径消除歧义。
 5. 每份数值文件保留原 dtype、shape、SHA256 和预览。读全量数据时用该快照的 `values`；只查询概览时使用文件引用。工作目录应位于有足够剩余空间的文件系统。按 27B 两个代表层的实测尺寸外推，单次 64 层状态快照约 294 MiB，另需边界激活、msProbe 文件及元数据空间。预算为整次 forward 共用。缺层、超预算或未适配的后端使缓存验收为 incomplete，仍可读取已完成层和独立的 msProbe 证据。
 
-单步缓存观测使用单 rank。旧回执保留 `decode_cache.attention/gdn/snapshots` 布局和原查询方式。全层回执使用 `decode_cache.format=2`，按 `layers[].invocations[].states[]` 保存各次算子实参和快照，边界在 `invocations[].boundary`。调度计划继续按同一 `schedule_id/forward_id` 核对。GPU/NPU 图重放、并行 rank 或未执行模态需要分别适配和验收。
+单步缓存观测使用单 rank。旧回执保留 `decode_cache.attention/gdn/snapshots` 布局和原查询方式。全层回执使用 `decode_cache.format=2`，按 `layers[].invocations[].states[]` 保存各次算子实参和快照，边界在 `invocations[].boundary`。调度计划继续按同一 `schedule_id/forward_id` 核对。其他执行模式的查询分别见[双卡全程采集](#单机-tp2-联合采集)和[单卡图重放](#单卡-aclgraph-文本请求)。
 
 ## 从完整请求回查每次前向
 
@@ -80,7 +80,7 @@ seal 不重发推理。成功后用相同 session 调用 `operation=end`；多�
 {"cache_capture":{"mode":"full_request","max_request_snapshot_bytes":6442450944}}
 ```
 
-此模式要求冷前缀、一个实际请求、单卡或单机 TP=2 的 V1 同步 Eager、文本 greedy。全程与单输出模式分别使用 `cache_capture` 和 `cache_output_index`，一次 arm 只选其一。两项都省略即可仅启用 msProbe 作为对照。保存原始 HTTP 请求与响应并 seal 后，使用同一份 `source` 和 `request_id`，在 capture-read 请求中选择一种定位方式。
+以下为 V1 同步 Eager 文本 greedy 的全程配置，要求冷前缀、单请求、单卡或单机 TP=2。图服务的全程配置见[单卡 ACLGraph 文本请求](#单卡-aclgraph-文本请求)。全程与单输出模式分别使用 `cache_capture` 和 `cache_output_index`，一次 arm 只选其一。两项都省略即可仅启用 msProbe 作为对照。保存原始 HTTP 请求与响应并 seal 后，使用同一份 `source` 和 `request_id`，在 capture-read 请求中选择一种定位方式。
 
 | 想查的内容 | 在请求中加入的字段 |
 | --- | --- |
@@ -131,8 +131,8 @@ Ascend MLA 目前支持未量化 BF16、PA 布局、128 Token 物理块、单卡
 | --- | --- |
 | 请求与输出范围 | 会话可串行处理多条请求，每次只允许一条在途请求；为每个实际输出 Token 建立索引。sample_key/native_id 由调用方提供，工具不生成评测题目清单 |
 | 查询与采集选择 | layer/api/occurrence 只筛选已落盘结果；msProbe 采集范围沿用原配置；可选缓存观察支持一个 decode 或冷前缀完整请求；全程模式使用全层范围 |
-| 预测与张量 | 保存输出预测的原始 logits 和最终 greedy 选词分数；不逐项记录中间选词处理，也不采集 prompt 每个位置的全词表 logits。仅对已识别布局提供 Token 切片，其余保留整张量 |
-| 执行路径 | 双卡 V1 适配单图 Qwen3.5、SSE、带 seed 的全词表随机采样。并发批处理、图模式、beam、推测解码、音视频和多图留待独立适配。 |
+| 预测与张量 | 开启数值采集时，greedy 请求保留产生输出所用的 logits 和选词分数，双卡固定 seed 采样另存抽样前概率。只为已识别布局提供 Token 切片，其余保留整张量。prompt 每个位置的全词表和每个中间选词步骤超出采集范围。 |
+| 执行路径 | 单卡 ACLGraph 已验收 Llama 整图和 Qwen 分段图的文本请求。双卡 V1 同步 Eager 适配单图、SSE 和带 seed 的全词表随机采样。多请求并发、双卡图模式、beam、推测解码、音视频和多图仍待适配。 |
 | 数据范围 | 实际模块及注册 API 的前向输入输出；可选缓存观察单独提供已适配层的算子边界、地址计划和状态快照。设备 kernel 内部未观测 |
 | 存储与恢复 | 当前配置同步保存真实张量；缓存原始字节受单前向预算和全程模式的请求预算限制，msProbe 仍按原配置保存；压缩去重、自动租约恢复和跨机传输未接入。离线查询依赖回执原路径，不是可自动搬迁的数据包 |
 
@@ -144,6 +144,7 @@ Ascend MLA 目前支持未量化 BF16、PA 布局、128 Token 物理块、单卡
 
 2026-11-17 已完成 Qwen3.5-27B、BF16、单 rank 同步 Eager 的真实 NPU 采集闭环验收，目标版本为 vLLM 0.20.2+empty、vLLM-Ascend 0.20.2rc1、msProbe 26.0.0；核对了采集开关输出一致性，并重新打开第二个输出 Token 对应前向的全部已索引非空输入输出张量。该结论仅对应固定环境和文本请求，不证明其他模型/版本或执行模式通过，也不表示延迟、吞吐和内存开销已达标。其他目标镜像仍须核对源码、挂点、进程身份和实际张量覆盖；性能开销另行测量。
 
+2026-11-25 的单卡同步 Eager 验收另覆盖 DeepSeek-V2-Lite-Chat 的 27 个 MLA 层，并用 Llama 和 Qwen 复验普通注意力与 GDN。DeepSeek 整段和分块请求使用联调版 worker，最终读取器复核两组原件。最终版的分量预算逻辑另经真实 MLA 算子验证。[MLA 查询字段](#单卡同步-eager-的-mla-缓存)
 
 ## 启动隔离与目标源码核验
 
