@@ -1,0 +1,57 @@
+{
+  "model": {
+    "model_repository_id": "Qwen/Qwen3.5-27B",
+    "path": "/data/models/Qwen3.5-27B",
+    "model_name": "Qwen3.5-27B"
+  },
+  "environment": {
+    "image_name": -1,
+    "container_name": -1,
+    "available_npu_devices": [0, 1, 2, 3]
+  },
+  "accuracy": {
+    "evaluator": "evalscope",
+    "datasets": [
+      {
+        "name": "ceval",
+        "path": "/data/ceval",
+        "subset_list": ["accountant", "advanced_mathematics"],
+        "limit": 1
+      }
+    ],
+    "gpu_baselines": [
+      {
+        "evaluator": "evalscope",
+        "dataset": "ceval",
+        "subset_list": -1,
+        "prompt_config": {
+          "request_format": "chat",
+          "enable_thinking": false
+        },
+        "generation_config": {
+          "temperature": 0,
+          "top_p": 1,
+          "max_tokens": 8192,
+          "seed": 42
+        },
+        "scores": [
+          {
+            "metric": "accuracy",
+            "gpu_score": 0.75,
+            "target": { "max_drop": 0.005 }
+          },
+          {
+            "subset": "accountant",
+            "metric": "accuracy",
+            "gpu_score": 0.5,
+            "target": { "max_drop": 0 },
+            "sample_results": [
+              { "sample_id": "acct-001", "score": 1 },
+              { "sample_id": "acct-002", "score": 0 }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

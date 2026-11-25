@@ -132,6 +132,16 @@
       "level": 1,
       "parent": "vllm-model-migration",
       "path": "skills/vllm-precision-align"
+    },
+    "vllm-precision-compare": {
+      "entrypoint": {
+        "fixture": null,
+        "plan": "assets/request.example.json",
+        "script": "scripts/compare.py"
+      },
+      "level": 2,
+      "parent": "vllm-precision-align",
+      "path": "skills/vllm-precision-align/skills/vllm-precision-compare"
     }
   },
   "version": "0.7.0-dev.2"
