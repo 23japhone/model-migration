@@ -10,12 +10,12 @@
 | scores | 非空数组，每项必填 `metric`、`gpu_score`。填写原生单位的有限分数，真实零分填 0。每个 metric、subset 组合只填一次。 |
 | evaluator_version | 可选精确版本。缺失、null 或整数 -1 时，评测准备选择 PyPI 最新可用稳定发行，冻结后用于本轮续接。 |
 | subset_list | 可选非空唯一子集数组。缺失、null 或整数 -1 选择该版本任务实际声明的全部评测子集。每个所选子集使用全量原题。 |
-| task_name、task_revision | 自定义变体或单独版本的任务可明确指定。需要有与配置对应的任务实现。内置任务优先使用注册任务的 evaluation_version，旧版任务无独立版本时用实际 EvalScope 发行版本及适配器源码摘要固定实现。 |
-| prompt_config | 可声明 request_format、enable_thinking、system_prompt、prompt_template、chat_template。当前原生入口采用 chat 请求；提供 completion 时需对应执行能力。原生 few-shot 数和提示来自固定版本的评测任务。 |
+| task_name、task_revision | 可省略。`task_name` 如填写，须与 `dataset` 和 EvalScope 原生注册名称一致。`task_revision` 须与注册任务的 evaluation_version 一致，任务未提供该值时采用实际 EvalScope 发行版本。适配器源码摘要随证据保存。 |
+| prompt_config | 可声明 request_format、enable_thinking、system_prompt、prompt_template、chat_template。request_format 可填 `chat` 或 `completion`。当前 EvalScope 质量复测只实现 `chat`，填 `completion` 可通过输入校验，准备复测时会报告不支持。原生 few-shot 数和提示来自固定版本的评测任务。 |
 | generation_config | 可声明 temperature、top_p、top_k、max_tokens、seed、stop。stop 接受字符串或非空字符串列表。基线侧的显式值用于复测；其余采用可核验的原生值。原生未指定 max_tokens 时，NPU 按服务实际策略执行，预检使用剩余上下文作为上界。 |
 | scoring_config | 自定义评分规则可填写 scorer_name、scorer_version、answer_extraction、normalization、invalid_answer_policy。每项为文字，Agent 负责核对声明与实际评分器及原生配置的映射。 |
 
-`gpu_baselines` 缺失、null、整数 -1 或空数组时，按下节流程搜索模型的公开 GPU 基线。客户明确提供基线时，每份基线的 `scores` 必须有成绩。工具或数据版本的自动补齐仅描述本次 NPU 重跑条件。历史 GPU 使用的条件由已有历史资料另行核验。
+`gpu_baselines` 缺失、null、整数 -1 或空数组时，仅在任务包含精度评测意图的情况下按下节流程搜索模型的公开 GPU 基线。客户明确提供基线时，每份基线的 `scores` 必须有成绩。工具或数据版本的自动补齐仅描述本次 NPU 重跑条件。历史 GPU 使用的条件由已有历史资料另行核验。
 
 ## 客户未提供 GPU 基线
 
@@ -30,9 +30,9 @@ Agent 用顶层 `model.model_repository_id` 查询 Hugging Face 发布仓库。�
 ## 每条成绩与明细
 
 - `subset` 指定当前范围内的单个子集。省略时按所选范围比较原生总分。
-- `target` 支持 `{"max_drop": 非负数}`。边界相等时达标。单位沿用指标原生单位，例如准确率以 0 到 1 表示时，0.005 对应 0.5 个百分点。缺失、null 或整数 -1 时仍输出成绩差异，目标记为未评估。
+- `target` 支持 `{"max_drop": 非负数}`。边界相等时达标。单位沿用指标原生单位，例如准确率以 0 到 1 表示时，0.005 对应 0.5 个百分点。缺失、null 或整数 -1 时目标记为未评估，已证实可比的成绩仍输出分差。
 - `sample_results` 中每条提供 `sample_id` 和 `score`。跨子集可补充 `subset`，单子集继承所属分项。题号使用原文件的字符串或整数 ID；没有显式 ID 时使用“相对源文件名#零基数据行号”。布尔值仅作原生逐题评分。缺失、null 或整数 -1 表示没有逐题比较请求。显式空列表、重复或未配对的题号影响逐题证据，仍保留有效的分数比较。
-- 提供准确的历史工具版本、来源、样本和评分条件有助于确认可比性。资料缺失仍可独立取得 NPU 成绩并报告缺项。更改 GPU 分数、容差或希望查看的题号时，优先使用满足同一测量协议的已有 NPU 成绩。所选范围的原生报告保留实际可得的总分与分项；粗判阶段使用评分证据，提示预检只汇总长度。
+- 对显式填报的 GPU 基线，报告核验历史工具版本、来源、分数、样本和评分条件。仅有填报分数时，可保留有效的 NPU 成绩，目标判定为 `not_evaluated`。更改 GPU 分数、容差或希望查看的题号时，优先使用满足同一测量协议的已有 NPU 成绩。所选范围的原生报告保留实际可得的总分与分项；粗判阶段使用评分证据，提示预检只汇总长度。
 
 ## Agent 的准备观察
 

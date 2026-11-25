@@ -17,7 +17,7 @@ EvalScope 输出达到已配置上限时，由 [verify-agent-plus](skills/vllm-p
 
 ## 客户 prompt + task.json
 
-先阅读[客户字段与默认行为](references/customer-task.md)和[Agent 执行与续接](references/customer-observations.md)。客户只填写[template.json](assets/template.json)，不能要求客户填写阶段请求、评测命令或压测负载。model、environment、accuracy 三组对象必须存在，允许空对象；组内字段按契约支持缺失、null、整数 -1。空串、字符串 "-1"、布尔值和显式空列表不作为默认。模型名由实际来源/config 解析，设备默认是当前主机全部 NPU 候选池，datasets 整组未指定时为 ceval 和 gsm8k。旧字段仍拒绝；模板具体模型和设备值仅作示例。
+先阅读[客户字段与默认行为](references/customer-task.md)和[Agent 执行与续接](references/customer-observations.md)。客户填写一份 `task.json`，可使用[普通任务模板](assets/template.json)或[包含 GPU 基线的任务质量示例](assets/task-quality.example.json)。`model`、`environment`、`accuracy` 三组对象必填，允许空对象。支持默认值的字段可省略、填 null 或整数 -1。设备、数据集和子集列表显式填写时须非空，`accuracy.gpu_baselines: []` 表示未提供 GPU 基线。模型名按实际来源或配置解析，设备默认取当前主机全部 NPU 候选卡，普通评测的数据集默认取 ceval 和 gsm8k。
 
 prompt 对数据集内部补值仍使用 accuracy.datasets 列表：与 JSON 的名称序列一致，逐字段补齐 path/subset_list/limit；不修改的条目只写 name，明确值冲突集中确认。不新增索引路径、不合并子集列表、不改变显式数据集选择。完整规则与示例见[数据集补值](references/customer-task.md#prompt-补齐数据集字段)。
 
@@ -30,7 +30,7 @@ prompt 对数据集内部补值仍使用 accuracy.datasets 列表：与 JSON 的
 
 客户新部署默认空闲卡优先，逐卡剩余显存满足预算时允许共享占用卡；共享组合每张卡额外预留本次剩余显存的5%。容量不足形成用户更换卡决策，独立准备继续；选卡、两次启动前复核及运行归属规则见[共享部署契约](references/customer-observations.md#空闲优先与共享部署)。
 5. 遇到适配或注册，读对应 Skill，完成公开流程并通过 context 补充交接。遇到 semantic_review_required，读实际响应执行 verify review → execute finalize，把最终迁移引用写入 context.migration_result 后续接；禁止脚本代判通过或重复启动服务。
-6. 全部有效 EvalScope 基线完成后自动生成候选并整体发布。只交付 `work-root/run-id/deliverables/` 下三个 JSON；保留内部请求、原生分数和证据。导出失败续接导出，单项评测失败续接受影响项。服务默认 keep。
+6. 普通精度步骤之后，客户填写了 GPU 基线就逐份处理。基线未提供且意图包含精度评测时，按模型名或仓库 ID 搜索公开 GPU 基线。证据齐全时复用或重跑 NPU 评测，搜索无结果或公开资料不全时记录 `not_evaluated` 和原因。客户回执 `customer-manifest.json` 的 `task_quality[]` 给出各项状态和可用的报告引用。三个交付 JSON 随后按原有完成条件独立发布到 `work-root/run-id/deliverables/`。总分、分项和逐题变化见[精度阶段契约](skills/vllm-precision-align/references/contract.md#任务质量对齐)。导出失败时续接导出，普通单项评测失败时续接受影响项。服务默认 keep。
 7. 后续性能启动前，调用 [check_evalscope_handoff.py](scripts/check_evalscope_handoff.py) 核验同一客户任务的环境；具体请求与调用约定见[启动前核验](references/evalscope-installation.md#性能启动前只读核验)。仅使用 ready 返回的 benchmark_python 和 env，以 argv 列表及子进程 env 启动获准的性能入口，保存实际解释器和 EvalScope 命令路径。阻塞时不启动性能，也不安装修复；本仓不代跑性能或修改性能插件。两端实际证据齐备才报告共用成功，版本绑定不等于全部依赖锁定。
 
 ```bash
@@ -92,5 +92,3 @@ Agent 负责意图、适配和语义复核；确定性脚本负责阶段委托�
 执行状态与验收结论分开：有效精度结果目标 fail 仍可 completed；缺 GPU 不宣布对齐、缺目标不宣布达标。交付真实验收、离线测试、未验证项及服务观察时间。静态计划、历史分析和包结构检查均不证明当前服务存活或模型能力。
 
 完整流程以精度 evaluations 的 id 显式声明 bindings；deployment 只能绑定 migration，dataset 只能绑定 dataset_preparation。共享数据准备只选一个 dataset 任务；被注入字段必须在原评测请求及阶段条目中留空。原请求不被改写，冻结副本重新计算摘要。完整示例的 keep 可显式改为 stop；先完成所有消费者再收尾，历史分析禁止 stop。
-
-有精度评测意图时，优先使用客户填写的 `accuracy.gpu_baselines[]`，否则按顶层模型名称或仓库 ID 搜索公开 GPU 评测资料。来源明确且关键条件齐全时，委托精度阶段复用或重跑 NPU 评测。搜索无结果或资料缺项时，把原因和 `not_evaluated` 写入客户回执的 `task_quality`，继续下一项任务。总分、分项和可选逐题变化见[精度阶段契约](skills/vllm-precision-align/references/contract.md#任务质量对齐)。
