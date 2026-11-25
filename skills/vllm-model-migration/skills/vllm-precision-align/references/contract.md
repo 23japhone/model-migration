@@ -68,15 +68,15 @@ run下可选GPU基线读取失败不阻止单端评测，具体比较限制由�
 | `schema_version` | 字符串 `1.0` |
 | `baseline` | 客户填报的 EvalScope 数据集分数、目标和可选逐题评分 |
 | `native_request` | 交给 `verify-agent-plus` 的完整冻结测量请求，包含已绑定的部署、数据、配置和期望协议 |
-| `candidates` | 可选，原 NPU 测量回执的 `{path, sha256}` 数组。空数组直接进行新的原生测量 |
+| `candidates` | 可选，原 NPU 测量回执的 `{path, sha256}` 数组。省略或空数组表示没有历史候选 |
 | `gpu_evidence` | 可选，经 Agent 搜集的 GPU 历史记录的 `{path, sha256}` 引用 |
 | `require_reuse` | 可选，默认 false。第二次单题验收可设为 true，找不到合格候选时保留失败原因并结束，以保证零新增正式请求 |
 | `timeout_seconds` | 可选，每次子任务超时秒数，默认 14400 |
 
-每个候选都通过原生 validator 的 `--action analyze` 复核。首个核验通过的候选产生 `reused`，保留原回执及本次复核回执。候选耗尽后发起一次 `quality-run`。两条路径都使用比较任务输出质量报告。未核实 GPU 历史条件时，测得的 NPU 成绩仍可交付。
+按顺序检查候选回执，调用原生 validator 的 `--action analyze` 复核可读候选。首个通过核验且覆盖所需分数的候选标记为 `reused`，保留原回执及本次复核回执。没有合格候选时，默认发起一次 `quality-run`。`require_reuse=true` 时记录失败原因并结束。取得测量后，由比较任务输出质量报告。显式填报的 GPU 历史条件无法核实时，仍保留有效的 NPU 成绩。
 
-阶段终态写入 `<work-root>/<run-id>/vllm-precision-align/quality/<attempt>/quality-stage-manifest.json`。其中 `receipt`、`verification`、`measurement` 和 `quality_report` 指向有摘要的原始测量、当次核验、原生评分和比较结论。每个候选的采用或舍弃理由及耗时见 `candidate_checks`。阶段的 `completed` 表示比较报告已交付。技术结论读取报告中的 `conclusions` 和 `scores`。客户回执的 `task_quality` 独立引用每项质量报告，原三个 JSON 按原有交付条件导出。
+阶段终态写入 `<work-root>/<run-id>/vllm-precision-align/quality/<attempt>/quality-stage-manifest.json`。取得测量后，`receipt` 指向原始回执，`measurement` 指向原生评分，`quality_report` 指向比较报告。复用时 `verification` 指向本次只读复核回执，重跑时与 `receipt` 相同。候选选择依据和耗时见 `candidate_checks`。阶段的 `completed` 表示已交付报告。读取报告的 `conclusions.precision_target` 判断目标是否达标，通过 `scores[]` 查看分项成绩和可选逐题变化。客户回执的 `task_quality[]` 给出阶段状态与可用报告的位置，三个交付 JSON 按原有条件导出。
 
-质量重跑直接调用 EvalScope 与现有模型服务。原生报告、题目身份和评分用于比较，静态配置、有效版本与摘要用于核对评测口径。预检在评测客户端计算提示长度。质量阶段关闭逐请求 HTTP 正文记录、token 预测、模型层和算子张量采集。只有可比且明确不达标的评分项可作为后续 token 预测或张量算子对齐的输入，由对应阶段按需要对选定样本重新推理。达标或未评估均不启动模型运行时采集。
+质量重跑由 EvalScope 直连现有服务，预检在客户端计算提示长度。比较使用原生报告、题目身份和评分，依靠配置、版本及摘要核对口径。质量任务本身不启动 HTTP 正文记录器，也不启用 Token 预测数据、模型层或算子张量采集。若可比的评分项未达标，后续诊断可针对这些样本另行重跑并采集所需数据。
 
-客户精度意图明确且 `accuracy.gpu_baselines` 为空时，客户入口应先按顶层模型名称与仓库身份查找公开评测证据。模型卡上的展示分数可作为搜索线索。取得可核验的 GPU 原生记录、实际权重和评测口径后，对照本次编译的条件再安排比较。搜索无结果、身份歧义或条件缺失时，客户回执在 `gpu_baseline_search` 保存搜索记录，在 `task_quality` 写入 `not_evaluated`、缺项和 `quality_measurement_started=false`，然后继续后续任务。已提交客户基线的任务仍走显式基线路径。
+客户精度意图明确且 `accuracy.gpu_baselines` 为空时，客户入口应先按顶层模型名称与仓库身份查找公开评测证据。模型卡上的展示分数可作为搜索线索。取得可核验的 GPU 原生记录、实际权重和评测口径后，对照本次编译的条件再安排比较。搜索无结果、身份歧义或准备时发现条件缺失时，客户回执在 `gpu_baseline_search` 保存搜索记录，在 `task_quality[]` 记录 `not_evaluated`、缺项和 `quality_measurement_started=false`。已进入阶段后复核出静态条件不符时，客户条目标记 `not_evaluated`，其 `report` 引用的报告记录原因、`quality_measurement_started=false` 与零次正式请求。两种情况均继续后续任务。

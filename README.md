@@ -41,7 +41,7 @@
 
 ### 3. 准备 prompt 与 task.json
 
-将[客户模板](skills/vllm-model-migration/assets/template.json)复制到技能资源目录之外，填写实际模型和数据集信息。`model.model_name` 同时用于任务记录、结果标识、展示和 API 服务名，JSON 严格使用模板中的 `model`、`environment`、`accuracy` 三组及子字段；不兼容旧客户字段和旧结构回执。`task.json` 中的路径属于实际执行主机；证据工作根和 `run-id` 也须明确提供。
+将示例复制到技能资源目录之外，按实际执行主机填写 `model`、`environment`、`accuracy` 三组信息，另指定证据工作根和 `run-id`。`model.model_name` 同时用于任务记录、展示和 API 服务名。普通部署与精度评测可以使用基础模板；已有 GPU 成绩时，可直接参照任务质量示例填写 `accuracy.gpu_baselines`。[基础模板](skills/vllm-model-migration/assets/template.json) · [含 GPU 基线的完整示例](skills/vllm-model-migration/assets/task-quality.example.json)
 
 例如，交给 Agent 的任务描述可以是：
 
@@ -54,7 +54,7 @@
 
 填写时注意：
 
-- 三个分组对象必须存在；允许默认的字段支持**缺失、`null`、JSON 整数 `-1`**。`-1.0`、`"-1"`、空字符串、布尔值和显式空列表不能代替；模型名与全部 NPU 候选池按实际证据解析。
+- 支持默认值的字段可以省略、填 `null` 或 JSON 整数 `-1`。显式指定设备、普通评测数据集或子集时，列表须非空。`accuracy.gpu_baselines` 也接受 `[]`，与未提供基线等价。有精度评测意图时，Agent 会按模型查找公开 GPU 基线。[客户字段契约](skills/vllm-model-migration/references/customer-task.md#字段)
 - 三个分组允许空对象；显式数据集列表的每项必须提供 name。模型名可按契约自动确定，ceval/gsm8k 的路径可采用默认值，其他数据集须明确路径。模型、设备、样本范围和资源预算以本次任务为准。
 - 数据路径不存在时，Agent 查阅官方来源，优先读取有依据的默认本地位置；可用则复用，默认位置缺失或未提供时下载到客户指定路径。已有坏数据保留并报错，用户无需增加字段；详见[数据来源选择](skills/vllm-model-migration/skills/vllm-migration-prepare/skills/vllm-dataset-prepare/references/contract.md#指定路径缺失时的来源选择)。
 - `environment` 使用 `image_name`、`container_name`、`available_npu_devices`。设备列表限定允许范围，优先选择满足逐卡预算的全空闲组合；不足时允许共享占用卡，共享组合中每张卡额外预留剩余显存的5%。选卡不要求用满列表，也不代表性能最优 TP，详见[共享部署契约](skills/vllm-model-migration/references/customer-observations.md#空闲优先与共享部署)。EvalScope 默认安装到共享 /data/evalscope-venv，安装选项仅放在可选内部 context，见[共用环境契约](skills/vllm-model-migration/references/evalscope-installation.md)。
@@ -95,9 +95,11 @@ flowchart TD
     E --> P[准备：模型与镜像]
     E --> D[准备：数据集]
     P --> M[迁移：预检、按需适配和注册、部署功能验证]
-    M --> A[精度：原生评测、比较与目标判定]
+    M --> A[普通原生精度评测]
     D --> A
-    A --> H[独立导出：三个交付 JSON]
+    A --> H[部署与普通精度满足交付条件时导出三个 JSON]
+    E --> Q[任务质量对齐：选取 GPU 基线，复用或复测 NPU 成绩]
+    Q --> R[质量报告或缺项原因]
 ```
 
 | 层级 | Skill | 职责 |
@@ -139,6 +141,8 @@ flowchart TD
 
 测量有效、GPU/NPU 可比和目标达标分别判断。有效精度测量可能未达到目标，交接成功也不表示性能优化完成。详细规则见[三文件交付契约](skills/vllm-model-migration/references/tuning-handoff.md)。
 
+任务质量结果保存在本次运行的 `customer-manifest.json` 中，其路径见入口输出的 `evidence.manifest`。打开 `task_quality[]` 中的报告引用 `report`，可查看成绩、逐题变化或缺项原因。自动搜索未取得完整 GPU 基线时，该项记为 `not_evaluated`（无法判断是否对齐），流程继续检查三份 JSON 的交付条件。[任务质量对齐契约](skills/vllm-model-migration/references/task-quality.md)
+
 ## 支持范围与当前限制
 
 - 当前面向 vLLM / vLLM-Ascend；SGLang、框架自动选择、重新量化、训练、多机调度及逐层诊断不在范围内。
@@ -159,7 +163,7 @@ model_migration/
 │   ├── scripts/                    # 总入口与共享路径能力
 │   ├── references/                 # 契约、Schema 与布局
 │   ├── assets/                     # 客户模板和静态示例
-│   └── skills/                     # 三阶段及八个任务
+│   └── skills/                     # 阶段与任务 Skill
 ├── tests/vllm-model-migration/      # 离线回归
 ├── .agents/skills/                 # 随仓库提供的开发工作流技能
 └── .codex/                         # 结构质量策略与基线
