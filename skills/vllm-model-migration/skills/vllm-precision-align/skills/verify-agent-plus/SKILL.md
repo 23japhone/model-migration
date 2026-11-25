@@ -1,6 +1,6 @@
 ---
 name: verify-agent-plus
-description: 默认使用 EvalScope，兼容 AISBench，结合指定开源数据集对已有 vLLM/vLLM-Ascend 模型服务执行精度测试，或核验既有评测产物、比较基线和判定精度目标时使用。
+description: 在已有 vLLM/vLLM-Ascend 服务上执行数据集精度测试（默认 EvalScope，兼容 AISBench）、复核历史结果、比较基线和判定目标时使用。也可按选题清单用 EvalScope 复测，将同一请求的评分与 Token 预测关联。
 ---
 
 # 数据集精度测试

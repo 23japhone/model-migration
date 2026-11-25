@@ -104,8 +104,8 @@ model_migration/
 | 迁移任务 | [adapt-agent](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/adapt-agent/SKILL.md) | 指导 Agent 实现模型、权重映射与必要 processor；脚本固定上下文及校验适配证据 | `scripts/adapt.py` |
 | 迁移任务 | [vllm-model-register](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/vllm-model-register/SKILL.md) | 建立或核验 architecture 到实现的映射，提供开发初检及载体内复验入口 | `scripts/register.py`、`scripts/check.py` |
 | 迁移任务 | [verify-agent](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/SKILL.md) | 部署或核验已有服务、最终载体注册复验、真实权重功能验证及服务生命周期 | `scripts/verify.py` |
-| 精度任务 | [verify-agent-plus](../skills/vllm-model-migration/skills/vllm-precision-align/skills/verify-agent-plus/SKILL.md) | 使用原生评测工具测量或分析已有结果，记录有效性、可比性和目标结论 | `scripts/validator.py` |
-| 精度任务 | [vllm-precision-compare](../skills/vllm-model-migration/skills/vllm-precision-align/skills/vllm-precision-compare/SKILL.md) | 核对 GPU 与 NPU 评分证据，判定总分、分项和可选逐题变化 | `scripts/compare.py` |
+| 精度任务 | [verify-agent-plus](../skills/vllm-model-migration/skills/vllm-precision-align/skills/verify-agent-plus/SKILL.md) | 执行原生测量或复核已有结果，记录有效性、可比性和目标结论。定向复测时关联所选题目的原生评分与同一请求的预测记录 | `scripts/validator.py` |
+| 精度任务 | [vllm-precision-compare](../skills/vllm-model-migration/skills/vllm-precision-align/skills/vllm-precision-compare/SKILL.md) | 比较 GPU 与 NPU 的总分、分项和可选逐题评分。Token 比较读取双端预测，在相同前文下定位首个异常 | `scripts/compare.py` |
 | 精度任务 | [three-step-demarcation](../skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/SKILL.md) | 针对可复现的异常 Chat 请求独立执行服务链路三步定界 | `scripts/demarcation.py` |
 
 独立任务可以直接调用；这不表示把单个子目录复制出去就足够，跨技能定位、公共 Schema 和注册复验等依赖仍须一并满足。
@@ -139,7 +139,7 @@ flowchart TD
     R -. 新请求显式续接 .-> M
 ```
 
-客户 `--task` 流程在普通精度步骤后、三文件交付前调度任务质量对齐。质量回执写入 `customer-manifest.json` 的 `task_quality[]`。若配置 `accuracy.token_alignment`，精度阶段根据该报告定界，委托原生评测定向采集，再调用比较器并将报告写入 `token_alignment[]`。[比较契约](../skills/vllm-model-migration/skills/vllm-precision-align/skills/vllm-precision-compare/references/token.md)三文件交付按普通精度、部署和导出回执独立判定。
+客户 `migrate.py --task` 在普通精度步骤后、三文件交付前调度任务质量对齐，将质量报告引用写入 `customer-manifest.json` 的 `task_quality[]`。启用 `accuracy.token_alignment` 后，精度阶段从可比的未达标分项选题。已有双端预测的题可直接比较。有 GPU 预测、缺 NPU 记录且具备首轮冻结请求的题委托原生评测重跑。客户通过 `token_alignment[]` 查看选题和比较报告。三文件交付按普通精度、部署和导出回执独立判定。[定向重跑与比较的阶段契约](../skills/vllm-model-migration/skills/vllm-precision-align/references/contract.md#token-预测对齐)
 
 ### 4.2 支持度分流与明确续接
 

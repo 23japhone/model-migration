@@ -1,8 +1,10 @@
 # 阶段请求、结果和资源契约
 
-统一参数 `--request --work-root --run-id --action run|analyze --plan`，默认run。阶段自身Python3.10+标准库；通过总 Skill 布局索引定位公开 `prepare.py`、`verify.py` 和 `validator.py` 调用任务，不导入其私有代码。连接远端由调用方在目标主机执行本CLI，不增加SSH调度框架。
+`scripts/precision.py` 使用 `--request`、`--work-root` 和 `--run-id`。`--action` 支持 `run`（默认）、`analyze`、`quality` 和 `token`，可加 `--plan` 做静态检查。阶段使用 Python 3.10+ 标准库，通过 Skill 布局定位并调用 `prepare.py`、`verify.py`、`validator.py` 和 `compare.py` 的公开入口。远程运行时由调用方在目标主机执行本 CLI。
 
 ## 输入
+
+下表适用于普通 `run` 与 `analyze` 请求。另两种动作各有独立的[任务质量请求](#任务质量对齐)和 [Token 请求](#token-预测对齐)。
 
 | 字段 | 契约 |
 | --- | --- |
@@ -83,7 +85,7 @@ run下可选GPU基线读取失败不阻止单端评测，具体比较限制由�
 
 ## Token 预测对齐
 
-通过 `precision.py --action token --request <请求> --work-root <包外目录> --run-id <标识>` 处理一份已发布的任务质量报告。请求提供 `schema_version="1.0"`、`quality_report={path,sha256}` 和 `token_alignment`。后者分别以 `raw_logits.atol`、`processed_scores.atol` 约定原始分数和选词后概率的非负绝对容差。可选 `bundles` 为预测包引用数组。仅当需委托 NPU 定向评测时提供首轮相同协议的 `native_request`。加 `--plan` 只校验参数形状和输出边界。
+通过 `precision.py --action token --request <请求> --work-root <包外目录> --run-id <标识>` 处理一份已发布的任务质量报告。请求提供 `schema_version="1.0"`、`quality_report={path,sha256}` 和 `token_alignment`。其中 `raw_logits.atol` 用于原始 logits，`processed_scores.atol` 用于选词前的归一化概率，两者均为非负绝对容差。可选 `bundles` 为预测包引用数组。仅当需委托 NPU 定向评测时提供首轮相同协议的 `native_request`。加 `--plan` 只校验参数形状和输出边界。
 
 阶段对照 `next_action.failed_scores` 和 `scores` 的可比未达标分项，按指标方向合并首轮报告和已核验原生 reviews 中的退化题。总分和学科分数指向同一题时仅列一次，保留触发它的每个指标。只有学科分数时，可以从首轮有效 NPU 回执取得该学科完整题号名册。仅有总分且无法定位样本，或缺少可核验的学科名册时，交付待定界范围。`selection.json` 的 `cases` 给出子集、原题号和触发项，`scope_coverage` 区分已定位的退化题与完整学科候选，`pending_scopes` 记录缺失依据。
 
@@ -91,6 +93,8 @@ run下可选GPU基线读取失败不阻止单端评测，具体比较限制由�
 
 有 GPU 对照、该题缺少 NPU 记录且传入与首轮相同的 `native_request.protocol` 时，阶段将这些题目委托给 `validator.py --action token-run`。已有双端记录的题目直接比较。子任务部分成功时，先核对成功与失败清单互斥且覆盖全部受托题目，再导入成功项、报告每项失败原因。每题经 `compare.py --action token` 判断，首个异常 Token 从 1 计数。存在显式 CPU 数据时使用该引用，也可从首轮已固定的本地模型和部署交接生成 CPU 参考。缺失 CPU 依据单独记录。原生质量、第二遍评分复现及 Token 数值结论各自交付。
 
-每次运行在 `<work-root>/<run-id>/vllm-precision-align/token/<attempt>/` 写入 `token-stage-manifest.json`、选题清单和逐题 `token-report.json`。阶段摘要公开 `status`、`alignment_status`、`selection`、`selected_count`、`token_report` 和 `manifest`。首轮目标未失败时为 `not_triggered`，有模拟来源时查看逐题结果并区分 `simulated`，依赖缺失时报告 `insufficient_evidence` 或 `partially_evaluated`。`comparison_scope=provided_predictions` 表示所有数值结论只覆盖清单中实际成功比较的位置。外部预测包的 `runtime` 标签由提供方声明。通过本阶段执行的 NPU 采集另有 `npu_measurement` 原生测量回执可核验。历史质量回执保持只读。
+每次运行在 `<work-root>/<run-id>/vllm-precision-align/token/<attempt>/` 写入阶段回执 `token-stage-manifest.json`、选题清单 `selection.json` 和一份汇总报告 `token-report.json`。阶段摘要公开 `status`、`alignment_status`、`selection`、`selected_count`、`token_report` 和 `manifest`。打开 `token_report` 引用，按 `cases[].subset` 和 `sample_id` 找到题目，读取 `result`、`first_anomalous_token`。有单题比较明细时，`cases[].comparison` 指向该题的 `case-<序号>/comparison.json`。
+
+首轮目标未失败时为 `not_triggered`，有模拟来源时查看逐题结果并区分 `simulated`，依赖缺失时报告 `insufficient_evidence` 或 `partially_evaluated`。`comparison_scope=provided_predictions` 表示所有数值结论只覆盖清单中实际成功比较的位置。外部预测包的 `runtime` 标签由提供方声明。通过本阶段执行的 NPU 采集另有 `npu_measurement` 原生测量回执可核验。历史质量回执保持只读。
 
 客户按同一任务及 run-id 续接、补入与首轮质量报告摘要绑定的预测包时，本次质量阶段仍复核当前候选。若原始 NPU 回执、GPU 来源、测量协议、指标和质量判定均一致，`task_quality[].report` 沿用冻结报告，`stage` 指向其原始阶段，`verification_stage` 引用本次复核阶段。候选或条件变化时使用本次新报告。

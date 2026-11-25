@@ -1,13 +1,13 @@
 # Token 预测对齐
 
-`scripts/compare.py --action token --request /abs/request.json --output /abs/comparison.json` 比较同一题同一回答的 GPU、NPU 记录。也可用 `--work-root` 和 `--run-id` 写入独立尝试。返回码 0 表示已交付报告，业务结论读 `result`。请求不合法、必需的输入文件无法核验、输出冲突时返回 2。`--plan` 静态检查请求和输出位置，可在尚未拿到输入文件时使用。
+`scripts/compare.py --action token --request /abs/request.json --output /abs/comparison.json` 比较同一题同一回答的 GPU、NPU 记录。也可用 `--work-root` 和 `--run-id` 写入独立尝试。请求无效、顶层 GPU 或 NPU 样本文件无法核验、输出冲突时返回 2。交付报告时返回 0，业务结论读 `result`。若比较到某个输出位置时向量缺失或摘要错误，报告给出 `insufficient_evidence` 和一基的 `first_missing_token`。`--plan` 静态检查请求和输出位置，可在尚未取得预测记录时使用。
 
 ## 输入
 
 - `token_alignment.raw_logits.atol` 和 `token_alignment.processed_scores.atol` 都是必填的有限非负绝对容差，0 表示逐候选相等。
-- 阶段可用 `case={subset,sample_id}` 传入经过两端采集包核验的重跑清单身份。此时单题文件可省略子集；文件中已有的题号、子集必须一致。无清单时两端记录自行提供一致的样本身份。
-- `gpu` 和 `npu` 各为样本记录的 `{path,sha256}`。两端各保存 `sample_id`、`prompt_token_ids`、`raw_logits`、`processed_probs`、`output_token_ids` 和 `stop_reason`。跨子集重号时两端记录 `subset`。合成数据应将 `evidence_kind` 标为 `synthetic`。报告逐来源保留此标识，未提供时标为 `unspecified`。
-- `raw_logits` 和 `processed_probs` 按生成顺序各含一行全词表向量，列索引就是有效词表的 Token ID。每行可以是数值数组，或 `{path,sha256,dtype,size}`。向量引用为相对样本文件目录的路径、二进制文件 SHA256、数据类型和候选数。二进制使用小端连续 `float16/bfloat16/float32/float64`，不含文件头。选词后概率使用 [0,1] 范围的完整归一化分布；贪心的概率定义为对实际选词前分数应用 softmax。数组行 `null` 表示该位置缺失。写入方须导出完整词表；禁止以截断的 Top-K 行充当全词表。
+- 阶段用 `case={subset,sample_id}` 传入经过两端预测包核验的选题身份。单题文件可省略 `subset`，已填写的子集和题号须与清单一致。独立比较省略 `case` 时，两端记录自行提供一致的样本身份，遇到跨子集重号须填写 `subset` 区分题目。
+- `gpu` 和 `npu` 各为样本记录的 `{path,sha256}`。两端各保存 `sample_id`、`prompt_token_ids`、`raw_logits`、`processed_probs`、`output_token_ids` 和 `stop_reason`。合成数据应将 `evidence_kind` 标为 `synthetic`。报告逐来源保留此标识，未提供时标为 `unspecified`。
+- 每生成一个 Token，`raw_logits` 和 `processed_probs` 各保存一行全词表向量，列索引就是有效词表的 Token ID。每行可以是数值数组，或 `{path,sha256,dtype,size}`。向量引用为相对样本文件目录的路径、二进制文件 SHA256、数据类型和候选数。二进制使用小端连续 `float16/bfloat16/float32/float64`，不含文件头。`processed_probs` 保存选词规则处理后、选出 Token 前的完整归一化分布，取值范围为 [0,1]。贪心时对实际选词前分数应用 softmax。数组行 `null` 表示该位置缺失。写入方须导出完整词表。
 - 可选 `cpu` 提供已有 CPU 单点参考的固定引用，其文件包含 `sample_id`、`prompt_token_ids`、包含 prompt 的完整 `prefix_token_ids`、一基 `position`、一维 `raw_logits` 和 `processed_probs`，可标注 `subset` 和 `evidence_kind`。输入范围、题目、前文和位置均须与双端首疑点一致。
 - 可改用 `cpu_model` 在本地独立复算。提供冻结的模型 `root`、相对文件名到 SHA256 的 `files`、实际 `weight_files` 和精度评测协议的 `model_identity`，沿用原生测量对文件清单规范 JSON 的 SHA256。可指定 `dtype=float32|float64`。仅当上游实际有效的选词规则证据能证明使用无额外处理的贪心时提供 `plain_greedy=true`。未证明时仍核验 CPU 原始 logits，并将 CPU 处理后概率标为未评估。
 
