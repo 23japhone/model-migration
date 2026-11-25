@@ -33,7 +33,13 @@ def compare_one(session, row, policy, context, work_root, key):
         if stage.get('quality_report') != report:
             raise ValueError('任务质量阶段交接与当前质量报告不同')
         request['native_request'] = stage['inputs']['native_request']
-    outcome = execute(session, key, 'vllm-precision-align', request, work_root, action='token')
+    outcome = None
+    if 'tensor_alignment' in session.value.get('declared_inputs', session.value.get('inputs', {})).get('accuracy', {}):
+        from .resume import merge, prior
+        outcome, saved = prior(session, key, request)
+        request['bundles'] = merge(request['bundles'], saved)
+    if outcome is None:
+        outcome = execute(session, key, 'vllm-precision-align', request, work_root, action='token')
     return {**{field: outcome[field] for field in ('status', 'alignment_status', 'selection', 'token_report')
                if field in outcome}, 'quality_report': report, 'stage': session.value['steps'][key]['receipt']}
 

@@ -8,7 +8,7 @@ from evalscope_installation import validate, protect
 from .evaluation import selection
 
 
-def load(path, task_source):
+def load(path, task_source, *, defer_evidence=False):
     if path is None:
         return None
     value = sources.read(path)
@@ -26,7 +26,7 @@ def load(path, task_source):
         validate(value['evalscope_install'])
     for source in value['evidence']:
         reference(source)
-        if sources.ref(source['path']) != source:
+        if not defer_evidence and sources.ref(source['path']) != source:
             raise ValueError('Agent 证据文件摘要变化')
     return value
 
@@ -36,10 +36,14 @@ def start(args, source, raw, parent):
     task_source = sources.ref(source)
     if sources.bound(task_source) != raw:
         raise ValueError('客户输入在校验后变化，请重新读取任务')
-    supplied = load(args.context, task_source)
+    prior = sources.ref(args.resume) if args.resume else None
+    from .tensor_alignment.continuation import can_publish
+    if prior and can_publish(sources.bound(prior), raw):
+        supplied = load(args.context, task_source, defer_evidence=True)
+    else:
+        supplied = load(args.context, task_source)
     effective, conflicts = declaration(supplied, raw)
     snapshot = normalize_task(raw)
-    prior = sources.ref(args.resume) if args.resume else None
     previous = load_previous(prior, task_source, snapshot, args.run_id)
     install = None
     if supplied is not None and not conflicts:

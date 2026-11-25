@@ -5,6 +5,7 @@ from pathlib import Path
 import uuid
 import copy
 
+from .tensor_alignment import same_source
 from coordination.runtime import sources
 from coordination.runtime.evidence import write
 
@@ -20,7 +21,7 @@ def load_previous(previous, source, task, run_id):
     reference = previous if isinstance(previous, dict) else sources.ref(previous)
     value = sources.bound(reference)
     if (value.get('task_id') != 'vllm-model-migration-customer' or value.get('run_id') != run_id
-            or value.get('task_source') != source or value.get('inputs') != task):
+            or not same_source(value, source, task)):
         raise ValueError('续接必须使用同一客户输入及运行标识；变更输入需新任务')
     for row in value['steps'].values():
         for field in ('receipt', 'request'):

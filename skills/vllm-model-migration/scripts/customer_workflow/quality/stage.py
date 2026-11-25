@@ -54,7 +54,7 @@ def run_one(session, task, observed, supplied, work_root, candidate, index):
     session.step(key, 'prepared', preparation_seconds=monotonic() - started)
     gpu = candidate.get('gpu_evidence') or plan.get('gpu_evidence')
     candidates = list(plan.get('candidates', []))
-    if 'token_alignment' in task['accuracy']:
+    if any(key in task['accuracy'] for key in ('token_alignment', 'tensor_alignment')):
         from .resume import prior_candidate
         prior = prior_candidate(session, key, baseline['dataset'], baseline, plan['native_request'], gpu)
         if prior:
@@ -89,7 +89,7 @@ def compare_all(session, task, observations, supplied, work_root, guarded):
             entry['report'] = result['quality_report']
             if result.get('alignment_status') == 'not_evaluated':
                 entry['status'] = 'not_evaluated'
-        if 'token_alignment' in task['accuracy'] and entry.get('report'):
+        if entry.get('report') and any(key in task['accuracy'] for key in ('token_alignment', 'tensor_alignment')):
             from .resume import frozen
             entry = frozen(session, entry)
         reports.append(entry)
@@ -98,3 +98,6 @@ def compare_all(session, task, observations, supplied, work_root, guarded):
     if 'token_alignment' in task['accuracy']:
         from ..token_alignment import stage
         stage.compare_all(session, task['accuracy']['token_alignment'], supplied, work_root, guarded)
+    if 'tensor_alignment' in task['accuracy']:
+        from ..tensor_alignment.stage import compare_all as compare_tensors
+        compare_tensors(session, task['accuracy']['tensor_alignment'], supplied, work_root, guarded)

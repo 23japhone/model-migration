@@ -98,3 +98,7 @@ run下可选GPU基线读取失败不阻止单端评测，具体比较限制由�
 首轮目标未失败时为 `not_triggered`，有模拟来源时查看逐题结果并区分 `simulated`，依赖缺失时报告 `insufficient_evidence` 或 `partially_evaluated`。`comparison_scope=provided_predictions` 表示所有数值结论只覆盖清单中实际成功比较的位置。外部预测包的 `runtime` 标签由提供方声明。通过本阶段执行的 NPU 采集另有 `npu_measurement` 原生测量回执可核验。历史质量回执保持只读。
 
 客户按同一任务及 run-id 续接、补入与首轮质量报告摘要绑定的预测包时，本次质量阶段仍复核当前候选。若原始 NPU 回执、GPU 来源、测量协议、指标和质量判定均一致，`task_quality[].report` 沿用冻结报告，`stage` 指向其原始阶段，`verification_stage` 引用本次复核阶段。候选或条件变化时使用本次新报告。
+
+## 张量与算子对齐
+
+`--action tensor` 使用质量报告、GPU/NPU 的单题 Token 证据与当前运行时的实际调用清单。对客户指定范围可离线验证缺项、runtime 来源、计算误差和 CPU 参考。[请求字段与数值比较](tensor.md)

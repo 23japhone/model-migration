@@ -52,6 +52,8 @@ def measure_case(folder, request, source, selected, task, index):
     trace = 'tok-' + uuid.uuid4().hex
     start = {'operation': 'arm', 'source': source, 'sample_key': selected['sample_id'], 'native_id': index,
              'trace_id': trace, 'profile': 'token_prediction'}
+    if 'tensor_plan' in selected:
+        start.update(profile='tensor_alignment', tensor_plan=selected['tensor_plan'])
     config = load(task['config'])
     expected = bound_list(task['sample_snapshot'])[index]
     http = folder / 'http'
@@ -66,8 +68,12 @@ def measure_case(folder, request, source, selected, task, index):
         argv = [request['measurement']['evaluator']['python'], '-I', '-B', str(entry), str(path)]
         execute(argv, folder / 'process', timeout)
     pair = post_pair(load(http / 'index.json'), http)
-    seal = invoke(folder, {'operation': 'seal', 'source': source, 'trace_id': trace, 'http': pair})
-    record = seal['token_sample']
+    end = {'operation': 'seal', 'source': source, 'trace_id': trace, 'http': pair}
+    if 'tensor_plan' in selected:
+        seal = invoke(folder, end, partial_tensor=True)
+        from .tensor import sealed
+        return sealed(seal, selected['tensor_plan']), grade(folder, task, index, pair, expected, request['scores'])
+    record = invoke(folder, end)['token_sample']
     if bound(record)['sample_id'] != selected['sample_id']:
         raise ValueError('捕获的题目身份不匹配')
     return record, grade(folder, task, index, pair, expected, request['scores'])

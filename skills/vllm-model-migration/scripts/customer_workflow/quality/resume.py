@@ -1,12 +1,14 @@
 """续接先复核本次原生测量候选，再沿用已冻结并被 Token 预测包引用的质量报告。"""
 from coordination.runtime import sources
+from ..tensor_alignment import same_source
 
 
 def previous(session, entry):
     old = session.previous
     if not isinstance(old, dict) or old['run_id'] != session.value['run_id']:
         return None
-    if old.get('task_source') != session.value['task_source']:
+    if old.get('task_source') != session.value['task_source'] and not same_source(
+            old, session.value['task_source'], session.value['inputs']):
         return None
     choices = [item for item in old.get('task_quality', []) if
                (item.get('step'), item.get('dataset')) == (entry['step'], entry['dataset'])]

@@ -25,5 +25,5 @@ def prepare_capture(verification, directory):
 
 def attach(session, task, verification):
     verification['npu']['allocation'] = session.value['steps']['allocation']['receipt']
-    if task.get('accuracy', {}).get('token_alignment'):
+    if any(key in task.get('accuracy', {}) for key in ('token_alignment', 'tensor_alignment')):
         prepare_capture(verification, session.parent / 'token-worker-capture')

@@ -16,24 +16,30 @@ class Parser(argparse.ArgumentParser):
 def cancelled(signum,frame):raise KeyboardInterrupt('收到阶段取消信号')
 
 
+def specialized(action):
+    if action == 'tensor':
+        from tensor_stage import runner
+    elif action == 'token':
+        from token_stage import runner
+    elif action == 'quality':
+        from quality_stage import runner
+    else:
+        return None
+    return runner
+
+
 def main(argv=None):
     parser=Parser(description='编排准备、部署及 EvalScope/AISBench 精度测试，或只读分析历史产物')
     parser.add_argument('--request',type=Path,required=True,help='包外阶段请求JSON')
     parser.add_argument('--work-root',type=Path,required=True,help='独立证据根')
     parser.add_argument('--run-id',required=True,help='本次运行标识')
-    parser.add_argument('--action',choices=('run','analyze','quality','token'),default='run')
+    parser.add_argument('--action',choices=('run','analyze','quality','token','tensor'),default='run')
     parser.add_argument('--plan',action='store_true',help='只检查形状和安装资源输出边界')
     args=parser.parse_args(argv)
     try:
         raw = read(args.request.expanduser().absolute())
-        if args.action == 'token':
-            from token_stage.runner import validate as token_request
-            request = token_request(raw)
-        elif args.action == 'quality':
-            from quality_stage.runner import validate as quality_request
-            request = quality_request(raw)
-        else:
-            request = validate(raw, args.action)
+        workflow = specialized(args.action)
+        request = workflow.validate(raw) if workflow else validate(raw, args.action)
         parent = output(args.work_root, args.run_id)
     except (OSError,ValueError,KeyError,TypeError,RecursionError) as error:
         print('阶段输入无效：'+safe(error),file=sys.stderr);return 2
@@ -42,10 +48,8 @@ def main(argv=None):
             'status':'not_run','operation':args.action,'inputs':request,'evidence_parent':str(parent)},ensure_ascii=False));return 0
     previous={sig:signal.signal(sig,cancelled) for sig in (signal.SIGINT,signal.SIGTERM)}
     try:
-        if args.action == 'token':
-            from token_stage.runner import run
-        elif args.action == 'quality':
-            from quality_stage.runner import run
+        if workflow:
+            run = workflow.run
         else:
             from .runner import run
         code,value=run(request,args.work_root,args.run_id,args.action)

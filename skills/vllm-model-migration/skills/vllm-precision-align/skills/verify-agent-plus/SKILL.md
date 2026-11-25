@@ -58,3 +58,5 @@ python3 /完整资源/skills/vllm-model-migration/skills/vllm-precision-align/sk
 显式 backend 优先；未声明 backend 且使用原有 `.py` 配置的请求按 AISBench 兼容识别，其他新请求默认 EvalScope。旧请求明确填写的 version 仍作为安装版本期望值核验，不查询最新；直接精度请求省略它即可跟随稳定发布；客户生成请求保持实际明确版本。工具不可用或配置不兼容时阻塞，不自动回退。历史分析依据来源工具及实际版本，不联网核验 latest。EvalScope 与 AISBench 的分数不能直接作为彼此的相对基线。新版原生格式仍须通过配置与证据核验，不能将尚未发布的版本表述为已经验收。
 
 示例：[默认测量请求](assets/request.example.json)、[EvalScope 配置](assets/evalscope-config.example.json)、[AISBench 请求](assets/request.aisbench.example.json)、[AISBench 配置](assets/aisbench-config.example.py)、[分析请求](assets/analyze.example.json)。示例路径和摘要必须替换为实际资料，不能作为运行证据。
+
+`--action tensor-run` 在原生质量协议下重放已定位的单题，使用同一请求对应的 runtime 捕获回执封存指定前向。输入包含 `runtime` 评测请求 `native_request`、`quality_report`、`selection` 与 `tensor_plans`。就绪的 Skill 入口可直接准备这些请求。[三遍采集契约](../../references/tensor.md)

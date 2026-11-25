@@ -1,9 +1,11 @@
 ---
 name: vllm-precision-compare
-description: 按 GPU 基线比较 NPU 总分、分项和逐题评分，或在相同前文上比较全词表预测及实际选词的首个异常。
+description: 比较 GPU/NPU 总分、分项和逐题评分，核对同前文的 Token 预测，或在首异常前向比较层与算子张量并按调用进行 CPU 复核。
 ---
 
 # 精度比较
+
+`--action tensor` 按冻结计划校验单端张量包或比较 GPU、NPU 两端的同一调用，并复算有等价 CPU 定义的输出。选定范围、真实与合成来源、数值阈值和覆盖回执见[张量与算子比较契约](references/tensor.md)。
 
 `--action token` 读取已核验的单题预测记录，可在首异常位置接入 CPU 参考。最小采集字段、绝对容差及一基位置见 [Token 比较契约](references/token.md)。
 
