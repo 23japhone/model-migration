@@ -4,9 +4,10 @@ import signal
 
 from . import summary
 from .delegation import TaskBlocked,delegate
-from .evidence import EvidenceError,begin,publish,safe,save,write,ref
+from .evidence import EvidenceError,begin,publish,safe,save
 from .request import output
 from .sources import INPUT_ERRORS,preflight
+from diagnosis.service import demarcate, demarcate_anomaly
 
 TASK_ERRORS=(*INPUT_ERRORS,RuntimeError)
 
@@ -29,7 +30,7 @@ def invoke(group,key,request,attempt,manifest,timeout,action):
     try:
         value,reference=delegate(group,key,request,attempt,manifest['run_id'],timeout,action)
         row.update(status=value['status'],receipt=reference,conclusions=value['conclusions'])
-        if group not in ('evaluations','diagnoses') and not summary.dependency_pass(group,value):
+        if group!='evaluations' and not summary.dependency_pass(group,value):
             row['status']='failed' if value['status']=='failed' or 'fail' in value['conclusions'].values() else 'blocked'
         return value,reference
     except EvidenceError:raise
@@ -66,13 +67,11 @@ def prepared(item,values,manifest):
 
 
 def prepared_diagnosis(item,manifest):
-    """把定界项转成 three-step-demarcation 的请求（service 来自部署交接）。"""
+    """解析定界项的 service（来自部署交接）与 badcase 引用。"""
     dependency=manifest['tasks']['deployments'][item['deployment']]
     if dependency['status']!='completed':raise ValueError('必需依赖未完成：deployment/'+item['deployment'])
     resource=summary.resource(dependency['receipt'])
-    return {'schema_version':'1.0',
-            'service':{'endpoint':resource['endpoint'],'model':resource['model']['name']},
-            'badcase':item['badcase'],'render_mode':'auto'}
+    return {'endpoint':resource['endpoint'],'model':resource['model']['name']}, item['badcase']
 
 
 def evaluations(request,values,attempt,manifest,timeout,action):
@@ -94,32 +93,22 @@ def evaluations(request,values,attempt,manifest,timeout,action):
         save(attempt,manifest)
 
 
-def diagnoses(request,attempt,manifest,timeout,action):
+def diagnoses(request,work_root,attempt,manifest,timeout,action):
     for item in request.get('diagnoses',[]):
         key=item['id'];row=manifest['tasks']['diagnoses'][key]
         if row['status']=='blocked':continue
         try:
-            child=prepared_diagnosis(item,manifest)
+            service,badcase=prepared_diagnosis(item,manifest)
         except INPUT_ERRORS as error:item_error(row,error,'blocked');save(attempt,manifest);continue
-        value,reference=invoke('diagnoses',key,child,attempt,manifest,timeout,action)
-        if value:
-            manifest['results'][key]={'receipt':reference,'conclusions':value['conclusions'],'uncovered':value['uncovered']}
-            manifest['uncovered'].extend(value['uncovered'])
+        code,value=demarcate(service,badcase,work_root,manifest['run_id'],timeout)
+        row.update(status=value.get('status','failed'),conclusions=value.get('conclusions',{}))
+        manifest['results'][key]={'conclusions':value.get('conclusions',{}),'uncovered':value.get('uncovered',[])}
+        manifest['uncovered'].extend(value.get('uncovered',[]))
         save(attempt,manifest)
 
 
-def auto_diagnosis_request(anomaly, attempt, diag_id):
-    """把异常样本转成 three-step-demarcation 请求（badcase 写成文件引用）。"""
-    folder = attempt / 'auto-badcases'
-    folder.mkdir(parents=True, exist_ok=True)
-    path = folder / (diag_id + '.json')
-    write(path, anomaly['request'])
-    return {'schema_version': '1.0', 'service': anomaly['service'],
-            'badcase': ref(path), 'render_mode': 'auto'}
-
-
-def auto_diagnoses(request, attempt, manifest, timeout, action):
-    """评测产出异常后，自动构造定界请求并委派（方案 B 自动衔接）。"""
+def auto_diagnoses(request, work_root, attempt, manifest, timeout, action):
+    """评测产出异常后，交给 diagnosis 模块自动定界（方案 B 自动衔接）。"""
     if request.get('auto_diagnose') is False:
         return  # 显式关闭自动诊断
     for eval_id, result in manifest['results'].items():
@@ -130,14 +119,10 @@ def auto_diagnoses(request, attempt, manifest, timeout, action):
             row = manifest['tasks']['diagnoses'].setdefault(diag_id, {'status': 'not_run'})
             if row['status'] == 'blocked':
                 continue
-            try:
-                child = auto_diagnosis_request(anomaly, attempt, diag_id)
-            except INPUT_ERRORS as error:
-                item_error(row, error, 'blocked'); save(attempt, manifest); continue
-            value, reference = invoke('diagnoses', diag_id, child, attempt, manifest, timeout, action)
-            if value:
-                manifest['results'][diag_id] = {'receipt': reference, 'conclusions': value['conclusions'], 'uncovered': value['uncovered']}
-                manifest['uncovered'].extend(value['uncovered'])
+            code, value = demarcate_anomaly(anomaly, work_root, manifest['run_id'], timeout)
+            row.update(status=value.get('status', 'failed'), conclusions=value.get('conclusions', {}))
+            manifest['results'][diag_id] = {'conclusions': value.get('conclusions', {}), 'uncovered': value.get('uncovered', [])}
+            manifest['uncovered'].extend(value.get('uncovered', []))
             save(attempt, manifest)
 
 
@@ -174,8 +159,8 @@ def run(request,work_root,run_id,action):
         timeout=request.get('timeout_seconds',14400)
         dependencies(request,values,attempt,manifest,timeout)
         evaluations(request,values,attempt,manifest,timeout,action)
-        diagnoses(request,attempt,manifest,timeout,action)
-        auto_diagnoses(request,attempt,manifest,timeout,action)
+        diagnoses(request,work_root,attempt,manifest,timeout,action)
+        auto_diagnoses(request,work_root,attempt,manifest,timeout,action)
         summary.conclude(manifest)
     except EvidenceError:raise
     except KeyboardInterrupt as error:

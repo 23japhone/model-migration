@@ -12,8 +12,7 @@ from .evidence import parse,read,ref,write
 from .process import call
 
 ENTRIES={'datasets':('vllm-dataset-prepare','prepare.py'),
-         'deployments':('verify-agent','verify.py'),'evaluations':('verify-agent-plus','validator.py'),
-         'diagnoses':('three-step-demarcation','demarcation.py')}
+         'deployments':('verify-agent','verify.py'),'evaluations':('verify-agent-plus','validator.py')}
 VERIFY_KEYS={'inputs','runtime','registration','workers','functional_protocol','semantic','lifecycle'}
 VERDICTS={'pass','fail','not_evaluated','review_required'}
 
@@ -44,10 +43,6 @@ def exit_code(value,group):
         return 0 if expected else 1
     if group=='deployments':
         if set(conclusions)!=VERIFY_KEYS or type(value.get('success'))!=bool:raise ValueError('部署必需结论不完整')
-        return 0 if value['success'] else 1
-    if group=='diagnoses':
-        if set(conclusions)!={'demarcation'} or type(value.get('success'))!=bool:raise ValueError('定界回执缺少定界结论')
-        if value.get('success') is not (conclusions['demarcation']=='pass'):raise ValueError('定界success与结论不一致')
         return 0 if value['success'] else 1
     if conclusions.get('assets')!='pass':raise ValueError('数据完成回执缺少assets=pass')
     return 0
@@ -103,10 +98,10 @@ def delegate(group,key,request,attempt,run_id,timeout,action):
         root=root/'preflight';label+='-preflight'
     path=attempt/(label+'.request.json');write(path,request)
     args=[sys.executable,'-B',str(cli),'--request',str(path),'--work-root',str(root),'--run-id',run_id]
-    if group in ('evaluations','diagnoses'):args.extend(('--action',action))
+    if group=='evaluations':args.extend(('--action',action))
     code,text=call([*args,'--plan'],min(timeout,60),attempt,label+'-plan')
     if code in (2,3):raise TaskBlocked('子任务计划拒绝输入或缺少前置条件，查看plan的stderr')
-    plan=parse(text);normalized=plan.get('inputs' if group in ('evaluations','diagnoses') else 'request')
+    plan=parse(text);normalized=plan.get('inputs' if group=='evaluations' else 'request')
     if code or plan.get('status')!='not_run' or not isinstance(normalized,dict):raise ValueError('子任务计划无效')
     if group!='datasets' and normalized!=request:raise ValueError('子任务计划意外改写请求')
     write(path,normalized)
