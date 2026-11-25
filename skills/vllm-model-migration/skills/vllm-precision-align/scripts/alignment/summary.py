@@ -26,7 +26,8 @@ def collect_result(value,manifest,key,receipt):
     manifest['results'][key]={'receipt':receipt,'conclusions':value['conclusions'],
         'measurements':value.get('detailed_report',{}).get('measurements',[]),
         'conditions':value.get('detailed_report',{}).get('conditions'),
-        'comparison':value.get('detailed_report',{}).get('comparison'), 'uncovered':value['uncovered']}
+        'comparison':value.get('detailed_report',{}).get('comparison'), 'uncovered':value['uncovered'],
+        'anomalies':value.get('anomalies',[])}
     manifest['uncovered'].extend(value['uncovered'])
 
 

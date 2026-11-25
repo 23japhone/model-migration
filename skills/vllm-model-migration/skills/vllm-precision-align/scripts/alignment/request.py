@@ -43,7 +43,7 @@ def dependencies(value):
 
 
 def validate(value,action):
-    fields(value,('schema_version','evaluations'),('datasets','deployments','diagnoses','timeout_seconds'))
+    fields(value,('schema_version','evaluations'),('datasets','deployments','diagnoses','auto_diagnose','timeout_seconds'))
     if value['schema_version']!='1.0':raise ValueError('仅支持schema_version=1.0')
     rows=value['evaluations']
     if not isinstance(rows,list) or not rows:raise ValueError('至少提供一个评测项')
@@ -59,6 +59,8 @@ def validate(value,action):
     dependencies(value)
     if action=='analyze' and (value.get('datasets') or value.get('deployments')):
         raise ValueError('历史分析不得调用准备或部署任务')
+    if 'auto_diagnose' in value and type(value['auto_diagnose']) is not bool:
+        raise ValueError('auto_diagnose 须为布尔值')
     timeout=value.get('timeout_seconds',14400)
     if type(timeout)!=int or not 1<=timeout<=86400:raise ValueError('超时须为1—86400秒')
     return value

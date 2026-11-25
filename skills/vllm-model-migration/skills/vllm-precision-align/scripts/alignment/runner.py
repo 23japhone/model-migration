@@ -4,7 +4,7 @@ import signal
 
 from . import summary
 from .delegation import TaskBlocked,delegate
-from .evidence import EvidenceError,begin,publish,safe,save
+from .evidence import EvidenceError,begin,publish,safe,save,write,ref
 from .request import output
 from .sources import INPUT_ERRORS,preflight
 
@@ -108,6 +108,39 @@ def diagnoses(request,attempt,manifest,timeout,action):
         save(attempt,manifest)
 
 
+def auto_diagnosis_request(anomaly, attempt, diag_id):
+    """把异常样本转成 three-step-demarcation 请求（badcase 写成文件引用）。"""
+    folder = attempt / 'auto-badcases'
+    folder.mkdir(parents=True, exist_ok=True)
+    path = folder / (diag_id + '.json')
+    write(path, anomaly['request'])
+    return {'schema_version': '1.0', 'service': anomaly['service'],
+            'badcase': ref(path), 'render_mode': 'auto'}
+
+
+def auto_diagnoses(request, attempt, manifest, timeout, action):
+    """评测产出异常后，自动构造定界请求并委派（方案 B 自动衔接）。"""
+    if request.get('auto_diagnose') is False:
+        return  # 显式关闭自动诊断
+    for eval_id, result in manifest['results'].items():
+        if eval_id not in manifest['tasks'].get('evaluations', {}):
+            continue  # 只处理评测结果，跳过 diagnoses 等其它组
+        for position, anomaly in enumerate(result.get('anomalies', [])):
+            diag_id = 'auto-%s-%s-%s' % (eval_id, anomaly.get('sample_id', position), anomaly.get('anomaly_type', position))
+            row = manifest['tasks']['diagnoses'].setdefault(diag_id, {'status': 'not_run'})
+            if row['status'] == 'blocked':
+                continue
+            try:
+                child = auto_diagnosis_request(anomaly, attempt, diag_id)
+            except INPUT_ERRORS as error:
+                item_error(row, error, 'blocked'); save(attempt, manifest); continue
+            value, reference = invoke('diagnoses', diag_id, child, attempt, manifest, timeout, action)
+            if value:
+                manifest['results'][diag_id] = {'receipt': reference, 'conclusions': value['conclusions'], 'uncovered': value['uncovered']}
+                manifest['uncovered'].extend(value['uncovered'])
+            save(attempt, manifest)
+
+
 def evaluate_item(item, child, attempt, manifest, timeout, action):
     if 'result' not in item:
         return invoke('evaluations', item['id'], child, attempt, manifest, timeout, action)
@@ -142,6 +175,7 @@ def run(request,work_root,run_id,action):
         dependencies(request,values,attempt,manifest,timeout)
         evaluations(request,values,attempt,manifest,timeout,action)
         diagnoses(request,attempt,manifest,timeout,action)
+        auto_diagnoses(request,attempt,manifest,timeout,action)
         summary.conclude(manifest)
     except EvidenceError:raise
     except KeyboardInterrupt as error:
