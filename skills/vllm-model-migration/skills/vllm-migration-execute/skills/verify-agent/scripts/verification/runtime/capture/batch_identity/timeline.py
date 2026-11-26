@@ -42,17 +42,27 @@ def describe(group, plan, mapped, intent, tokens, accepted, refs):
     if 'error' in samples:
         raise ValueError(samples['error'])
     sample = samples[key]
-    index = None
-    if stop >= len(mapped['prompt_ids']):
-        index = step['output_index']
+    output = member_output(group, plan, key, stop, step, sample, accepted, mapped, tokens, refs)
+    return {**row, 'phase': phase, 'position_range': [start, stop], 'sample_row': sample['sample_row'], **output}
+
+
+def member_output(group, plan, key, stop, step, sample, accepted, mapped, tokens, refs):
+    fid = plan['forward_id']
+    asynchronous = {}
+    if plan.get('asynchronous'):
+        from .async_steps import events
+        asynchronous = events(group, plan, key, sample, accepted, lambda p: bound(p, refs))
+        index = asynchronous['output_index']
+    else:
+        index = step['output_index'] if stop >= len(mapped['prompt_ids']) else None
+    if index is not None:
         record = accepted[index]
         if (record['forward_id'] != fid or record['internal_id'] != key or
                 record['token_id'] != tokens[index] or sample['token_ids'] != [tokens[index]]):
             raise ValueError('采样行、引擎接受结果或 HTTP Token 不一致')
-    elif sample['token_ids']:
+    elif sample['token_ids'] and asynchronous.get('async_events', {}).get('disposition') not in ('discarded', 'finished_or_aborted'):
         raise ValueError('无输出的 prefill 块含有采样输出')
-    return {**row, 'phase': phase, 'position_range': [start, stop], 'sample_row': sample['sample_row'],
-            'output_index': index, 'token_id': tokens[index] if index is not None else None}
+    return {**asynchronous, 'output_index': index, 'token_id': tokens[index] if index is not None else None}
 
 
 def build(group, folder, mapped, intent, tokens):

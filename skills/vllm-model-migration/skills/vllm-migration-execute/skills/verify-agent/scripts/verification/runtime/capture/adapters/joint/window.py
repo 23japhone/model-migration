@@ -30,6 +30,9 @@ def model(rec, plan, rows):
     }
     rec.frame, rec.folder = frame, state.root() / plan['group_id']
     try:
+        if plan.get('asynchronous'):
+            from ..async_batch.snapshots import begin
+            begin(rec, frame, rows)
         modules = dict(rec.runner.get_model().named_modules())
         frame['signatures'] = {
             r['path']: list(signature(type(modules[r['path']]).forward).parameters)[1:]
@@ -68,7 +71,12 @@ def finish(rec, plan):
         frame['errors'].append('msProbe stop: ' + str(error))
     finally:
         rec.frame = None
-    state.write(rec.folder / ('numeric-' + plan['forward_id'] + '.json'), frame)
+    if plan.get('asynchronous') and getattr(rec, 'joint_archive', None) is not None:
+        from ..async_batch.snapshots import publish
+        archive, rec.joint_archive = rec.joint_archive, None
+        archive.exporter.pool.submit(publish, rec.folder, frame, archive)
+    else:
+        state.write(rec.folder / ('numeric-' + plan['forward_id'] + '.json'), frame)
 
 
 def save_logits(rec, frame, logits):

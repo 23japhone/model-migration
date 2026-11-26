@@ -37,7 +37,7 @@ def scheduler(cls):
         state.ready('engine', **cache, hooks=['Scheduler._update_request_with_output'])
     def accept(self, request, new_token_ids):
         result = update(self, request, new_token_ids)
-        plan = getattr(self, '_verify_accept_batch', None)
+        plan = batch.accepting.get()
         if plan:
             batch.accepted(plan, request, result)
             return result

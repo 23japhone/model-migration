@@ -5,6 +5,8 @@ from .... import request as schema
 from ....evidence import write_json
 from ..adapters.state import read
 from ..adapters.batch.members import admission
+from ..tensors import file_ref
+from .terminal import confirmed
 
 
 def validate_arm(request, validate_single):
@@ -34,7 +36,7 @@ def arm(request, root, lease, ready, preparation=None):
         raise ValueError('已有活动请求组或请求')
     profile = request['profile']
     if not ready.get(profile):
-        raise ValueError(f'实际单卡 BF16 冷前缀同步 Eager worker 缺少 {profile} 能力')
+        raise ValueError(f'实际单卡 BF16 冷前缀 Eager worker 缺少 {profile} 能力')
     traces = [m['trace_id'] for m in request['requests']]
     if set(traces).intersection(item['trace_id'] for item in lease['sealed']):
         raise ValueError('会话中的 trace_id 已使用')
@@ -46,6 +48,8 @@ def arm(request, root, lease, ready, preparation=None):
         write_json(folder / 'identity.json', item)
         write_json(folder / 'intent.json', {**item, 'request_id': item['trace_id'], 'session_mode': True})
     write_json(group / 'group.json', {'group_id': group.name, 'traces': traces, 'profile': request['profile'],
+                                      **({'async_queue': ready['async_queue'], 'engine_at_arm': file_ref(root / 'engine.json', root)}
+                                         if 'async_queue' in ready else {}),
                                       **{k: request[k] for k in ('cache_capture',) if k in request}})
     lease.update(state='armed', group_id=group.name, pending=traces)
     write_json(root / 'lease.json', lease)
@@ -62,6 +66,10 @@ def finish_member(root, lease, request, authority, handoff):
     folder = group / ('member-' + trace)
     if not (folder / 'frontend-end.json').is_file():
         raise ValueError('该成员的前端请求尚未结束')
+    from .async_steps import waiting
+    pending = waiting(group, trace)
+    if pending and not confirmed(group):
+        return {'status': 'pending', 'trace_id': trace, 'forward_ids': pending}
     result = seal(group, folder, request, authority, handoff)
     lease['sealed'].append(result)
     lease['pending'].remove(trace)
@@ -77,6 +85,8 @@ def close_group(root, lease):
     group = root / lease['group_id']
     folders = [group / ('member-' + name) for name in lease['pending']]
     with admission(group):
+        if not confirmed(group) and (any(group.glob('inflight-*.json')) or any(group.glob('exporting-*.json'))):
+            raise ValueError('异步批次尚在途，保留活动租约')
         if any((path / 'claimed').exists() and not (path / 'frontend-end.json').exists() for path in folders):
             raise ValueError('实际组成员尚未结束，保留活动租约')
         for folder in folders:

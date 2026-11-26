@@ -109,6 +109,7 @@ def record(group, folder, ready, row, enabled, history):
         total_tokens=len(frame['positions']),
         worker_numeric=file_ref(frame_path, group),
     )
+    result['archived_ns'] = frame.get('archived_ns')
     sources = {}
     try:
         sources = catalog.load(group, ready, frame)
@@ -148,6 +149,8 @@ def attach(group, folder, rows, config, errors):
             path = folder / ('member-numeric-' + fid + '.json')
             write_json(path, result)
             row['numeric'] = file_ref(path, folder)
+            if 'async_events' in row:
+                row['async_events']['archived_ns'] = result.get('archived_ns')
             row['capture_totals'] = {
                 k: result.get(k)
                 for k in (

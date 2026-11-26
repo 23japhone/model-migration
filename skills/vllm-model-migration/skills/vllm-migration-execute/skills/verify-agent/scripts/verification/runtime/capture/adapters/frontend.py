@@ -72,7 +72,7 @@ def install(cls, method):
                 return traced_stream(response, (folder, trace), CURRENT, started)
             if (folder/'frontend.json').exists():
                 mapped = state.read(folder/'frontend.json')
-                state.write(folder/'frontend.json', {**mapped, 'response_id': response.id})
+                state.write(folder/'frontend.json', {**mapped, 'response_id': getattr(response, 'id', None)})
             return response
         except Exception as error:
             state.fail(folder, error)
