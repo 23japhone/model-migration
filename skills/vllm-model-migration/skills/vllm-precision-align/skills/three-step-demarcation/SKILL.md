@@ -1,6 +1,6 @@
 ---
 name: three-step-demarcation
-description: 服务化解析链路三步法定界：当 /v1/chat/completions 返回异常（tool call 不返回、reasoning_content 缺失、输出被吞、乱码/无意义重复）时，用同一组 token_ids 把链路拆成「渲染 prompt → 反解 prompt → 模型原始生成」定界到九类结论之一（REQUEST / CHAT_TEMPLATE / MODEL_NUMERIC / MODEL_INCOMPLETE / TOOL_PARSER / THINKING_PARSER / SERVICE_OUTPUT / MODEL_OUTPUT / INCONCLUSIVE / PASS）。用于精度问题分析的问题定界阶段，也可独立使用。
+description: 服务化解析链路三步法定界：当 /v1/chat/completions 返回异常（tool call 不返回、reasoning_content 缺失、输出被吞、乱码/无意义重复）时，用同一组 token_ids 把链路拆成「渲染 prompt → 反解 prompt → 模型原始生成」，报告主要定界标签（REQUEST / CHAT_TEMPLATE / MODEL_NUMERIC / MODEL_INCOMPLETE / TOOL_PARSER / THINKING_PARSER / SERVICE_OUTPUT / MODEL_OUTPUT / INCONCLUSIVE / PASS）。用于精度问题分析的问题定界阶段，也可独立使用。
 ---
 
 # three-step-demarcation —— 服务化解析链路三步定界
@@ -73,7 +73,7 @@ chat_template_kwargs / 采样参数原样保留）。
 渲染降级链：render 端点 → `/tokenize`；`local`（本地 tokenizer）需 transformers，
 本 Skill 不支持。降级后 `evidence_limitation` 如实标注口径差异，不声称已排除服务层。
 
-## 九类定界结论与建议动作
+## 定界标签与建议动作
 
 | 结论 | 含义 | 建议动作 |
 |---|---|---|

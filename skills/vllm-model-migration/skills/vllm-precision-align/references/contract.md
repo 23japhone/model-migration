@@ -1,17 +1,17 @@
 # 阶段请求、结果和资源契约
 
-`scripts/precision.py` 使用 `--request`、`--work-root` 和 `--run-id`。`--action` 支持 `run`（默认）、`analyze`、`quality`、`token` 和 `tensor`，可加 `--plan` 做静态检查。阶段使用 Python 3.10+ 标准库，通过 Skill 布局定位并调用 `prepare.py`、`verify.py`、`validator.py` 和 `compare.py` 的公开入口。远程运行时由调用方在目标主机执行本 CLI。
+`scripts/precision.py` 使用 `--request`、`--work-root` 和 `--run-id`。`--action` 支持 `run`（默认）、`analyze`、`quality`、`token` 和 `tensor`，可加 `--plan` 做静态检查。阶段使用 Python 3.10+ 标准库，通过 Skill 布局定位并调用 `prepare.py`、`verify.py`、`validator.py`、`demarcation.py` 和 `compare.py` 的公开入口。远程运行时由调用方在目标主机执行本 CLI。
 
 ## 输入
 
-下表适用于普通 `run` 与 `analyze` 请求。另两种动作各有独立的[任务质量请求](#任务质量对齐)和 [Token 请求](#token-预测对齐)。
+下表适用于普通 `run` 与 `analyze` 请求。比较动作分别使用[任务质量请求](#任务质量对齐)、[Token 请求](#token-预测对齐)和[张量请求](tensor.md)。
 
 | 字段 | 契约 |
 | --- | --- |
 | schema_version | 固定1.0。 |
 | evaluations | 非空数组；每项 id 唯一。普通项有 request `{path,sha256}`，可选 dataset/deployment 引用下表依赖；run 可选 result 引用相同输入的有效原 run。未就绪项可仅用 id/blocked_reason，保留阻塞且继续独立项 |
 | datasets | 可选名称→数据准备请求引用；必须有实际评测消费者。由固定 `vllm-dataset-prepare` 公开CLI调用一次，可共享。 |
-| deployments | 可选名称→部署请求引用；必须有实际评测消费者。由固定 `verify-agent` 公开CLI调用一次。service.retention须显式keep，不自动改变原策略。 |
+| deployments | 可选名称→部署请求引用，供评测项或显式定界项使用。由固定 `verify-agent` 公开CLI调用一次。service.retention须显式keep，不自动改变原策略。 |
 | diagnoses | 可选的显式单题定界清单。每项提供 id、deployment 和异常 Chat 请求的 badcase 引用。 |
 | auto_diagnose | 默认 true，普通评测按已记录的 HTTP 异常逐题触发定界。设为 false 时仍执行显式定界项。 |
 | timeout_seconds | 每次实际子CLI时限，默认14400，1—86400秒；子任务plan上限60秒，其自身更细时限仍生效。 |
@@ -40,7 +40,7 @@ source、deployment、dataset、两种原生格式的 config_index 及baseline.r
 
 每个子任务先执行公开plan，然后冻结规范化请求并执行。数据准备的默认值和路径规范化由它自身负责。阶段核对schema/task/run_id/inputs、实际operation、终态、退出码及回执必须属于该次独立子任务目录；stdout中声明的共同字段与持久结果一致。精度回执的 detailed_report 必须为对象，measurements 必须为数组，每条记录必须有布尔 valid 和对象 metrics；completed 必须有非空有效测量和指标，conditions 只能为对象或 null。畸形结构或 completed/pass 与实际空/无效测量矛盾时，仅拒绝该项回执并继续独立项，不在阶段重新评分。精度任务在写attempt前返回的blocked结果独立保存为inline回执，只证明阻塞，不视为测量。
 
-run下可选GPU基线读取失败不阻止单端评测，具体比较限制由精度任务报告。没有目标不宣布达标，目标未达标不会调用诊断、修改生成条件或自动重测。results 每项的 conditions 原样保存精度任务实际评测条件，包括已有的 evaluator_backend、evaluator_version、evaluator_resolution 和依赖/源码身份；旧来源缺字段时不补造，缺条件时为 null。条件与版本核验、可比性和目标判定仍归精度任务。实际分数、指标名及单位从精度任务原样交付；阶段不重新评分，不要求完整回答逐字相同。
+run下可选GPU基线读取失败不阻止单端评测，具体比较限制由精度任务报告。有明确目标时才判定是否达标。自动定界由 HTTP 异常记录触发，原始分数和生成条件保留。results 每项的 conditions 原样保存精度任务实际评测条件，包括已有的 evaluator_backend、evaluator_version、evaluator_resolution 和依赖/源码身份；旧来源缺字段时不补造，缺条件时为 null。条件与版本核验、可比性和目标判定仍归精度任务。实际分数、指标名及单位从精度任务原样交付；阶段不重新评分，不要求完整回答逐字相同。
 
 ## 结果和退出码
 
@@ -51,7 +51,7 @@ run下可选GPU基线读取失败不阻止单端评测，具体比较限制由�
 - precision-stage-handoff.json：固定最终台账SHA256、tasks、逐项报告、资源交接和结论；manifest再固定该handoff的摘要。
 - 原始冻结请求、每次子CLI的plan/执行stdout、stderr、argv、cwd、PID、退出码和超时/取消信息，以及children下的完整原生产物。
 
-阶段status和目标分开：所有必需评测有效结束时completed，精度目标可以fail或not_evaluated；独立执行失败为failed，缺交接或待复核为blocked。单项有效结果即使阶段失败也保留。conclusions分别为precision_testing、evaluation_validity、comparability和precision_target。只有实际请求的全部目标pass才能宣称整体目标通过；未请求目标的项不取消其他明确目标。阶段success要求completed、全部评测有效、所有已请求目标pass。
+阶段status和目标分开：所有必需评测有效结束时completed，精度目标可以fail或not_evaluated；独立执行失败为failed，缺交接或待复核为blocked。单项有效结果即使阶段失败也保留。评测结论包括 precision_testing、evaluation_validity、comparability 和 precision_target。只有实际请求的全部目标pass才能宣称整体目标通过；未请求目标的项不取消其他明确目标。阶段success要求completed、全部评测有效、所有已请求目标pass。
 
 `results` 的键是评测 ID，只保存原始评测的测量、结论、异常清单和证据。单题定界按诊断 ID 保存在 `tasks.diagnoses`，其中 `receipt` 用路径和 SHA256 引用原始定界报告，报告的 `detailed_report.primary` 给出具体判断。自动项的 `evaluation` 和从零开始的 `anomaly_index` 绑定原评测的异常记录。超时或未能生成报告时，台账保留终态和原因。旧版三组台账仍可读取。
 

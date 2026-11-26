@@ -115,7 +115,7 @@ flowchart TD
 | 精度阶段 | `vllm-precision-align` | 组织测量或历史分析，汇总比较与目标结论 |
 | ↳ 精度任务 | `verify-agent-plus` | 执行原生精度评测、复核已有成绩，按选题清单重跑并关联同一请求的评分和预测 |
 | ↳ 精度任务 | `vllm-precision-compare` | 比较总分、分项和逐题评分，定位首个异常 Token，按调用比较 GPU/NPU 张量及适用的 CPU 参考 |
-| ↳ 精度任务 | `three-step-demarcation` | 按需对服务链路做三步定界 |
+| ↳ 精度任务 | `three-step-demarcation` | 对普通评测记录的异常请求逐题定界，也可单独提交一条异常 Chat 请求 |
 
 阶段通过公开 CLI 和文件契约调用任务。`verify-agent` 唯一管理模型服务，精度任务只管理自有评测进程，borrowed 服务保持运行。独立步骤失败时保留其他有效成果，仅阻塞其实际消费者。
 

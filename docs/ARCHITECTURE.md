@@ -106,7 +106,7 @@ model_migration/
 | 迁移任务 | [verify-agent](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/SKILL.md) | 部署或核验已有服务、最终载体注册复验、真实权重功能验证及服务生命周期 | `scripts/verify.py` |
 | 精度任务 | [verify-agent-plus](../skills/vllm-model-migration/skills/vllm-precision-align/skills/verify-agent-plus/SKILL.md) | 执行原生测量或复核已有结果，记录有效性、可比性和目标结论。定向复测时关联原生评分与同一请求的预测，按张量计划采集 NPU 证据 | `scripts/validator.py` |
 | 精度任务 | [vllm-precision-compare](../skills/vllm-model-migration/skills/vllm-precision-align/skills/vllm-precision-compare/SKILL.md) | 比较 GPU 与 NPU 的总分、分项和可选逐题评分。按相同前文定位首个异常 Token，再按单题计划对照两端张量与适用的 CPU 参考 | `scripts/compare.py` |
-| 精度任务 | [three-step-demarcation](../skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/SKILL.md) | 针对可复现的异常 Chat 请求独立执行服务链路三步定界 | `scripts/demarcation.py` |
+| 精度任务 | [three-step-demarcation](../skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/SKILL.md) | 接收普通精度阶段的异常请求并逐题定界，也可独立调用 | `scripts/demarcation.py` |
 
 独立任务可以直接调用；这不表示把单个子目录复制出去就足够，跨技能定位、公共 Schema 和注册复验等依赖仍须一并满足。
 
@@ -131,6 +131,7 @@ flowchart TD
     P --> M[迁移阶段：预检、注册、部署功能验收]
     M --> A[普通精度评测]
     D --> A
+    A -. HTTP 记录命中异常规则 .-> B[按原始 Chat 请求执行三步定界]
     A --> H[独立导出：三个交付 JSON]
     E -. 客户任务的 GPU 基线或精度意图 .-> Q[任务质量对齐]
     Q --> S[客户回执中的质量报告]
@@ -139,6 +140,8 @@ flowchart TD
     M -. 需要适配回执 .-> R[Agent 按 adapt-agent 完成实现与公开检查]
     R -. 新请求显式续接 .-> M
 ```
+
+普通精度阶段默认对评测回执中的每条 HTTP 异常调用一次三步定界。阶段请求可用 `auto_diagnose: false` 关闭自动调用，也可用 `diagnoses[]` 指定异常请求和部署。阶段回执将评测结果写入 `results`，将单题报告引用写入 `tasks.diagnoses`。例如，服务重放得到 `TOOL_PARSER` 时，`conclusions.demarcation` 可以是 `pass`，同一份回执的 `precision_target` 仍可为 `fail`。客户三层精度比较按各层自己的证据启动。[普通精度阶段回执契约](../skills/vllm-model-migration/skills/vllm-precision-align/references/contract.md#结果和退出码)
 
 客户 `migrate.py --task` 在普通精度步骤后、三文件交付前调度任务质量对齐，将质量报告引用写入 `customer-manifest.json` 的 `task_quality[]`。启用 `accuracy.token_alignment` 后，精度阶段按质量报告中已确认的失败分项选题。已有双端预测的题可直接比较。有 GPU 预测、缺 NPU 记录且具备首轮冻结请求的题委托原生评测重跑。客户通过 `token_alignment[]` 查看选题和比较报告。确认双端同前文的首差时，阶段使用本次生成或外部提供的同题 Token 报告自动发起张量诊断。实际张量 dtype 决定缺省容差，直接比较 GPU、NPU 得出结论，从 `tensor_alignment[]` 可查逐调用结果。三文件交付按普通精度、部署和导出回执独立判定。[定向重跑与比较的阶段契约](../skills/vllm-model-migration/skills/vllm-precision-align/references/contract.md#token-预测对齐)
 
