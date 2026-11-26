@@ -1,7 +1,7 @@
 # 三步定界请求、结果与资源契约
 
 本 Skill 把一条完整异常 Chat 请求（badcase）在异常发生的服务上按“渲染 prompt →
-反解 prompt → 原始生成”三步定界到九类结论之一。只调用只读推理接口，不重启服务、
+反解 prompt → 原始生成”三步定界，报告主要标签及证据。只调用只读推理接口，不重启服务、
 不改启动参数、不动生产流量。脚本自身仅用 Python 3.10+ 标准库。
 
 ## 输入
@@ -33,8 +33,7 @@
 - `rendered.json` / `rendered_prompt.json` / `raw_completion.json` / `chat_response.json`
   四份证据（fatal REQUEST 时步骤 2/3 未执行，不产生这些文件）。
 
-`conclusions.demarcation`：`pass` 表示得到确定性九类结论（非 INCONCLUSIVE）；
-`review_required` 表示证据不足结论为 INCONCLUSIVE。`success` = 状态 completed 且
+`detailed_report.primary` 是主要定界标签。例如 `TOOL_PARSER` 表示有工具调用文本但 Chat 重放缺少结构化工具调用。此时 `conclusions.demarcation` 为 `pass`，表示已得到明确分类。主要标签为 `INCONCLUSIVE` 时，定界结论为 `review_required`。`success` = 状态 completed 且
 该结论为 pass。
 
 `detailed_report` 含 `meta`（服务/模型/渲染途径/版本与契约/请求次数/证据索引）、
@@ -66,10 +65,10 @@
 - **本地渲染（K16）**：需 transformers，不支持。
 - **图片/超长请求（K17）**：messages content 仅支持 str；多模态或超长请求不适用，
   不硬凑结论。
-- **根因验证**：九类结论用于选择排查方向，根因另行验证（本 Skill 不进入 msprobe
+- **根因验证**：定界标签用于选择排查方向，根因另行验证（本 Skill 不进入 msprobe
   逐层打点或修复）。
 
 ## 结论与证据要求
 
-九类结论、判定口径与证据要求见 `references/decision-tree.md`、`step1-request-check.md`、
+定界标签、判定口径与证据要求见 `references/decision-tree.md`、`step1-request-check.md`、
 `step2-render-verify.md`、`step3-raw-parse.md`；建议话术与乱码阈值见 `references/profiles.json`。

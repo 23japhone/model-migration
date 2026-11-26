@@ -4,6 +4,15 @@
 
 ## 当前验证基准
 
+### 普通精度评测与三步定界的独立汇总
+
+```bash
+python3 -B -m unittest discover -s tests/vllm-model-migration/diagnosis -q
+python3 -B -m unittest discover -s tests/vllm-model-migration/demarcation_cases -q
+```
+
+[阶段回执用例](../tests/vllm-model-migration/diagnosis/test_stage_summary.py)使用本地模拟 HTTP 服务，分别把评测目标设为通过和失败。两次运行都从单题报告读到 `TOOL_PARSER`，普通阶段成功发布回执，总入口校验接受各自的评测结论。用例还覆盖评测与诊断同名、显式与自动定界、定界超时、旧版台账，以及报告损坏或绑定错误题目的拒收。这里验证的是委托、汇总和回执核验，真实服务上的分类还需用可复现的异常请求验证。
+
 ### 三阶段精度结论与仅补张量的续接
 
 [客户入口离线用例](../tests/vllm-model-migration/tensor_stage_cases/test_customer_verdicts.py)通过自定义数据集 `custom_qa` 的客户任务验证三个出口。GPU 总分 0.80，NPU 总分 0.79，默认允许下降 0.008，首轮失败。客户逐题分数与 NPU 第 2 题的成绩配对；两端第 2 个输出位置出现预测差异。CPU 读取绑定的本地权重失败。只补交张量时，沿用同一 Token 报告，分别验证缺少 GPU 包、双端 FP32 张量全部通过和一个元素超限。用例核对终端 JSON、落盘客户回执、阶段和单题报告。客户部署与 NPU 测量由夹具提供；数值比较使用实际比较器。
@@ -17,7 +26,7 @@ do
 done
 ```
 
-主题分支全量离线回归收集 942 项。合入客户三层回执汇总后再次收集 949 项，947 项通过，2 项因缺少可选 msProbe 跳过。集成版本同时验证逐题证据隔离、来源未声明和 CPU 参考缺失时保留已确认的双端张量结论。标准 unittest 发现会把 `tests/vllm-model-migration/diagnosis` 与业务包 `diagnosis` 同名导入，该问题也在开发基线复现。全量验收复制固定的工作区源码和测试，只在临时副本中将测试目录改名为 `diagnosis_cases`，然后运行全量发现。真实 GPU/NPU 双端采集与 FP8 初始容差的设备校准待实机验证。
+主题分支全量离线回归收集 942 项。合入客户三层回执汇总后再次收集 949 项，947 项通过，2 项因缺少可选 msProbe 跳过。集成版本同时验证逐题证据隔离、来源未声明和 CPU 参考缺失时保留已确认的双端张量结论。当前诊断测试包已配置业务模块的导入路径，可直接从仓库根运行[全量发现命令](#路径兼容回归)。真实 GPU/NPU 双端采集与 FP8 初始容差的设备校准待实机验证。
 
 ### 客户总回执的三层结论
 
