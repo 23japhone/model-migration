@@ -44,12 +44,12 @@ def compare_one(session, row, policy, context, work_root, key):
 
 def compare_all(session, policy, context, root, guarded):
     results = []
+    session.value['token_alignment'] = results
     for index, row in enumerate(session.value.get('task_quality', [])):
         key = f'token-{index}'
         if row.get('report'):
             item = guarded(session, key, lambda: compare_one(session, row, policy, context, root, key))
         else:
             item = {'status': 'not_triggered', 'reason': '任务质量报告缺失'}
-        results.append(item or {'status': 'blocked', 'step': key})
-    session.value['token_alignment'] = results
+        results.append(item or {'status': 'blocked', 'step': key, 'quality_report': row.get('report')})
     session.save()

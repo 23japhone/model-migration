@@ -47,6 +47,29 @@ Agent 用顶层 `model.model_repository_id` 查询 Hugging Face 发布仓库。�
 
 `summary` 首句同时给出执行状态和任务质量结论。自动化验收读取 `precision_target`，详细范围取自 `reports[]` 的数据集和 `scores[]` 的子集、指标、两端已有成绩、分差及阈值。数值沿用原生单位，中文说明将比例差换算为百分点。`report` 保留原报告路径和 SHA256，无法取得有效报告的项保留原因。中断或阻塞时已取得的有效结论仍可查看。续接历史任务时，新回执依据本次使用的绑定报告生成摘要。Token 预测及算子与张量诊断分别查看对应层的回执。
 
+## 客户回执中的三层对齐摘要
+
+`migrate.py --task` 的终端 JSON 与本次 `customer-manifest.json` 使用同一个 `alignment_summary`。客户汇报按 `summary` 的顺序先说明执行结果与任务质量，再列两层诊断。自动化按验收层读取相应字段。
+
+| 层 | 结论 | 范围、差异和缺项 |
+| --- | --- | --- |
+| `task_quality` | 与顶层 `task_quality_conclusion` 相同，沿用 `precision_target` | `reports[].scores[]` 按数据集、子集和指标给出分差及阈值，缺少的基线或判据保留原因。 |
+| `token_prediction` | `result` 与中文 `summary` | `cases[]` 按质量报告、子集、稳定题号列出选题依据、已比较的输出位置数、首个异常或停止差异。输入不可比和缺少预测记录分别计数。 |
+| `operator_tensor` | `result` 表示已采集范围内的双端数值结果，`hardware_target_status` 表示硬件验收 | 逐题沿 Token 首异常位置绑定采集计划，列出容差、调用与槽位、可核验的超限、未配对范围及 CPU 参考；`reports[]` 保留原报告路径和 SHA256。 |
+
+诊断层的 `coverage.known` 是已定界题数，`expected` 为可确定的本次应查题数。仍有失败分项无法定界时，`expected` 为 `null`。`by_result` 统计已知各题，`by_evidence_kind` 区分运行证据和模拟证据。`gaps[]` 给出缺项所在题目或范围及原因。一题有已确认的超限和缺失槽位时，同时计入差异题数和 `cases_with_gaps`。
+
+| 诊断层的 `result` | 客户读法 |
+| --- | --- |
+| `mismatch` | 运行证据已确认差异，其余未评估题目和槽位继续列出。 |
+| `aligned` | 该层本次已定界的必要范围均有运行对照，在相应判据下已对齐。 |
+| `simulated` | 本次结论含模拟对照，模拟一致与模拟差异分别显示。 |
+| `insufficient_evidence` | 缺材料、输入不可比或来源无法核验，范围内已有结果仍可查看。 |
+| `not_requested` / `not_triggered` / `not_run` | 分别表示已确认本次未要求、已核实上游无适用异常、尚未执行。 |
+| `pending` | 运行中的客户回执尚待收尾汇总。 |
+
+例如，Token 层有一道题在第 2 个位置选词不同，另一道题缺 GPU 预测记录，汇报同时写出这两个题号和各自情况。旧任务只调整张量容差后，若首轮质量仍超限、同一道题的模拟张量已一致，三行分别写“任务质量未达标”“模拟 Token 预测有差异”“本次容差下模拟张量一致，硬件目标尚无法判定”。新回执从绑定的报告生成，旧回执仍可按原摘要核验。
+
 ## Agent 的准备观察
 
 客户提供上述业务字段。C-Eval 默认从仓库登记的 ModelScope 数据集发布包按 commit 取原始 CSV，GSM8K 从原作者 GitHub 仓库按 commit 取 train/test 原始 JSONL。其他数据集由 Agent 查证相应官方来源。Agent 在运行目录外收集资料，在内部 `observations.quality_sources[dataset]` 放置解析资料对象或其 `{path,sha256}` 引用。原生目录、GPU 历史材料、官方索引正文和数据准备请求的文件身份均由 Agent 维护。

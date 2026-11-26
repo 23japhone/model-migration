@@ -6,6 +6,7 @@ import uuid
 import copy
 
 from .tensor_alignment import same_source
+from .alignment_summary import summarize as alignment_summary
 from coordination.runtime import sources
 from coordination.runtime.evidence import write
 
@@ -43,12 +44,14 @@ class Session:
         self.previous = load_previous(previous, self.source, task, run_id)
         self.tensor_handoff = tensor_handoff
         self.quality_requested = quality_requested
+        self.alignment_accuracy = assets['accuracy']
         self.quality_baselines = assets['accuracy'].get('gpu_baselines', []) if quality_requested else []
         self.attempt = self.parent / 'attempts' / uuid.uuid4().hex
         self.attempt.mkdir(parents=True)
         self.path = self.attempt / 'customer-manifest.json'
         self.value = {'schema_version': '1.0', 'task_id': 'vllm-model-migration-customer', 'run_id': run_id,
                       'status': 'running', 'success': False,
+                      'alignment_summary': None,
                       'task_quality_conclusion': self.quality_conclusion('running', [], {}),
                       'task_source': self.source, 'inputs': copy.deepcopy(task),
                       'steps': dict(self.previous['steps']) if self.previous else {}, 'deliverables': {},
@@ -56,6 +59,7 @@ class Session:
         for field in ('evalscope_environment', 'evalscope_install_selection', 'declared_inputs', 'effective_inputs', 'default_resolutions'):
             if self.previous and field in self.previous:
                 self.value[field] = copy.deepcopy(self.previous[field])
+        self.update_alignment_summary()
         self.save()
 
     def artifact(self, label, value):
@@ -96,5 +100,10 @@ class Session:
         self.value.update(status=status, success=status == 'completed', **details)
         self.value['task_quality_conclusion'] = self.quality_conclusion(
             status, self.value.get('task_quality', []), self.value['steps'])
+        self.update_alignment_summary()
         self.save()
         return {'completed': 0, 'failed': 1, 'blocked': 3, 'not_run': 0}[status], self.value
+
+    def update_alignment_summary(self):
+        self.value['alignment_summary'] = alignment_summary(
+            self.value, self.alignment_accuracy, intent_known=self.quality_requested is not None)

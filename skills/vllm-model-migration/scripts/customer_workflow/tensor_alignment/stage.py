@@ -95,6 +95,7 @@ def external_tokens(quality_rows, supplied):
 
 def compare_all(session, policy, supplied, root, guarded):
     results = []
+    session.value['tensor_alignment'] = results
     tokens = session.value.get('token_alignment')
     if not tokens:
         tokens = external_tokens(session.value.get('task_quality', []), supplied)
@@ -102,8 +103,8 @@ def compare_all(session, policy, supplied, root, guarded):
     for index, token in enumerate(tokens):
         key = f'tensor-{index}'
         row = guarded(session, key, lambda: compare_one(session, key, token, policy, supplied, root))
-        results.append(row or {'status': 'blocked', 'step': key})
+        results.append(row or {'status': 'blocked', 'step': key, 'quality_report': token.get('quality_report'),
+                               'token_report': token.get('token_report')})
     if not tokens:
         results.append({'status': 'insufficient_evidence', 'reason': '等待任务质量报告和二遍 Token 首异常'})
-    session.value['tensor_alignment'] = results
     session.save()
