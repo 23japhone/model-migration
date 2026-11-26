@@ -43,7 +43,7 @@
 
 ## 精度与交接兼容性
 
-客户 `task.json` 必须包含 `model`、`environment` 和 `accuracy` 三组对象。可选的 `accuracy.gpu_baselines` 用于任务质量对齐。普通精度测试的 `accuracy.datasets[].limit` 只约束普通测试的样本范围。评测结果和缺项记录在客户回执中，三个交付 JSON 沿用既有结构。[客户字段与默认值](../skills/vllm-model-migration/references/customer-task.md#字段) · [基线字段及示例](../skills/vllm-model-migration/references/task-quality.md)
+客户 `task.json` 必须包含 `model`、`environment` 和 `accuracy` 三组对象。正式执行会合成 prompt 与 JSON 中的显式条件。可选的 `accuracy.gpu_baselines` 定义第一遍的 GPU 成绩与评测条件。`accuracy.token_alignment` 为第二遍指定两项容差，只有有效质量报告中的可比未达标分项进入选题。`accuracy.tensor_alignment` 为第三遍指定浮点张量的比较方式。省略时关闭，填 `{}` 时启用且仅记录有限浮点差异。普通精度测试的 `accuracy.datasets[].limit` 只约束普通测试的样本范围。评测结果和缺项记录在客户回执中，三个交付 JSON 沿用既有结构。[客户字段与默认值](../skills/vllm-model-migration/references/customer-task.md#字段) · [基线字段及示例](../skills/vllm-model-migration/references/task-quality.md)
 
 执行时先校验显式 JSON，再由 context 一次合成 prompt、应用静态默认；前置检查与业务执行共享实际参数。inputs 保留原归一化快照用于续接比较。--plan 不读取 context，仅作尚未合成 prompt 的 JSON 预览，其后端与默认参数不表示最终执行选择。
 

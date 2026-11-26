@@ -17,7 +17,7 @@ EvalScope 输出达到已配置上限时，由 [verify-agent-plus](skills/vllm-p
 
 ## 客户 prompt + task.json
 
-先阅读[客户字段与默认行为](references/customer-task.md)和[Agent 执行与续接](references/customer-observations.md)。客户填写一份 `task.json`，可使用[普通任务模板](assets/template.json)或[包含 GPU 基线的任务质量示例](assets/task-quality.example.json)。`model`、`environment`、`accuracy` 三组对象必填，允许空对象。支持默认值的字段可省略、填 null 或整数 -1。设备、数据集和子集列表显式填写时须非空，`accuracy.gpu_baselines: []` 表示未提供 GPU 基线。模型名按实际来源或配置解析，设备默认取当前主机全部 NPU 候选卡，普通评测的数据集默认取 ceval 和 gsm8k。
+先阅读[客户字段与默认行为](references/customer-task.md)和[Agent 执行与续接](references/customer-observations.md)。客户填写一份 `task.json`，可使用[普通任务模板](assets/template.json)、[含 GPU 基线的任务质量示例](assets/task-quality.example.json)或[任务质量、Token 预测和张量三层对齐示例](assets/three-level-alignment.example.json)。`model`、`environment`、`accuracy` 三组对象必填，允许空对象。支持默认值的字段可省略、填 null 或整数 -1。设备、数据集和子集列表显式填写时须非空，`accuracy.gpu_baselines: []` 表示未提供 GPU 基线。模型名按实际来源或配置解析，设备默认取当前主机全部 NPU 候选卡，普通评测的数据集默认取 ceval 和 gsm8k。
 
 prompt 对数据集内部补值仍使用 accuracy.datasets 列表：与 JSON 的名称序列一致，逐字段补齐 path/subset_list/limit；不修改的条目只写 name，明确值冲突集中确认。不新增索引路径、不合并子集列表、不改变显式数据集选择。完整规则与示例见[数据集补值](references/customer-task.md#prompt-补齐数据集字段)。
 
@@ -30,7 +30,7 @@ prompt 对数据集内部补值仍使用 accuracy.datasets 列表：与 JSON 的
 
 客户新部署默认空闲卡优先，逐卡剩余显存满足预算时允许共享占用卡；共享组合每张卡额外预留本次剩余显存的5%。容量不足形成用户更换卡决策，独立准备继续；选卡、两次启动前复核及运行归属规则见[共享部署契约](references/customer-observations.md#空闲优先与共享部署)。
 5. 遇到适配或注册，读对应 Skill，完成公开流程并通过 context 补充交接。遇到 semantic_review_required，读实际响应执行 verify review → execute finalize，把最终迁移引用写入 context.migration_result 后续接；禁止脚本代判通过或重复启动服务。
-6. 普通精度步骤之后，逐份处理客户填写的 GPU 基线。基线未提供且意图包含精度评测时，按模型名或仓库 ID 搜索公开 GPU 基线。证据齐全时复用或重跑 NPU 评测，搜索无结果或公开资料不全时记录 `not_evaluated` 和原因。客户回执 `customer-manifest.json` 的 `task_quality[]` 给出各项状态和报告引用。配置 `accuracy.token_alignment` 后，从可比的未达标分项选题，在 `token_alignment[]` 交付清单和可用的比较结果。三个交付 JSON 随后按原有条件独立发布到 `work-root/run-id/deliverables/`。导出失败时续接导出，普通单项评测失败时续接受影响项。服务默认 keep。[质量报告](skills/vllm-precision-align/references/contract.md#任务质量对齐) · [Token 选题、二遍取证和绝对容差](references/task-quality.md#从未达标分项进入-token-预测对齐)
+6. 普通精度步骤之后，逐份处理客户填写的 GPU 基线。基线未提供且意图包含精度评测时，按模型名或仓库 ID 搜索公开 GPU 基线。证据齐全时复用或重跑 NPU 评测，搜索无结果或公开资料不全时记录 `not_evaluated` 和原因。客户回执 `customer-manifest.json` 的 `task_quality[]` 给出各项状态和报告引用。配置 `accuracy.token_alignment` 后，从可比的未达标分项选题，在 `token_alignment[]` 交付清单和可用的比较结果。显式声明 `accuracy.tensor_alignment`（包括 `{}`）时，将同一质量报告及其 Token 报告交给张量阶段；首个可比异常的位置决定采集哪一题、哪一步，结果见 `tensor_alignment[]`。三个交付 JSON 随后按原有条件独立发布到 `work-root/run-id/deliverables/`。导出失败时续接导出，普通单项评测失败时续接受影响项。服务默认 keep。[质量报告](skills/vllm-precision-align/references/contract.md#任务质量对齐) · [Token 选题、二遍取证和绝对容差](references/task-quality.md#从未达标分项进入-token-预测对齐)
 7. 向客户汇报时，首句采用本次回执的 `task_quality_conclusion.summary` 首句，同时说明任务执行结果与任务质量结果。接着说明超限的数据集、指标、实际下降量和允许值，以及尚缺证据或未设阈值的范围。Token 预测、算子与张量的结论按各自报告说明。[客户回执中的任务质量结论](references/task-quality.md#客户回执中的任务质量结论)
 8. 后续性能启动前，调用 [check_evalscope_handoff.py](scripts/check_evalscope_handoff.py) 核验同一客户任务的环境；具体请求与调用约定见[启动前核验](references/evalscope-installation.md#性能启动前只读核验)。仅使用 ready 返回的 benchmark_python 和 env，以 argv 列表及子进程 env 启动获准的性能入口，保存实际解释器和 EvalScope 命令路径。阻塞时不启动性能，也不安装修复；本仓不代跑性能或修改性能插件。两端实际证据齐备才报告共用成功，版本绑定不等于全部依赖锁定。
 

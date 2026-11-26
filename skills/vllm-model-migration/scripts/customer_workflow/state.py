@@ -31,7 +31,8 @@ def load_previous(previous, source, task, run_id):
 
 
 class Session:
-    def __init__(self, parent, source, task, run_id, previous=None, *, effective_task=None, quality_requested=None):
+    def __init__(self, parent, source, task, run_id, previous=None, *, effective_task=None, quality_requested=None,
+                 tensor_handoff=False):
         self.parent = Path(parent)
         self.source = sources.ref(source)
         assets = task if effective_task is None else effective_task
@@ -40,6 +41,7 @@ class Session:
             roots.append(Path(assets['model']['path']))
         sources.protect(self.parent, roots)
         self.previous = load_previous(previous, self.source, task, run_id)
+        self.tensor_handoff = tensor_handoff
         self.quality_requested = quality_requested
         self.quality_baselines = assets['accuracy'].get('gpu_baselines', []) if quality_requested else []
         self.attempt = self.parent / 'attempts' / uuid.uuid4().hex

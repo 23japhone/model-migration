@@ -4,6 +4,16 @@
 
 ## 当前验证基准
 
+### 2026-11-26 客户 task.json 的三层精度对齐
+
+[客户入口回归](../tests/vllm-model-migration/tensor_stage_cases/test_customer_dispatch.py)直接读取[三层示例](../skills/vllm-model-migration/assets/three-level-alignment.example.json)，隔离模型部署和首轮测量，使用合成质量报告和预测包，实际执行 Token 与张量阶段 CLI。示例的两项 Token 容差定位到第 2 个输出，显式 `tensor_alignment: {}` 使用同一份质量报告和 Token 报告生成采集计划，缺 GPU 张量包时该题为 `awaiting_gpu`。用例同时覆盖只启用 Token 时分次补包、旧子报告损坏后重新比较，以及由 prompt 开启第三遍后的续接。[字段合成回归](../tests/vllm-model-migration/test_prompt_resolution.py)检查空基线、等价声明、真实冲突和普通续接的证据摘要。
+
+```bash
+python3.12 -B -m unittest discover -s tests/vllm-model-migration/tensor_stage_cases -p 'test_customer_dispatch.py' -v
+```
+
+Python 3.12 全量离线回归 859 项通过，无跳过。独立运行的任务质量专项 119 项、张量阶段专项 21 项、`source_contract` 专项 52 项通过。结构审计为 0 个错误、363 条软提示。真实 GPU/NPU 模型部署与精度测量不在本次验证范围内。
+
 ### 2026-11-26 客户回执的任务质量结论
 
 在仓库根运行 `python3.12 -B -m unittest discover -s tests/vllm-model-migration/task_quality -p test_customer_conclusion.py -v`。客户入口用例读取合成的首轮质量报告，通过实际导出入口发布三个 JSON，检查每个文件的摘要、退出码 0，以及终端和落盘回执完全一致。GPU 准确率 80%、NPU 准确率 78%、允许下降 1 个百分点时，两处 `summary` 均以“任务已完成，任务质量未达标”开头。仅性能交付也经过同一导出入口。

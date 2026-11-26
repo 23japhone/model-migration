@@ -6,6 +6,13 @@ from . import intent
 from .contract import normalize as normalize_task
 from evalscope_installation import validate, protect
 from .evaluation import selection
+from .tensor_alignment.continuation import can_resume
+
+
+def verify_evidence(refs):
+    for source in refs:
+        if sources.ref(source['path']) != source:
+            raise ValueError('Agent 证据文件摘要变化')
 
 
 def load(path, task_source, *, defer_evidence=False):
@@ -26,8 +33,8 @@ def load(path, task_source, *, defer_evidence=False):
         validate(value['evalscope_install'])
     for source in value['evidence']:
         reference(source)
-        if not defer_evidence and sources.ref(source['path']) != source:
-            raise ValueError('Agent 证据文件摘要变化')
+    if not defer_evidence:
+        verify_evidence(value['evidence'])
     return value
 
 
@@ -37,11 +44,7 @@ def start(args, source, raw, parent):
     if sources.bound(task_source) != raw:
         raise ValueError('客户输入在校验后变化，请重新读取任务')
     prior = sources.ref(args.resume) if args.resume else None
-    from .tensor_alignment.continuation import can_publish
-    if prior and can_publish(sources.bound(prior), raw):
-        supplied = load(args.context, task_source, defer_evidence=True)
-    else:
-        supplied = load(args.context, task_source)
+    supplied = load(args.context, task_source, defer_evidence=bool(prior))
     effective, conflicts = declaration(supplied, raw)
     snapshot = normalize_task(raw)
     previous = load_previous(prior, task_source, snapshot, args.run_id)
@@ -50,10 +53,14 @@ def start(args, source, raw, parent):
     if supplied is not None and not conflicts:
         quality_requested = supplied['intent']['accuracy'] or bool(effective['accuracy'].get('gpu_baselines'))
         install = preflight(supplied, effective, args, parent, previous)
+    tensor_handoff = bool(previous and supplied and not conflicts and not (install and install.is_preview)
+                          and can_resume(previous, effective, supplied))
+    if previous and supplied and not tensor_handoff:
+        verify_evidence(supplied['evidence'])
     if sources.ref(source) != task_source:
         raise ValueError('客户输入在参数合成后变化，请重新读取任务')
     session = Session(parent, source, snapshot, args.run_id, prior, effective_task=effective,
-                      quality_requested=quality_requested)
+                      quality_requested=quality_requested, tensor_handoff=tensor_handoff)
     return supplied, session, effective, conflicts, install
 
 

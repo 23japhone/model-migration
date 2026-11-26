@@ -41,7 +41,7 @@
 
 ### 3. 准备 prompt 与 task.json
 
-将示例复制到技能资源目录之外，按实际执行主机填写 `model`、`environment`、`accuracy` 三组信息，另指定证据工作根和 `run-id`。`model.model_name` 同时用于任务记录、展示和 API 服务名。普通部署与精度评测可以使用基础模板；已有 GPU 成绩时，可直接参照任务质量示例填写 `accuracy.gpu_baselines`。[基础模板](skills/vllm-model-migration/assets/template.json) · [含 GPU 基线的完整示例](skills/vllm-model-migration/assets/task-quality.example.json)
+将示例复制到技能资源目录之外，按实际执行主机填写 `model`、`environment`、`accuracy` 三组信息，另指定证据工作根和 `run-id`。`model.model_name` 同时用于任务记录、展示和 API 服务名。按任务选择[基础模板](skills/vllm-model-migration/assets/template.json)、[含 GPU 基线的任务质量示例](skills/vllm-model-migration/assets/task-quality.example.json)或[任务质量、Token 预测和张量三层对齐示例](skills/vllm-model-migration/assets/three-level-alignment.example.json)。
 
 例如，交给 Agent 的任务描述可以是：
 
