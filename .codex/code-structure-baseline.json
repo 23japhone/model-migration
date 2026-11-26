@@ -1869,7 +1869,7 @@
       },
       "skills/vllm-model-migration/skills/vllm-precision-align/scripts/alignment/runner.py": {
         "kind": "source",
-        "lines": 182
+        "lines": 177
       },
       "skills/vllm-model-migration/skills/vllm-precision-align/scripts/alignment/sources.py": {
         "kind": "source",
@@ -3813,8 +3813,8 @@
         "statements": 3
       },
       "skills/vllm-model-migration/scripts/coordination/runtime/precision_receipts.py::precision": {
-        "branches": 8,
-        "complexity": 15,
+        "branches": 7,
+        "complexity": 12,
         "line": 5,
         "path": "skills/vllm-model-migration/scripts/coordination/runtime/precision_receipts.py",
         "statements": 20
@@ -18016,11 +18016,11 @@
         "statements": 13
       },
       "skills/vllm-model-migration/skills/vllm-precision-align/scripts/alignment/runner.py::auto_diagnoses": {
-        "branches": 5,
-        "complexity": 6,
+        "branches": 4,
+        "complexity": 5,
         "line": 110,
         "path": "skills/vllm-model-migration/skills/vllm-precision-align/scripts/alignment/runner.py",
-        "statements": 16
+        "statements": 13
       },
       "skills/vllm-model-migration/skills/vllm-precision-align/scripts/alignment/runner.py::block_dependents": {
         "branches": 3,
@@ -18048,7 +18048,7 @@
         "complexity": 4,
         "line": 96,
         "path": "skills/vllm-model-migration/skills/vllm-precision-align/scripts/alignment/runner.py",
-        "statements": 15
+        "statements": 12
       },
       "skills/vllm-model-migration/skills/vllm-precision-align/scripts/alignment/runner.py::evaluate_item": {
         "branches": 3,
@@ -18174,7 +18174,7 @@
         "complexity": 15,
         "line": 56,
         "path": "skills/vllm-model-migration/skills/vllm-precision-align/scripts/alignment/summary.py",
-        "statements": 16
+        "statements": 15
       },
       "skills/vllm-model-migration/skills/vllm-precision-align/scripts/alignment/summary.py::dependency_pass": {
         "branches": 2,
@@ -18230,7 +18230,7 @@
         "complexity": 1,
         "line": 59,
         "path": "skills/vllm-model-migration/skills/vllm-precision-align/scripts/diagnosis/service.py",
-        "statements": 8
+        "statements": 7
       },
       "skills/vllm-model-migration/skills/vllm-precision-align/scripts/quality_stage/children.py::Children.__init__": {
         "branches": 0,
@@ -24251,13 +24251,6 @@
         "line": 14,
         "path": "tests/vllm-model-migration/diagnosis/test_auto_diagnoses.py",
         "statements": 1
-      },
-      "tests/vllm-model-migration/diagnosis/test_auto_diagnoses.py::AutoDiagnosesTests.test_auto_diagnose_collects_result": {
-        "branches": 0,
-        "complexity": 1,
-        "line": 32,
-        "path": "tests/vllm-model-migration/diagnosis/test_auto_diagnoses.py",
-        "statements": 7
       },
       "tests/vllm-model-migration/diagnosis/test_auto_diagnoses.py::AutoDiagnosesTests.test_auto_diagnose_disabled": {
         "branches": 0,

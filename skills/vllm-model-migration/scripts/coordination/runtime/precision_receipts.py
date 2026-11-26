@@ -2,10 +2,15 @@
 from .sources import bound
 
 
-def precision(value, check_child):
-    groups = value['tasks']
-    if set(groups) != {'datasets','deployments','evaluations'} or not all(isinstance(g, dict) for g in groups.values()):
+def task_groups(groups):
+    required = {'datasets', 'deployments', 'evaluations'}
+    if set(groups) - {'diagnoses'} != required or not all(isinstance(g, dict) for g in groups.values()):
         raise ValueError('精度任务台账缺失')
+    return groups
+
+
+def precision(value, check_child):
+    groups = task_groups(value['tasks'])
     expected = {item['id']: item for item in value['inputs']['evaluations']}
     if not expected or set(expected) != set(groups['evaluations']):
         raise ValueError('评测台账与请求范围不一致')
@@ -20,7 +25,9 @@ def precision(value, check_child):
     for key, item in expected.items():
         raw = precision_input(item, groups['evaluations'][key], groups, value.get('operation'))
         if key in results:
-            projection(results[key], groups['evaluations'][key], raw)
+            projection(results[key], groups['evaluations'][key], raw, 'diagnoses' in groups)
+    from .diagnosis_receipts import diagnoses
+    diagnoses(value, verdict)
     observations(value)
     conclusions(value)
 
@@ -60,14 +67,16 @@ def measurement_details(raw):
         raise ValueError('完成精度任务缺少非空有效测量及指标')
 
 
-def projection(result, row, raw):
+def projection(result, row, raw, has_diagnoses):
     if raw is None or not isinstance(result, dict):
         raise ValueError('精度结果缺少原始回执')
     expected = {'receipt': row['receipt'], 'conclusions': raw['conclusions'],
                 'measurements': raw.get('detailed_report', {}).get('measurements', []),
                 'comparison': raw.get('detailed_report', {}).get('comparison'),
                 'conditions': raw.get('detailed_report', {}).get('conditions'), 'uncovered': raw['uncovered']}
-    defaults = {'measurements': [], 'comparison': None, 'conditions': None, 'uncovered': []}
+    defaults = {'measurements': [], 'comparison': None, 'conditions': None, 'uncovered': [], 'anomalies': []}
+    if has_diagnoses or 'anomalies' in result:
+        expected['anomalies'] = raw.get('anomalies', [])
     if any(result.get(k, defaults.get(k)) != v for k,v in expected.items()):
         raise ValueError('精度结果未绑定原始任务测量、比较或结论')
 

@@ -29,14 +29,18 @@ class AutoDiagnosesTests(unittest.TestCase):
             'uncovered': [],
         }
 
-    def test_auto_diagnose_collects_result(self):
+    def test_missing_diagnosis_report_keeps_evaluation(self):
         manifest = self._manifest()
         receipt = {'status': 'completed', 'conclusions': {'demarcation': 'pass'}, 'uncovered': []}
         with mock.patch.object(runner, 'demarcate_anomaly', return_value=(0, receipt)):
             with mock.patch.object(runner, 'save'):
                 runner.auto_diagnoses({}, '/root', '/root/x', manifest, 120, 'run')
         diag_id = 'auto-eval-1-1-empty_tool_calls'
-        self.assertEqual(manifest['results'][diag_id]['conclusions'], {'demarcation': 'pass'})
+        self.assertEqual(set(manifest['results']), {'eval-1'})
+        row = manifest['tasks']['diagnoses'][diag_id]
+        self.assertEqual(row['status'], 'failed')
+        self.assertEqual(row['conclusions']['demarcation'], 'not_evaluated')
+        self.assertIn('未交付报告', row['reason'])
 
     def test_auto_diagnose_disabled(self):
         manifest = self._manifest()

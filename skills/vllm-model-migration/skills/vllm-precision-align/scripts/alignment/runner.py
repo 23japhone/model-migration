@@ -8,6 +8,7 @@ from .evidence import EvidenceError,begin,publish,safe,save
 from .request import output
 from .sources import INPUT_ERRORS,preflight
 from diagnosis.service import demarcate, demarcate_anomaly
+from diagnosis.outcome import record, available_id
 
 TASK_ERRORS=(*INPUT_ERRORS,RuntimeError)
 
@@ -100,10 +101,7 @@ def diagnoses(request,work_root,attempt,manifest,timeout,action):
         try:
             service,badcase=prepared_diagnosis(item,manifest)
         except INPUT_ERRORS as error:item_error(row,error,'blocked');save(attempt,manifest);continue
-        code,value=demarcate(service,badcase,work_root,manifest['run_id'],timeout)
-        row.update(status=value.get('status','failed'),conclusions=value.get('conclusions',{}))
-        manifest['results'][key]={'conclusions':value.get('conclusions',{}),'uncovered':value.get('uncovered',[])}
-        manifest['uncovered'].extend(value.get('uncovered',[]))
+        record(row, demarcate, (service, badcase), work_root, manifest, timeout)
         save(attempt,manifest)
 
 
@@ -116,13 +114,10 @@ def auto_diagnoses(request, work_root, attempt, manifest, timeout, action):
             continue  # 只处理评测结果，跳过 diagnoses 等其它组
         for position, anomaly in enumerate(result.get('anomalies', [])):
             diag_id = 'auto-%s-%s-%s' % (eval_id, anomaly.get('sample_id', position), anomaly.get('anomaly_type', position))
-            row = manifest['tasks']['diagnoses'].setdefault(diag_id, {'status': 'not_run'})
-            if row['status'] == 'blocked':
-                continue
-            code, value = demarcate_anomaly(anomaly, work_root, manifest['run_id'], timeout)
-            row.update(status=value.get('status', 'failed'), conclusions=value.get('conclusions', {}))
-            manifest['results'][diag_id] = {'conclusions': value.get('conclusions', {}), 'uncovered': value.get('uncovered', [])}
-            manifest['uncovered'].extend(value.get('uncovered', []))
+            rows = manifest['tasks']['diagnoses']
+            row = {'evaluation': eval_id, 'anomaly_index': position}
+            rows[available_id(rows, diag_id)] = row
+            record(row, demarcate_anomaly, (anomaly,), work_root, manifest, timeout)
             save(attempt, manifest)
 
 
