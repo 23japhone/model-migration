@@ -56,6 +56,7 @@ class CustomerDispatch(unittest.TestCase):
             self.assertEqual(code, 3, receipt)  # 本用例没有提供部署交付物。
             quality.assert_called_once()
         self.assertEqual(receipt['task_quality_conclusion']['precision_target'], 'fail')
+        self.assertEqual(receipt['alignment_summary'], json.loads(Path(receipt['evidence']['manifest']).read_text())['alignment_summary'])
         return receipt
 
     def test_one_sided_token_evidence_survives_resume_without_tensor(self):
@@ -63,6 +64,7 @@ class CustomerDispatch(unittest.TestCase):
         first = self.invoke([self.npu])
         first_report = get(first['token_alignment'][0]['token_report'])
         self.assertEqual(first_report['cases'][0]['result'], 'insufficient_evidence')
+        self.assertEqual(first['alignment_summary']['token_prediction']['result'], 'insufficient_evidence')
         second = self.invoke([self.gpu], previous=first)
         token = get(second['token_alignment'][0]['stage'])
         self.assertCountEqual(token['inputs']['bundles'], [self.gpu, self.npu])
@@ -70,6 +72,7 @@ class CustomerDispatch(unittest.TestCase):
         case = get(token['token_report'])['cases'][0]
         self.assertEqual((case['result'], case['first_anomalous_token']), ('mismatch', 2))
         self.assertNotIn('tensor_alignment', second)
+        self.assertEqual(second['alignment_summary']['operator_tensor']['result'], 'not_requested')
 
     def test_tensor_empty_policy_dispatches_using_the_same_token_and_quality_reports(self):
         receipt = self.invoke([self.gpu, self.npu, common_scope(self.root)])
@@ -81,6 +84,10 @@ class CustomerDispatch(unittest.TestCase):
         self.assertEqual(tensor['inputs']['quality_report'], self.quality)
         self.assertEqual(tensor['inputs']['token_report'], token['token_report'])
         self.assertEqual(get(tensor['tensor_report'])['cases'][0]['result'], 'awaiting_gpu')
+        summary = receipt['alignment_summary']
+        self.assertEqual(summary['token_prediction']['cases'][0]['first_anomalous_token'], 2)
+        self.assertEqual(summary['operator_tensor']['result'], 'insufficient_evidence')
+        self.assertIn('GPU 张量包', summary['operator_tensor']['summary'])
 
     def test_current_prediction_bundles_can_replace_an_unreadable_old_comparison(self):
         del self.raw['accuracy']['tensor_alignment']

@@ -55,6 +55,18 @@ class CustomerResume(unittest.TestCase):
             self.assertEqual(receipt['deliverables'], files)
             conclusion = receipt['task_quality_conclusion']
             self.assertEqual(conclusion['precision_target'], 'fail')
+            summary = receipt['alignment_summary']
+            self.assertEqual(summary['task_quality'], conclusion)
+            self.assertIn('任务质量未达标', summary['summary'])
+            self.assertIn('模拟对照一致', summary['operator_tensor']['summary'])
+            self.assertEqual(summary['operator_tensor']['result'], 'simulated')
+            tensor_case = summary['operator_tensor']['cases'][0]
+            self.assertEqual((tensor_case['result'], tensor_case['hardware_target_status']), ('aligned', 'not_evaluated'))
+            self.assertEqual(tensor_case['tolerance'], {'atol': 4, 'rtol': 0})
+            self.assertEqual(summary['token_prediction']['cases'][0]['result'], 'mismatch')
+            self.assertEqual(json.loads(Path(receipt['evidence']['manifest']).read_text())['alignment_summary'], summary)
+            self.assertEqual(bind(Path(previous['path'])), previous)
+            self.assertNotIn('alignment_summary', get(previous))
             self.assertEqual(conclusion['reports'][0]['report'], stage['inputs']['quality_report'])
             self.assertEqual(json.loads(Path(receipt['evidence']['manifest']).read_text())['task_quality_conclusion'], conclusion)
             self.assertNotIn('task_quality_conclusion', get(previous))

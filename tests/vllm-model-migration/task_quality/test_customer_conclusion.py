@@ -191,6 +191,10 @@ class CustomerConclusionTests(unittest.TestCase):
             code, receipt = self.invoke(task, False)
         self.assertEqual(quality.call_count, int(quality_stage is not None))
         self.assertEqual((code, receipt['status'], receipt['success']), (0, 'completed', True))
+        summary = receipt['alignment_summary']
+        self.assertEqual(summary['task_quality'], receipt['task_quality_conclusion'])
+        self.assertEqual(summary['operator_tensor']['result'], 'not_requested')
+        self.assertIn('Token', summary['summary'])
         self.assertEqual(set(receipt['deliverables']), {'accuracy_plan', 'benchmark_plan', 'deployment'})
         for cfg in receipt['deliverables'].values():
             self.assertTrue(sources.bound(cfg))

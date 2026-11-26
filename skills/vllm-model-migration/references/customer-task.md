@@ -108,7 +108,7 @@ subset_list 的 -1 不控制题数。limit 为正整数 N 时取 test.jsonl 的�
 | `tensor_alignment.atol` | 浮点张量逐元素比较的绝对容差，有限非负数 | 指定浮点阈值时与 `rtol` 同时必填 | 无默认值，单独提供一个容差会被拒绝。 |
 | `tensor_alignment.rtol` | 相对于 GPU 参考值幅度的容差，有限非负数 | 指定浮点阈值时与 `atol` 同时必填 | 无默认值。两项都填 `0` 时要求有限浮点元素数值相等。 |
 
-双端浮点阈值按元素计算，满足 `abs(NPU − GPU) ≤ atol + rtol × abs(GPU)` 即通过。在客户回执 `customer-manifest.json` 中，任务质量结论见 `task_quality_conclusion.precision_target`，首个异常 Token 见 `token_alignment[].token_report` 引用的报告，张量误差及坐标见 `tensor_alignment[].tensor_report` 引用的报告。
+双端浮点阈值按元素计算，满足 `abs(NPU − GPU) ≤ atol + rtol × abs(GPU)` 即通过。在客户回执 `customer-manifest.json` 中，`alignment_summary` 并列给出任务质量、Token 预测和算子与张量的结论、范围及缺项。逐题记录保留首个异常 Token、张量超限调用和槽位，详细误差及坐标可追溯到绑定的比较报告。
 
 如果先取得一端的预测包，可以先交给 Agent，再沿用同一运行补交另一端。只开启 Token 对齐也支持这种续接。两次提交须对应同一份质量报告和相同的 Token 容差；可在 `token_alignment[].stage` 引用的回执中核对实际使用的预测包。
 
@@ -220,4 +220,4 @@ work-root/run-id/
 
 退出码：0=计划/安装帮助/安装预览有效或完整交付完成；2=客户字段/顶层引用错误；3=依赖、人工决策、语义复核、AISBench 交付边界或其他未完成；1=执行/证据失败或取消。以 status、steps 和独立回执共同判断，计划 not_run 不表示执行成功。资源状态以原始 verify 回执及本次观察为准，历史 retained 不等于当前存活。
 
-客户汇报首句取自 `task_quality_conclusion.summary`。自动化确认任务质量达标时，检查 `task_quality_conclusion.precision_target` 是否为 `pass`。[客户回执中的任务质量结论](task-quality.md#客户回执中的任务质量结论)
+客户汇报使用 `alignment_summary.summary`，首句给出执行与任务质量结果，再按层列出已定界范围、差异及证据缺口。自动化确认任务质量达标时，检查 `task_quality_conclusion.precision_target` 是否为 `pass`。[客户回执中的三层对齐摘要](task-quality.md#客户回执中的三层对齐摘要)

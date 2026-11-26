@@ -4,6 +4,15 @@
 
 ## 当前验证基准
 
+### 客户总回执的三层结论
+
+在仓库根运行以下离线回归。第一组核对同层不同题、同题不同槽位上的差异与缺项，以及容差变化和单份损坏报告的影响范围。第二组使用公开客户入口完成阻塞交付与旧任务续接，核对终端 JSON 和落盘摘要。续接只调整张量容差，已发布的三个文件仍可核验，模拟张量一致、Token 差异与首轮质量失败同时保留。
+
+```bash
+python3.12 -B -m unittest discover -s tests/vllm-model-migration/tensor_stage_cases -p test_alignment_summary.py -v
+python3.12 -B -m unittest discover -s tests/vllm-model-migration/tensor_stage_cases -p 'test_customer_*.py' -v
+```
+
 ### 单卡 Eager 批次的联合数值采集
 
 同一批次专项覆盖同步与异步身份及数值。异步用例令两个 Future 逆序完成并更换成员行，核对接受的输出序号、被丢弃的候选、延迟写盘与再次 seal。数值测试通过公开入口给两个重复 Token 分配不同 BF16 激活，并读回各自的字节。它还覆盖未知张量轴、密集投影的共享权重、摘要变化、缺少一个成员的 logits、不同物理槽、多请求的 GDN 续块与冷初态、MLA 子批起点和成员预算。全量离线回归 886 项通过，批次专项 27 项通过，独立 `source_contract` 52 项通过。异步专项还覆盖引擎发出 `ENGINE_CORE_DEAD` 后的失败回执。逆序完成由离线用例构造。设备上已观察到的共享前向、在途前向及单前向数值见[异步批次实机记录](MSPROBE_RUNTIME_CAPTURE.md#单卡-eager-的异步批次采集)。
