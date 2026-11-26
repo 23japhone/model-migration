@@ -51,7 +51,7 @@ def quality_fixture(root, baseline=None):
     native = put(root / 'quality-receipt.json', {'task_id':'verify-agent-plus', 'operation':'quality-run',
                  'status':'completed', 'conclusions':{'evaluation_validity':'pass'},
                  'detailed_report':{'hardware':'npu'},'evidence':{'quality_evidence':measurement}})
-    score = {**expected, 'direction':'higher', 'precision_target':'fail', 'comparability':'pass',
+    score = {'target': {'max_drop': expected['gpu_score'] * 0.01}, **expected, 'direction':'higher', 'precision_target':'fail', 'comparability':'pass',
              'unit':'ratio', 'npu_score':0, 'npu_minus_gpu':-expected['gpu_score'], 'drop':expected['gpu_score'],
              'sample_comparison':{'status':'completed', 'items':[{**case, 'gpu_score':1, 'npu_score':0}]}}
     return put(root / 'quality.json', {'task_id':'vllm-precision-compare','operation':'run','status':'completed',

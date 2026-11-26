@@ -3,7 +3,6 @@ import re
 
 from .evidence import bound, path_of
 from .samples import numeric
-from .token_cpu import validate_spec
 from .token_reference import verify_cpu
 from .token_vectors import peak_error, read_step
 
@@ -12,25 +11,20 @@ ROW_ERRORS = (ValueError, TypeError, KeyError, OSError, IndexError, ArithmeticEr
 
 def token_request(req):
     required = {"gpu", "npu", "token_alignment"}
-    if not required <= req.keys() or req.keys() - required - {"cpu", "cpu_model", "case"}:
+    if not required <= req.keys() or req.keys() - required - {"cpu", "cpu_model", "cpu_model_error", "case"}:
         raise ValueError("Token 比较请求字段无效")
     if "case" in req:
         case = req["case"]
         if not isinstance(case, dict) or set(case) != {"subset", "sample_id"}:
             raise ValueError("case 须绑定重跑清单中的子集和题号")
         sample_key(case)
-    if "cpu_model" in req:
-        if "cpu" in req:
-            raise ValueError("cpu 与 cpu_model 只选一种")
-        validate_spec(req["cpu_model"])
-    for role in ("gpu", "npu", "cpu"):
-        if role in req:
-            ref = req[role]
-            if not isinstance(ref, dict) or set(ref) != {"path", "sha256"}:
-                raise ValueError("Token 记录须提供 path 和 sha256")
-            path_of(ref["path"])
-            if not isinstance(ref["sha256"], str) or not re.fullmatch(r"[a-f0-9]{64}", ref["sha256"]):
-                raise ValueError("非法的 SHA256 摘要")
+    for role in ("gpu", "npu"):
+        ref = req[role]
+        if not isinstance(ref, dict) or set(ref) != {"path", "sha256"}:
+            raise ValueError("Token 记录须提供 path 和 sha256")
+        path_of(ref["path"])
+        if not isinstance(ref["sha256"], str) or not re.fullmatch(r"[a-f0-9]{64}", ref["sha256"]):
+            raise ValueError("非法的 SHA256 摘要")
     return tolerances(req["token_alignment"])
 
 

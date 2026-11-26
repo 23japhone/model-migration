@@ -10,6 +10,7 @@ from tempfile import NamedTemporaryFile
 
 from .arguments import verify_arguments
 from .plan import capture_slice
+from .scales import capture_scale
 
 
 def module_path(name):
@@ -105,7 +106,8 @@ class TargetGate:
                 tensor = select_tensor(path, module, io)
                 tensor, region = selected_value(tensor, capture_slice(slot, self.hardware))
                 info = save(self.folder, tensor, len(self.rows))
-                self.rows.append({**info, **source, **region, 'call': call['id'], 'slot': slot['id'], 'argument': path})
+                scale = capture_scale(slot, self.hardware, info, region, lambda key: select_tensor(key, module, io))
+                self.rows.append({**info, **source, **region, **scale, 'call': call['id'], 'slot': slot['id'], 'argument': path})
             except (AttributeError, IndexError, KeyError, OSError, OverflowError, RuntimeError, ValueError, TypeError) as exc:
                 self.errors.append({'call': call['id'], 'slot': slot['id'], 'error': str(exc)})
 
@@ -113,6 +115,8 @@ class TargetGate:
 def select_tensor(path, module, io):
     if path[0] == 'parameters':
         return module.get_parameter(path[1])
+    if path[0] == 'buffers':
+        return module.get_buffer(path[1])
     if path[0] == 'output':
         value = io.output if isinstance(io.output, tuple) else (io.output,)
     else:

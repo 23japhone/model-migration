@@ -12,7 +12,7 @@ def verify_specs(request):
     protocol = request['protocol']
     scopes = set()
     for row in request['scores']:
-        contract.object_fields(row, ('metric', 'subset', *SCORE_FIELDS))
+        contract.object_fields(row, ('metric', 'subset', *SCORE_FIELDS), ('scale_type',))
         name, subset = row['metric'], row['subset']
         contract.name(name)
         if subset is not None and subset not in protocol['subsets']:
@@ -21,6 +21,10 @@ def verify_specs(request):
             raise ValueError('指标比较范围重复')
         scopes.add((name, subset))
         expected = {key: row[key] for key in SCORE_FIELDS}
+        if 'scale_type' in row:
+            expected['scale_type'] = row['scale_type']
+            if row['scale_type'] not in ('ratio', 'interval'):
+                raise ValueError('指标 scale_type 须为 ratio 或 interval')
         if expected != protocol['metrics'].get(name):
             raise ValueError('指标请求与冻结协议定义不同')
         contract.metric({key: row[key] for key in ('selector', 'unit', 'direction')})

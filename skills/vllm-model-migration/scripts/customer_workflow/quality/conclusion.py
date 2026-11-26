@@ -7,7 +7,7 @@ from coordination.runtime import sources
 TASK_STATUS = {'running': '任务执行中', 'completed': '任务已完成', 'blocked': '任务受阻塞',
                'failed': '任务执行失败', 'not_run': '任务未执行'}
 SCORE_FIELDS = ('subset', 'metric', 'comparability', 'precision_target', 'gpu_score', 'npu_score',
-                'unit', 'direction', 'npu_minus_gpu', 'drop', 'target', 'reasons')
+                'unit', 'direction', 'npu_minus_gpu', 'drop', 'target', 'target_source', 'target_evidence', 'reasons')
 
 
 def checked_report(entry, steps):
@@ -36,7 +36,10 @@ def measurements(report):
             raise ValueError('质量报告缺少对应的目标评分项')
         if outcome == 'pass' and targets != {'pass'}:
             raise ValueError('质量报告的通过结论未覆盖全部约定目标')
-    return {'precision_target': outcome, 'scores': scores}
+    result = {'precision_target': outcome, 'scores': scores}
+    if 'comparison_basis' in report:
+        result['comparison_basis'] = report['comparison_basis']
+    return result
 
 
 def reasons(values):
@@ -160,5 +163,6 @@ def summarize(status, entries, steps, requested, baselines=()):
     lines = [f'{TASK_STATUS[status]}，{headline}']
     for item in reports:
         details = item.get('missing') or [describe(row) for row in item['scores']]
-        lines.append((item['dataset'] or 'GPU 基线') + '，' + '。'.join(details))
+        basis = '，按客户提供的基线比较' if item.get('comparison_basis') == 'customer_provided' else ''
+        lines.append((item['dataset'] or 'GPU 基线') + basis + '，' + '。'.join(details))
     return {'precision_target': target, 'summary': '。'.join(lines) + '。', 'reports': reports}

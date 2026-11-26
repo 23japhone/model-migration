@@ -84,22 +84,19 @@ class TokenComparison(unittest.TestCase):
                 "position": 2, "raw_logits": [1.6094379124341003, 0, 0, 0],
                 "processed_probs": [0.625, 0.125, 0.125, 0.125], "evidence_kind": "analytical_synthetic"}
 
-    def test_cpu_at_first_suspect(self):
+    def test_legacy_cpu_is_ignored_even_if_its_file_disappears(self):
         npu = patched(FIXTURE["test_cases"][3]["npu_patch"])
-        result = self.compare(npu, cpu=self.oracle())
-        self.assertEqual(result["result"], "mismatch")
-        check = result["cpu_check"]
-        self.assertEqual(check["position"], 2)
-        self.assertEqual(check["gpu"]["raw_logits"]["max_abs_error"], 0)
-        self.assertEqual(check["npu"]["raw_logits"]["max_abs_error"], 0.25)
-        self.assertEqual(check["npu"]["processed_scores"]["within_tolerance"], True)
-
-    def test_wrong_cpu_prefix_keeps_pair_result(self):
-        npu = patched(FIXTURE["test_cases"][3]["npu_patch"])
-        cpu = dict(self.oracle(), prefix_token_ids=[0, 1, 0])
-        result = self.compare(npu, cpu=cpu)
-        self.assertEqual(result["first_anomalous_token"], 2)
-        self.assertEqual(result["cpu_check"]["status"], "not_evaluated")
+        req = self.request(patched([]), npu, self.oracle())
+        Path(req["cpu"]["path"]).unlink()
+        code, report = self.invoke(req)
+        self.assertEqual(code, 0, report)
+        self.assertEqual(report["result"], "mismatch")
+        self.assertEqual(report["validity"], "valid")
+        self.assertEqual(report["cpu_check"]["status"], "unavailable")
+        self.assertEqual(report["cpu_check"]["position"], 2)
+        self.assertEqual(report["cpu_check"]["attempts"], [])
+        self.assertIsNone(report["cpu_check"]["gpu"])
+        self.assertNotIn("cpu", report["evidence"])
 
     def test_plan_validates_shape_without_opening_sources(self):
         req = self.request(patched([]), patched([]))
@@ -194,7 +191,7 @@ class TokenComparison(unittest.TestCase):
         identity = hashlib.sha256(json.dumps(files, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
         spec = {"root": str(model_dir), "model_identity": identity, "files": files,
                 "weight_files": ["model.safetensors", "original/consolidated.00.pth"], "plain_greedy": True}
-        req = self.request(patched([]), patched(FIXTURE["test_cases"][3]["npu_patch"]))
+        req = self.request(patched([]), patched(FIXTURE["test_cases"][3]["npu_patch"]), self.oracle())
         req["cpu_model"] = spec
         code, result = self.invoke(req)
         self.assertEqual(code, 0, result)
@@ -202,17 +199,19 @@ class TokenComparison(unittest.TestCase):
         self.assertEqual(check["status"], "completed", check)
         self.assertEqual(check["model_identity"], identity)
         self.assertEqual(check["device"], "cpu")
+        self.assertEqual(check["dtype"], "float32")
+        self.assertEqual(check["attempts"], [{"dtype": "float32", "status": "completed"}])
         self.assertEqual(check["position"], 2)
         self.assertEqual(check["gpu"]["raw_logits"]["max_abs_error"], 1.6094379124341003)
         self.assertEqual(check["gpu"]["processed_scores"]["max_abs_error"], 0.375)
         spec["plain_greedy"] = False
         _, result = self.invoke(req)
-        self.assertEqual(result["cpu_check"]["gpu"]["processed_scores"]["status"], "not_evaluated")
+        self.assertEqual(result["cpu_check"]["gpu"]["processed_scores"]["status"], "unavailable")
         self.assertIn("max_abs_error", result["cpu_check"]["gpu"]["raw_logits"])
         (model_dir / "model.safetensors").write_bytes(b"replaced")
         _, result = self.invoke(req)
         self.assertEqual(result["result"], "mismatch")
-        self.assertEqual(result["cpu_check"]["status"], "not_evaluated")
+        self.assertEqual(result["cpu_check"]["status"], "unavailable")
         req["npu"] = req["gpu"]
         _, result = self.invoke(req)
         self.assertEqual(result["cpu_check"]["status"], "not_applicable")

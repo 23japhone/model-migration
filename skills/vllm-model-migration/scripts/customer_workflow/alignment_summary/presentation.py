@@ -36,10 +36,18 @@ def verdict(by_kind, incomplete):
     return 'aligned' if runtime else 'not_triggered'
 
 
-def case_gap(row):
+def direct_verdict(totals, incomplete):
+    if totals['mismatch']:
+        return 'mismatch'
+    if incomplete:
+        return 'insufficient_evidence'
+    return 'aligned' if totals['aligned'] else 'not_triggered'
+
+
+def case_gap(row, direct):
     if bucket(row) in ('insufficient_evidence', 'input_mismatch'):
         return row.get('reason') or '缺少可判定的逐题比较或容差'
-    if row.get('evidence_kind') == 'unspecified':
+    if not direct and row.get('evidence_kind') == 'unspecified':
         return 'GPU/NPU 双端运行或模拟来源未核实'
     unassessed = [f"{call['call']}.{slot}" for call in row.get('calls', []) for slot in call['unassessed']]
     if unassessed:
@@ -118,10 +126,10 @@ class Layer:
     def gap(self, scope, reason, **details):
         self.gaps.append({**scope, **details, 'reason': reason})
 
-    def finish(self, inactive=None):
+    def finish(self, inactive=None, *, direct=False):
         gaps = list(self.gaps)
         for row in self.cases:
-            reason = case_gap(row)
+            reason = case_gap(row, direct)
             if reason:
                 gaps.append({**{k: row[k] for k in ('dataset', 'subset', 'sample_id', 'quality_report')}, 'reason': reason})
         by_kind = counts(self.cases)
@@ -130,7 +138,7 @@ class Layer:
         unknown = bool(self.gaps) or inactive is not None
         coverage = {'expected': None if unknown else len(self.cases), 'known': len(self.cases),
                     'cases_with_gaps': len(gaps) - len(self.gaps), 'by_result': totals, 'by_evidence_kind': by_kind}
-        result = inactive or verdict(by_kind, bool(gaps))
+        result = inactive or (direct_verdict(totals, gaps) if direct else verdict(by_kind, bool(gaps)))
         summary = diagnostic_text(self, result, coverage, gaps)
         return {'result': result, 'summary': summary, 'coverage': coverage, 'cases': self.cases,
                 'gaps': gaps, 'reports': self.reports}

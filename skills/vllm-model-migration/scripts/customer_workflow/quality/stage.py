@@ -39,20 +39,14 @@ def run_one(session, task, observed, supplied, work_root, candidate, index):
             raise ValueError('质量测量等待已验证部署回执')
         public_gpu = candidate['gpu_evidence'] if 'discovery' in candidate else None
         plan = prepare(baseline, task, observed, session.parent / 'quality' / key, public_gpu=public_gpu)
-        if 'discovery' in candidate:
-            issues = selection.mismatches(candidate, plan['protocol'])
-            if issues:
-                raise ValueError('自动基线与 NPU 条件存在差异：' + '、'.join(issues))
-            static = candidate.get('static_conditions')
-            if not static:
-                raise ValueError('自动基线缺少静态模板与生成配置依据')
-            plan['native_request']['expected_static_conditions'] = static
     except (*sources.ERRORS, RuntimeError) as error:
         if 'discovery' not in candidate:
             raise
         return selection.unresolved(session, key, [str(error)], candidate['discovery'], baseline['dataset'])
     session.step(key, 'prepared', preparation_seconds=monotonic() - started)
-    gpu = candidate.get('gpu_evidence') or plan.get('gpu_evidence')
+    gpu = candidate.get('gpu_evidence')
+    if not gpu and any(not item.get('target') for item in baseline['scores']):
+        gpu = plan.get('gpu_evidence')
     candidates = list(plan.get('candidates', []))
     if any(key in task['accuracy'] for key in ('token_alignment', 'tensor_alignment')):
         from .resume import prior_candidate
@@ -64,6 +58,8 @@ def run_one(session, task, observed, supplied, work_root, candidate, index):
     candidates.extend(recovery.evaluations(session.value).values())
     request = {'schema_version': '1.0', 'baseline': baseline, 'native_request': plan['native_request'],
                'candidates': list(unique(candidates))}
+    if 'discovery' in candidate:
+        request['baseline_source'] = 'publisher'
     if gpu:
         request['gpu_evidence'] = gpu
     return execute(session, key, 'vllm-precision-align', request, work_root, action='quality')
@@ -105,6 +101,5 @@ def compare_all(session, task, observations, supplied, work_root, guarded):
     if 'token_alignment' in task['accuracy']:
         from ..token_alignment import stage
         stage.compare_all(session, task['accuracy']['token_alignment'], supplied, work_root, guarded)
-    if 'tensor_alignment' in task['accuracy']:
-        from ..tensor_alignment.stage import compare_all as compare_tensors
-        compare_tensors(session, task['accuracy']['tensor_alignment'], supplied, work_root, guarded)
+    from ..tensor_alignment.stage import compare_all as compare_tensors
+    compare_tensors(session, task['accuracy'].get('tensor_alignment'), supplied, work_root, guarded)

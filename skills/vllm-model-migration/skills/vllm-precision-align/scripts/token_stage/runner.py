@@ -34,14 +34,6 @@ def validate(request):
     return request
 
 
-def rows_need_cpu_model(selected, indexed):
-    for item in selected['cases']:
-        entries = [indexed.get((side, case_key(item))) for side in ('gpu', 'npu')]
-        if all(entries) and not any(entry.get('cpu') for entry in entries):
-            return True
-    return False
-
-
 def run(request, work_root, run_id, action):
     source = request['quality_report']
     report = bound(source)
@@ -64,8 +56,8 @@ def run(request, work_root, run_id, action):
         fresh, issues = index_bundles([measurement['bundle']], source['sha256'], keys)
         indexed.update(fresh)
         uncovered.extend(issues)
-    cpu_model = optional_model(request, report, native) if rows_need_cpu_model(selected, indexed) else None
-    rows = [process_case(case, index, indexed, attempt, request, cpu_model)
+    cpu_inputs = optional_model(request, report, native)
+    rows = [process_case(case, index, indexed, attempt, request, cpu_inputs)
             for index, case in enumerate(selected['cases'])]
     state = aggregate(rows, selected) if failures else 'not_triggered'
     payload = {'schema_version': '1.0', 'task_id': 'vllm-precision-align', 'operation': action,

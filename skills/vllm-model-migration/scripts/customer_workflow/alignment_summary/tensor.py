@@ -33,8 +33,6 @@ def call_coverage(call, measured_slots):
 def checked_measurements(report, plan):
     result = report['result']
     require(result in {'aligned', 'mismatch', 'insufficient_evidence', 'not_evaluated'}, '未知双端张量结果')
-    cpu = report.get('cpu_check', {})
-    require(isinstance(cpu, dict), 'CPU 参考结果格式无效')
     planned, observed = keyed(plan['calls'], 'id'), keyed(report['calls'], 'id')
     require(observed.keys() <= planned.keys(), '报告含计划以外的调用')
     calls = [call_coverage(call, observed.get(name, {}).get('slots', [])) for name, call in planned.items()]
@@ -64,15 +62,10 @@ def measured(row, upstream, policy, plan):
         kind = 'synthetic'
     elif upstream['evidence_kind'] != 'runtime' and kind == 'runtime':
         kind = 'unspecified'
-    hardware = report.get('hardware_target_status', 'not_evaluated') if kind == 'runtime' else 'not_evaluated'
-    require(hardware in ('pass', 'fail', 'not_evaluated'), '硬件目标状态无效')
-    if hardware == 'pass':
-        require((report['result'], report['cpu_check']['common_reference']) == ('aligned', 'aligned'),
-                '硬件通过结论缺少双端一致和共同 CPU 参考')
+    cpu = report.get('cpu_check')
     detail = {**fields(report, ('result', 'first_exceedance', 'capture_status', 'coverage', 'scope_uncovered',
                               'target_status')), 'calls': checked_measurements(report, plan),
-            'cpu_check': report.get('cpu_check', {'common_reference': 'not_evaluated'}),
-            'hardware_target_status': hardware,
+            'cpu_check': cpu if isinstance(cpu, dict) else {'common_reference': 'not_evaluated'},
             'comparison': row['comparison'], 'evidence_kind': kind, 'tolerance': policy}
     if report['result'] == 'not_evaluated' and not policy:
         detail['reason'] = '已有双端比较，本次未指定张量容差'

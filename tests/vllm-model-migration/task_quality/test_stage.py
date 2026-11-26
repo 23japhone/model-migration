@@ -52,15 +52,36 @@ class MeasurementSelectionTests(unittest.TestCase):
             select(self.native, [], self.invoke, require_reuse=True)
         self.invoke.assert_not_called()
 
-    def test_incomplete_static_settings_or_missing_total_try_other_candidates(self):
+    def test_missing_total_tries_next_valid_candidate_without_template(self):
         missing_template = self.artifact('partial-template', {'scores': [self.row]})
         missing_total = self.artifact('partial-score', {'static_conditions': self.static, 'scores': []})
-        complete = self.invoke.return_value
-        self.invoke.side_effect = [(self.receipt, missing_template), (self.receipt, missing_total), complete]
-        candidates = [self.artifact(str(i), {}) for i in range(3)]
+        self.invoke.side_effect = [(self.receipt, missing_total), (self.receipt, missing_template)]
+        candidates = [self.artifact(str(i), {}) for i in range(2)]
         result = select(self.native, candidates, self.invoke)
         self.assertEqual(result['receipt'], candidates[-1])
         self.assertTrue(all(call.args[0] == 'analyze' for call in self.invoke.call_args_list))
+
+    def test_verified_partial_survives_unavailable_fresh_run_or_reuse_only(self):
+        self.native['scores'].append({'metric':'missing','subset':None})
+        pair = self.invoke.return_value
+        for reuse in (False, True):
+            invoke = Mock(side_effect=[pair, ValueError('local runner unavailable')])
+            selected = select(self.native, [self.original], invoke, require_reuse=reuse)
+            self.assertEqual(('reused', self.original, pair[1]),
+                             (selected['source'], selected['receipt'], selected['measurement']))
+            self.assertEqual([{'metric':'missing','subset':None}], selected['candidate_checks'][0]['missing_scores'])
+            self.assertEqual(1 if reuse else 2, invoke.call_count)
+            if not reuse:
+                self.assertIn('local runner unavailable', selected['measurement_fallback_reason'])
+
+    def test_later_complete_history_precedes_partial_and_rerun(self):
+        self.native['scores'].append({'metric':'other','subset':None})
+        full = self.artifact('complete', {'scores':[self.row, {**self.row,'metric':'other'}]})
+        second = self.artifact('later',{})
+        self.invoke.side_effect = [self.invoke.return_value, (self.receipt, full)]
+        result = select(self.native, [self.original, second], self.invoke)
+        self.assertEqual(second, result['receipt'])
+        self.assertEqual(['analyze','analyze'], [call.args[0] for call in self.invoke.call_args_list])
 
     def test_invalid_candidate_does_not_hide_later_valid_one(self):
         bad = self.artifact('corrupt', {})
@@ -98,7 +119,7 @@ class DiscoveredSourceRecheckTests(unittest.TestCase):
                            'files':{item['path']:item['sha256'] for item in (cfg,report,review)}})
         index = self.save('index',{'format':'evalscope-gpu-history-v1','source':origin,'config':cfg,
                                   'report':report,'reviews':{'main':review}})
-        self.request = {'native_request':{'expected_static_conditions':self.static,'protocol':self.protocol,
+        self.request = {'baseline_source':'publisher','native_request':{'protocol':self.protocol,
                         'scores':[{'metric':'acc','subset':None}]},'gpu_evidence':index,
                         'baseline':{'evaluator':'evalscope','dataset':'demo','scores':[{'metric':'acc','gpu_score':0}]}}
 
@@ -131,7 +152,7 @@ class DiscoveredSourceRecheckTests(unittest.TestCase):
         self.stage(False)
 
     def test_missing_or_changed_attachments_skip_before_inference(self):
-        for name in ('cfg','origin','report','review'):
+        for name in ('cfg','origin','report'):
             with self.subTest(name=name):
                 path = self.root/(name+'.json')
                 original = path.read_bytes()
@@ -160,8 +181,12 @@ class DiscoveredSourceRecheckTests(unittest.TestCase):
         self.request['baseline']['scores'][0]['gpu_score'] = 1
         self.stage(False)
 
+    def test_published_aggregate_scope_must_match_its_own_source(self):
+        self.request['baseline']['subset_list'] = ['other']
+        self.stage(False)
+
     def test_automatic_without_gpu_archive_skips_explicit_baseline_still_runs(self):
         self.request.pop('gpu_evidence')
         self.stage(False)
-        self.request['native_request'].pop('expected_static_conditions')
+        self.request.pop('baseline_source')
         self.stage(True)

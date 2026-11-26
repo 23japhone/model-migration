@@ -31,13 +31,15 @@ def json_text(value):
 
 def request(value):
     mandatory = {"baseline", "measurement", "receipt", "source"}
-    if not mandatory <= value.keys() or value.keys() - mandatory - {"gpu_evidence", "verification"}:
+    if not mandatory <= value.keys() or value.keys() - mandatory - {"gpu_evidence", "verification", "baseline_source"}:
         raise ValueError("比较请求字段无效")
     for key in ("measurement", "receipt", "verification", "gpu_evidence"):
         if key in value:
             path_of(value[key])
     if value["source"] not in ("reused", "rerun"):
         raise ValueError("NPU 成绩来源无效")
+    if value.get("baseline_source", "customer_provided") not in ("customer_provided", "publisher"):
+        raise ValueError("GPU 分数来源无效")
     baseline = value["baseline"]
     if not isinstance(baseline, dict) or not isinstance(baseline.get("scores"), list) or not baseline["scores"]:
         raise ValueError("缺少待比较的指标")
@@ -47,7 +49,16 @@ def omitted(value):
     return value is None or type(value) is int and value == -1
 
 
-def normalize_baseline(baseline):
+def normalize_score(item, basis):
+    if not isinstance(item, dict) or not isinstance(item.get("metric"), str) or not item["metric"].strip():
+        raise ValueError("GPU 分数缺少指标")
+    if basis != "publisher" or item["gpu_score"] is not None:
+        numeric(item["gpu_score"])
+    return {key: value for key, value in item.items()
+            if key not in ("subset", "target", "sample_results") or not omitted(value)}
+
+
+def normalize_baseline(baseline, basis):
     required = ("dataset", "evaluator")
     if any(not isinstance(baseline.get(key), str) or not baseline[key].strip() for key in required):
         raise ValueError("GPU 基线须指定 benchmark 和数据集")
@@ -55,11 +66,7 @@ def normalize_baseline(baseline):
     normalized = []
     scopes = set()
     for item in baseline["scores"]:
-        if not isinstance(item, dict) or not isinstance(item.get("metric"), str) or not item["metric"].strip():
-            raise ValueError("GPU 分数缺少指标")
-        numeric(item.get("gpu_score"))
-        score = {key: value for key, value in item.items()
-                 if key not in ("subset", "target", "sample_results") or not omitted(value)}
+        score = normalize_score(item, basis)
         scope = score.get("subset"), score["metric"]
         if scope in scopes:
             raise ValueError("客户基线重复声明相同指标与作用范围")
@@ -88,14 +95,16 @@ def run(req, request_ref):
     refs["request"] = request_ref
     historical = None
     issues = []
-    if "gpu_evidence" in req:
+    public = req.get("baseline_source") == "publisher"
+    needs_limit = any(not item.get("target") for item in req["baseline"]["scores"])
+    if "gpu_evidence" in req and (public or needs_limit):
         try:
             historical, gpu_refs = gpu_evidence(req["gpu_evidence"])
             refs.update(gpu_refs)
         except (OSError, ValueError, TypeError, AttributeError, KeyError) as error:
             issues.append("GPU 历史来源不可用：" + str(error))
-    else:
-        issues.append("缺少同次 GPU 历史证据")
+    elif public:
+        issues.append("缺少公开 GPU 分数来源")
     return compare(req, measured, historical, refs, issues)
 
 
@@ -132,7 +141,7 @@ def operation_for(action, value):
         token.token_request(value)
         return token.run
     request(value)
-    value["baseline"] = normalize_baseline(value["baseline"])
+    value["baseline"] = normalize_baseline(value["baseline"], value.get("baseline_source"))
     return run
 
 

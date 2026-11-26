@@ -8,7 +8,7 @@ python3 "$MIGRATION_SKILL_ROOT/skills/vllm-precision-align/skills/vllm-precision
 
 ## 输入与范围
 
-`plan`、`gpu`、`npu` 是绝对路径和 SHA256 的对象。提供一端时执行该端实物预检，双端齐备时逐调用比较。必填的 `tensor_alignment` 接受空对象或一对有限非负的 `atol`、`rtol`。
+`plan`、`gpu`、`npu` 是绝对路径和 SHA256 的对象。提供一端时执行该端实物预检，双端齐备时逐调用比较。可选的 `tensor_alignment` 接受 `atol`、`rtol` 两个有限非负字段。省略该对象、使用空对象或只提供一项时，按实际张量 dtype 补齐缺项。
 
 `tensor-plan-v1` 绑定单题 `case={subset,sample_id}`、权重身份 `model_identity`、一基输出序号 `position`、`prompt_token_ids` 和包含 prompt 及前面所有已接受 Token 的 `prefix_token_ids`。每项 `calls[]` 指定唯一 `id`、`kind=module|api`、零基 `occurrence`、两端物理 `{owner,name}` 和共同的 `slots[]`。每个槽位以唯一 `id`、`role=input|weight|state|output` 及两端实际参数路径登记。位置参数、关键字、模块参数、多返回值和原地修改后的参数分别使用 `input_args`、`input_kwargs`、`parameters`、`output`、`post_input_args` 和 `post_input_kwargs`。输出路径按实际嵌套索引取值，例如 `["output",0]`。作用域须与该题异常位置对应的实际计算相符。
 
@@ -24,15 +24,29 @@ python3 "$MIGRATION_SKILL_ROOT/skills/vllm-precision-align/skills/vllm-precision
 
 `tensors[]` 每项指明 `call`、`slot`、相对该包目录的 `path`、`sha256`、实际 `shape`、`dtype`（如 `bfloat16`）和 `layout="strided"`。支持单张量 `.pt`（`torch.load(weights_only=True,map_location="cpu")`）及 `.npy`（`allow_pickle=False`）。离散数据保持原 dtype；量化模块需要明确作用范围内的实际编码、比例等状态。稀疏、复数和 PyTorch 量化张量在当前比较器中记为未覆盖。引用路径不得越界或经过符号链接。
 
-`evidence_kind=runtime` 必须有绑定摘要的相对 `native_index` 引用。该文件的格式为 `tensor-native-index-v1`，记录实际设备、计划摘要、rank、前向 ID、张量清单和 `execution`。后者绑定 trace ID、引擎内部请求 ID、零基输出索引、输入 ID 与位置、实际预测行、单卡同步 Eager 和单请求条件。各张量记录包含 msProbe 的 `native_name`、`native_parent`、`occurrence`、实参 `argument` 和整个前向内的 `ordinal`。计划声明的 `scalar_args`、`arguments_complete` 也要与原生记录一致。提供 `native_frame` 时重读并核验其执行身份、有效行和张量清单。每个 runtime 包使用独立采集目录，目录内递归发现的张量文件须与清单一致。
+采集器可附带绑定摘要的相对 `native_index` 引用。提供该索引的包均核验其字节和前向身份。该文件的格式为 `tensor-native-index-v1`，记录实际设备、计划摘要、rank、前向 ID、张量清单和 `execution`。后者绑定 trace ID、引擎内部请求 ID、零基输出索引、输入 ID 与位置、实际预测行、单卡同步 Eager 和单请求条件。各张量记录包含 msProbe 的 `native_name`、`native_parent`、`occurrence`、实参 `argument` 和整个前向内的 `ordinal`。计划声明的 `scalar_args`、`arguments_complete` 也要与原生记录一致。提供 `native_frame` 时重读并核验其执行身份、有效行和张量清单。带原生索引的包使用独立采集目录，目录内递归发现的张量文件须与清单一致。
 
-每个 runtime 包还需由目标 worker 记录 `execution.versions`。其中 `torch`、`vllm`、`msprobe` 三个实际版本字符串须逐项匹配计划的 `runtime_versions[hardware]`。
+原生索引还需由目标 worker 记录 `execution.versions`。其中 `torch`、`vllm`、`msprobe` 三个实际版本字符串须逐项匹配计划的 `runtime_versions[hardware]`。
 
-构造的测试包请标记 `evidence_kind=synthetic`。测试包同样核对计划和逐文件字节、dtype、shape 及数值；报告保留每端来源。只要有一端使用构造数据，实机目标 `hardware_target_status` 即记为 `not_evaluated`。
+`evidence_kind` 记录每端采集来源。所有标签使用相同的计划绑定、字节摘要、dtype、形状和数值判定。
 
 ## 数值判定与 CPU 参考
 
-双端浮点比较以 GPU 数值为参考。每个有限元素满足 `abs(npu-gpu) <= atol + rtol*abs(gpu)` 时通过。等于边界计作通过。整数、索引和布尔值逐项精确核对。有效区域为空时给出未评估。两端实物各自符合声明后，规范化形状或 dtype 仍不同时，记录结构性超限。缺少浮点阈值时仍报告可测的最大绝对差和坐标。
+双端浮点比较以 GPU 数值为参考。每个有限元素满足 `abs(npu-gpu) <= atol + rtol*abs(gpu)` 时通过。等于边界计作通过。整数、索引和布尔值逐项精确核对。有效区域为空时给出未评估。两端实物各自符合声明后，规范化形状或 dtype 仍不同时，记录结构性超限。逐槽报告的 `tolerances` 给出有效阈值。客户给出的浮点阈值覆盖对应默认项，显式零有效。
+
+| 实际 dtype | 默认 atol | 默认 rtol |
+|---|---:|---:|
+| FP64 | 1e-7 | 1e-7 |
+| FP32 | 1e-5 | 1.3e-6 |
+| FP16 | 1e-5 | 1e-3 |
+| BF16 | 1e-5 | 1.6e-2 |
+| FP8 E4M3FN | s × 2⁻⁹ | 0.125 |
+| FP8 E5M2 | s × 2⁻¹⁶ | 0.25 |
+| 整数、索引、布尔 | 0 | 0 |
+
+FP8 初值待实机校准。编码张量的实际值为编码值乘以本端反量化乘数。默认绝对容差中的 `s` 取 GPU 同位置乘数，无缩放时取 1。两个设备的乘数可以不同。槽位或张量记录可设置 `fp8_scaled: true` 声明需要比例。只有单侧使用缩放时，槽位可写 `"fp8_scaled":{"gpu":true,"npu":false}`。缺失时报告设备、调用和槽位。张量记录的 `fp8_scale` 可以是正数，或是例如 `{"block_shape":[2],"values":[0.5,2]}` 的逐块乘数。块形状和行优先的比例网格绑定落盘张量范围，与张量一起执行布局变换。FP8 模型中实际为 BF16 的张量使用 BF16 行。缩放接近 FP64 指数极限时，双端判定使用编码值与实际乘数的精确有理数运算，避免下溢把超限误判为零。
+
+原生采集可在槽位用 `fp8_scale_source` 为需要缩放的每端绑定实际比例实参。例如 `{"gpu":{"path":["buffers","weight_scale"]},"npu":{"path":["input_args",2],"block_shape":[128,128]}}`。钩子从同一调用记录实际比例，标量比例直接读取，块比例须与原始形状的逐轴网格相符。
 
 CPU 独立对照按调用配置 `cpu_reference`。例如线性层可用 `{"op":"linear","inputs":{"x":"activation","weight":"kernel","bias":"bias"},"output":"result"}`。这些名称须绑定本调用已核验的槽位。当前数学定义和实参如下。
 
@@ -57,7 +71,7 @@ CPU 独立对照按调用配置 `cpu_reference`。例如线性层可用 `{"op":"
 
 ## 回执
 
-- 单端预检返回 `result=awaiting_peer`。检查 `capture_status=complete|incomplete` 以及 `coverage.<端>.expected_slots/verified_slots/missing/issues` 后判断能否继续。零匹配和损坏的原件均留在覆盖清单中。
-- 双端结果 `result=aligned|mismatch|insufficient_evidence|not_evaluated` 仅针对 GPU 和 NPU 的数值比较。已核验的超限项保留为 `mismatch`，其他未匹配记录继续列出。双端相符时，CPU 对两端都可能报超限，独立见 `cpu_check`。综合目标见 `target_status`；共同参考、覆盖或阈值不全时，已有证据不会产生整体通过。
+- 单端预检返回 `result=insufficient_evidence`，`missing_devices` 列出待补的设备。检查 `capture_status=complete|incomplete` 以及 `coverage.<端>.expected_slots/verified_slots/missing/issues` 后判断能否继续。零匹配和损坏的原件均留在覆盖清单中。
+- 双端实物完整且全部通过时返回 `result=aligned, target_status=pass`。有任何已确认超限或结构差异时返回 `result=mismatch, target_status=fail` 并保留其余缺项。未确认超限且证据不全时返回 `result=insufficient_evidence, target_status=not_evaluated`。CPU 误差、偏离方向和未覆盖输出独立列在 `cpu_check`。
 - 每个调用列出按输入、权重、状态、输出汇总的 `roles`、逐槽 `slots`、原件 `sources` 和双端执行序号。数值报告包含最大有限绝对误差、坐标、两端值、首个超限、超限数和比例、非有限计数及首个非有限位置。非有限数值使用字符串 `nan`、`inf`、`-inf`。双端可核实的实际调用顺序一致时，`first_exceedance` 指出已比较范围内最早的超限调用。`largest_error` 单列最大有限绝对误差。
 - 正常写出报告返回 0；非法请求、计划或顶层来源身份错误返回 2。单个文件缺失或损坏写入覆盖清单，同一请求仍可查已完成的比较。

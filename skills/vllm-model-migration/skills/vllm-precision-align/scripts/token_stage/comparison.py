@@ -3,39 +3,24 @@ import sys
 
 from alignment.evidence import EvidenceError, read, ref, safe, write
 from alignment.process import call
-from alignment.request import reference, release_skill
+from alignment.request import release_skill
 from .bundles import DATA_ERRORS, reproduce
 from .selection import case_key
 
 RESULTS = {'aligned', 'mismatch', 'early_stop', 'stop_reason_mismatch', 'input_mismatch', 'insufficient_evidence'}
 
 
-def comparison_request(entries, tolerances, cpu_model):
+def compare_case(directory, entries, tolerances, cpu_inputs):
     request = {'case': {k: entries['gpu'][k] for k in ('subset', 'sample_id')},
-               'token_alignment': tolerances, 'gpu': entries['gpu']['record'], 'npu': entries['npu']['record']}
-    cpu_issue = None
-    cpu = [entry['cpu'] for entry in entries.values() if entry.get('cpu')]
-    if cpu:
-        try:
-            reference(cpu[0])
-            if any(other != cpu[0] for other in cpu):
-                raise ValueError('两端给出的 CPU 参考不一致')
-            request['cpu'] = cpu[0]
-        except DATA_ERRORS as error:
-            cpu_issue = safe(error)
-    elif cpu_model:
-        request['cpu_model'] = cpu_model
-    return request, cpu_issue
-
-
-def compare_case(directory, entries, tolerances, cpu_model):
-    request, cpu_issue = comparison_request(entries, tolerances, cpu_model)
+               'token_alignment': tolerances, 'gpu': entries['gpu']['record'], 'npu': entries['npu']['record'],
+               **cpu_inputs}
     path = directory / 'request.json'
     output = directory / 'comparison.json'
     write(path, request)
     cli = release_skill('vllm-precision-compare') / 'scripts/compare.py'
     args = [sys.executable, '-B', str(cli), '--action', 'token', '--request', str(path), '--output', str(output)]
-    code, message = call(args, 14400, directory, 'compare')
+    # CPU 复算独享四小时的子进程预算，外层还须读取双端预测并交付最终回执。
+    code, message = call(args, 15000, directory, 'compare')
     if code:
         raise ValueError('公开 Token 比较失败：' + safe(message[:400]))
     report = read(output)
@@ -46,8 +31,6 @@ def compare_case(directory, entries, tolerances, cpu_model):
         raise ValueError('Token 比较结果或请求引用无效')
     if any(report['evidence'].get(side) != request[side] for side in ('gpu', 'npu')):
         raise ValueError('Token 比较回执未绑定当前 GPU/NPU 记录')
-    if cpu_issue:
-        report['cpu_check'] = {'status': 'not_evaluated', 'reason': cpu_issue}
     return report, ref(output)
 
 
@@ -60,10 +43,10 @@ def verify_case_identity(report, key, kinds):
             raise ValueError('预测包与记录的实际/模拟来源不符：' + side)
 
 
-def process_case(case, index, indexed, directory, request, cpu_model):
+def process_case(case, index, indexed, directory, request, cpu_inputs):
     key = case_key(case)
     entries = {device: indexed.get((device, key)) for device in ('gpu', 'npu')}
-    row = {**case, 'result': 'insufficient_evidence', 'first_anomalous_token': None,
+    row = {**case, 'result': 'insufficient_evidence', 'first_anomalous_token': None, 'validity': 'not_evaluated',
            'evidence_kind': {side: e['evidence_kind'] for side, e in entries.items() if e}}
     missing = [side for side, entry in entries.items() if not entry]
     if missing:
@@ -73,9 +56,9 @@ def process_case(case, index, indexed, directory, request, cpu_model):
     child = directory / f'case-{index}'
     child.mkdir()
     try:
-        report, source = compare_case(child, entries, request['token_alignment'], cpu_model)
+        report, source = compare_case(child, entries, request['token_alignment'], cpu_inputs)
         verify_case_identity(report, key, row['evidence_kind'])
-        row.update({k: report[k] for k in ('result', 'reason', 'first_anomalous_token', 'first_missing_token',
+        row.update({k: report[k] for k in ('result', 'reason', 'validity', 'first_anomalous_token', 'first_missing_token',
                                            'stop_after_tokens', 'covered_tokens', 'cpu_check') if k in report})
         row['comparison'] = source
     except EvidenceError:

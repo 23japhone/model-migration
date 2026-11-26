@@ -38,8 +38,8 @@ def checked_failed_rows(report):
     actual = {(row['dataset'], row['subset'], row['metric']) for row in declared['failed_scores']}
     if not rows or actual != expected or declared.get('requires_separate_run') is not True:
         raise ValueError('质量交接与未达标项不符')
-    if any(row.get('comparability') != 'pass' or row.get('direction') not in ('higher', 'lower') for row in rows):
-        raise ValueError('质量失败项不可比或指标方向未知')
+    if any(row.get('direction') not in ('higher', 'lower') for row in rows):
+        raise ValueError('质量失败项的指标方向未知')
     return rows
 
 
@@ -63,11 +63,7 @@ def reported_pairs(row):
 
 
 def cases_for_score(native, row):
-    pairs = native.pairs(row)
-    for key, scores in reported_pairs(row).items():
-        if key in pairs and pairs[key] != scores:
-            raise ValueError('质量报告与原生逐题分数冲突')
-        pairs[key] = scores
+    pairs = reported_pairs(row)
     cases = [key for key, scores in pairs.items() if degraded(*scores, row['direction'])]
     if not cases and row['subset'] is not None:
         return [(row['subset'], identifier) for identifier in native.roster(row['subset'])], 'failed_subset_roster'
@@ -86,7 +82,7 @@ def select_rows(rows, native, quality_ref, dataset):
             pending.append({**scope, 'reason': str(error)})
             continue
         if not cases:
-            pending.append({**scope, 'reason': '未能定界到退化题或取得失败子集完整原生名册'})
+            pending.append({**scope, 'reason': '无法定位到题，缺少退化题或失败子集的完整名册'})
         coverage.append({**scope, 'selection_basis': source, 'selected_count': len(cases)})
         for key in cases:
             case = indexed.setdefault(key, {'subset': key[0], 'sample_id': key[1], 'triggers': []})

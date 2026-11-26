@@ -79,19 +79,34 @@ def boundary(item):
     return {key:item[key] for key in ('owner','name','scalar_args','arguments_complete') if key in item}
 
 
-def common_call(gpu, npu):
+def common_slot(key, gpu, npu):
+    slot = {'id': key[0], 'role': key[1], 'gpu': gpu['path'], 'npu': npu['path']}
+    sources = {name: item['fp8_scale_source'] for name, item in (('gpu',gpu),('npu',npu)) if 'fp8_scale_source' in item}
+    if sources:
+        slot['fp8_scale_source'] = sources
+    scaled = {side: row.get('fp8_scaled', False) for side, row in (('gpu', gpu), ('npu', npu))}
+    if any(scaled.values()):
+        slot['fp8_scaled'] = scaled
+    return slot
+
+
+def common_call(gpu, npu, issues):
     gpu_bound, npu_bound = boundary(gpu), boundary(npu)
     if (gpu_bound['owner'], gpu_bound['name']) != (npu_bound['owner'], npu_bound['name']):
         return None
     left, right = [by_key(side['slots'], slot_key) for side in (gpu, npu)]
-    if left.keys() != right.keys():
+    slots = [common_slot(key, row, right[key]) for key, row in left.items() if key in right]
+    unpaired = [{'missing_device': side, 'slot': key[0], 'role': key[1]}
+                for side, keys in (('gpu', right.keys() - left), ('npu', left.keys() - right)) for key in sorted(keys)]
+    for gap in unpaired:
+        issues.append(f"{gpu['id']} 的 {gap['role']} 槽位 {gap['slot']} 缺少 {gap['missing_device']} 映射")
+    if not slots:
         return None
     cpu = gpu.get('cpu_reference')
-    common_cpu = {'cpu_reference': cpu} if cpu and cpu == npu.get('cpu_reference') else {}
-    return {**common_cpu, **{k: gpu[k] for k in ('id', 'kind', 'occurrence')},
+    common_cpu = {'cpu_reference': cpu} if cpu and not unpaired and cpu == npu.get('cpu_reference') else {}
+    return {**common_cpu, **({'unpaired_slots': unpaired} if unpaired else {}), **{k: gpu[k] for k in ('id', 'kind', 'occurrence')},
             'gpu': gpu_bound, 'npu': npu_bound,
-            'slots': [{'id': key[0], 'role': key[1], 'gpu': left[key]['path'], 'npu': right[key]['path']}
-                      for key in left]}
+            'slots': slots}
 
 
 def inventoried(sources, model):
@@ -104,7 +119,7 @@ def inventoried(sources, model):
     gpu, npu = inventory
     calls, issues = [], []
     for key in dict.fromkeys([*gpu, *npu]):
-        item = common_call(gpu[key], npu[key]) if key in gpu and key in npu else None
+        item = common_call(gpu[key], npu[key], issues) if key in gpu and key in npu else None
         if item:
             calls.append(item)
         else:
@@ -148,13 +163,7 @@ def prepare(sources, target, directory):
     else:
         calls, issues = prior['calls'], prior.get('scope_uncovered', [])
     frozen = versions.pair(sources, target, scope, prior)
-    required = dict(target['prediction_evidence_kind'])
-    inputs = sources.find('tensor-bundle-v1', case=target['case'], position=target['position'],
-                          model_identity=model, evidence_kind='runtime')
-    for _, item in inputs:
-        if item.get('hardware') in versions.SIDES:
-            required[item['hardware']] = 'runtime'
-    gaps = versions.missing(frozen, required)
+    gaps = versions.missing(frozen)
     if not calls or gaps:
         return None, [*issues, *gaps]
     check_calls(calls)

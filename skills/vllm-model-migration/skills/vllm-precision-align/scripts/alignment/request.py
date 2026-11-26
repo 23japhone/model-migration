@@ -49,13 +49,8 @@ def validate(value,action):
     if not isinstance(rows,list) or not rows:raise ValueError('至少提供一个评测项')
     for row in rows:
         evaluation_row(row, action)
-        for key in ('dataset','deployment'):
-            if key in row:name(row[key])
     if len({row['id'] for row in rows})!=len(rows):raise ValueError('评测项标识重复')
-    diagnoses=value.get('diagnoses',[])
-    if not isinstance(diagnoses,list):raise ValueError('diagnoses 须为数组')
-    for row in diagnoses:diagnosis_row(row)
-    if len({row['id'] for row in diagnoses})!=len(diagnoses):raise ValueError('定界项标识重复')
+    validate_diagnoses(value.get('diagnoses', []))
     dependencies(value)
     if action=='analyze' and (value.get('datasets') or value.get('deployments')):
         raise ValueError('历史分析不得调用准备或部署任务')
@@ -75,10 +70,22 @@ def evaluation_row(row, action):
         return
     fields(row, ('id', 'request'), ('dataset', 'deployment', 'result'))
     name(row['id']); reference(row['request'])
+    for key in ('dataset', 'deployment'):
+        if key in row:
+            name(row[key])
     if 'result' in row:
         if action != 'run':
             raise ValueError('精度结果复用仅用于 run 续接')
         reference(row['result'])
+
+
+def validate_diagnoses(rows):
+    if not isinstance(rows, list):
+        raise ValueError('diagnoses 须为数组')
+    for row in rows:
+        diagnosis_row(row)
+    if len({row['id'] for row in rows}) != len(rows):
+        raise ValueError('定界项标识重复')
 
 
 def diagnosis_row(row):

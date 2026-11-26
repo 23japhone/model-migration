@@ -8,7 +8,6 @@ from urllib.parse import unquote, urlsplit
 from coordination.runtime import sources
 from coordination.runtime.receipts import VERIFY_KEYS
 from skill_paths import skill_root
-from ...state import identity
 from ..inputs import normalize_one
 from .publisher import LINK, pointer
 
@@ -16,8 +15,6 @@ from .publisher import LINK, pointer
 SHA256 = re.compile(r"[a-f0-9]{64}")
 REVISION = re.compile(r"(?:[a-f0-9]{40}|[a-f0-9]{64})")
 NAME = re.compile(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+")
-GENERATION = ("temperature", "top_p", "top_k", "max_tokens", "seed")
-PROMPT = ("request_format", "system_prompt", "enable_thinking", "prompt_template", "chat_template")
 
 
 def is_digest(value):
@@ -90,19 +87,6 @@ def deployed_model(ref):
     return handoff["model"]
 
 
-def model_files(task, origin):
-    model = deployed_model(origin.get("deployment_receipt"))
-    if model["name"] != task["model"]["model_name"]:
-        raise ValueError("部署回执与本次模型名不符")
-    files = model["files"]
-    if not files or not all(is_digest(dig) for dig in files.values()):
-        raise ValueError("部署回执没有固定模型文件")
-    weights = model.get("weight_files")
-    if not isinstance(weights, list) or not weights or set(weights) - files.keys():
-        raise ValueError("部署回执没有固定完整权重")
-    return identity(files)
-
-
 def matches_gpu_model(task, repo, report):
     config = sources.bound(report["evidence"]["gpu_config"])
     name = config.get("model") or ""
@@ -153,50 +137,12 @@ def sample_scope_problem(protocol):
     return None
 
 
-def generation_problems(protocol, static):
-    reasons = []
-    server = static.get("server_generation") or {}
-    files = server.get("model_generation_files")
-    if not (server.get("overrides") or {}).get("--generation-config") or not isinstance(files, dict) or not all(is_digest(v) for v in files.values()):
-        reasons.append("服务端生效生成配置")
-    limit = protocol["generation_config"].get("max_tokens") or static.get("effective_max_tokens")
-    if type(limit) is not int or limit < 1:
-        reasons.append("实际输出预算")
-    return reasons
-
-
-def random_selection_known(protocol, static):
-    prompt = protocol["prompt_config"]
-    if prompt.get("few_shot_random") is not True or prompt.get("few_shot_num") == 0:
-        return True
-    if type(prompt.get("few_shot_seed")) is int:
-        return True
-    selected = static.get("reader_sha256_by_subset") or {}
-    return all(is_digest(selected.get(subset)) for subset in protocol["subsets"])
-
-
-def static_problems(protocol, static):
-    reasons = []
-    if not is_digest(static.get("chat_template_sha256")) or not is_digest(static.get("tokenizer_sha256")):
-        reasons.append("静态提示模板或分词器身份")
-    reasons.extend(generation_problems(protocol, static))
-    if not random_selection_known(protocol, static):
-        reasons.append("随机 few-shot 的实际示例或选择种子")
-    if protocol["prompt_config"].get("request_format") != "chat":
-        reasons.append("受支持的原始请求和提示配置")
-    scoring = protocol.get("scoring_config") or {}
-    if (scoring.get("judge") or {}).get("strategy") != "rule":
-        reasons.append("可重跑的原生评分规则")
-    return reasons
-
-
 def declared_scores(report):
-    scores = []
+    scores, missing = [], []
     for score in report["scores"]:
         if score.get("error") or score.get("value") is None:
-            scope = score.get("subset") or "所选范围总分"
-            reason = score.get("error") or "缺少原生评分值"
-            raise ValueError(f"公开 GPU 指标 {score['metric']}（{scope}）无法核验：{reason}")
+            missing.append({"metric": score["metric"], "subset": score["subset"], "gpu_score": None})
+            continue
         entry = {"metric": score["metric"], "gpu_score": score["value"]}
         if "published_target" in score:
             entry["target"] = score["published_target"]["target"]
@@ -205,40 +151,34 @@ def declared_scores(report):
         scores.append(entry)
     if not scores:
         raise ValueError("缺少有原生指标、聚合和单位依据的 GPU 成绩")
-    return scores
+    return scores, missing
 
 
 def declaration(report):
     p = report["protocol"]
-    generation = {key: p["generation_config"][key] for key in GENERATION if p["generation_config"].get(key) is not None}
-    if p["generation_config"].get("stop_seqs"):
-        generation["stop"] = p["generation_config"]["stop_seqs"]
-    raw = {"evaluator": p["evaluator"], "evaluator_version": p["evaluator_version"], "dataset": p["dataset"],
-           "task_name": p["task_name"], "task_revision": p["task_revision"], "subset_list": p["subsets"],
-           "prompt_config": {k: p["prompt_config"][k] for k in PROMPT if k in p["prompt_config"]},
-           "generation_config": generation, "scores": declared_scores(report)}
-    if "declaration" in p["scoring_config"]:
-        raw["scoring_config"] = p["scoring_config"]["declaration"]
-    return normalize_one(raw)
+    scores, missing = declared_scores(report)
+    raw = {"evaluator": p["evaluator"], "evaluator_version": p["evaluator_version"],
+           "dataset": p["dataset"], "subset_list": p["subsets"], "scores": scores}
+    baseline = normalize_one(raw)
+    baseline["scores"].extend(missing)
+    return baseline
 
 
 def qualify(task, origin, gpu_evidence):
     try:
         model_origin(task["model"], origin)
-        expected_model = model_files(task, origin)
         checked = inspected(gpu_evidence)
         protocol = checked["protocol"]
         static = checked.get("static_conditions") or {}
-        missing = scope_problems(protocol) + static_problems(protocol, static)
+        missing = scope_problems(protocol)
         if not matches_gpu_model(task, origin["repository_id"], checked):
             missing.append("原始 GPU 任务模型与发布仓库或本次模型不匹配")
-        if protocol.get("model_identity") != expected_model:
-            missing.append("原始 GPU 模型权重与本次部署不匹配")
         if missing:
             return {"baseline": None, "missing": missing}
         targets = [{"metric":s["metric"], "subset":s["subset"], **s["published_target"]}
                    for s in checked["scores"] if "published_target" in s]
         return {"baseline": declaration(checked), "protocol": protocol, "static_conditions": static, "published_targets":targets,
-                "evidence": gpu_evidence, "missing": []}
+                "evidence": gpu_evidence, "missing": [f"{row['metric']} ({row['subset']})：{row['error']}"
+                                                       for row in checked["scores"] if row.get("error")]}
     except (*sources.ERRORS, AttributeError, subprocess.SubprocessError) as error:
         return {"baseline": None, "missing": [str(error) or type(error).__name__]}

@@ -70,11 +70,11 @@ class PublicBaselineQualification(unittest.TestCase):
         self.assertNotIn("target", result["baseline"]["scores"][0])
         self.assertEqual(["a"], result["baseline"]["subset_list"])
 
-    def test_partial_native_metric_evidence_disqualifies_discovered_run(self):
+    def test_partial_native_metric_evidence_delivers_verified_scores_and_gaps(self):
         self.proto["metrics"]["unmatched"] = {
             **self.proto["metrics"]["acc"], "selector": {**self.selector, "name": "unreported"}}
         result = qualify(self.task, self.origin, self.evidence())
-        self.assertIsNone(result["baseline"])
+        self.assertEqual([0, 0, None, None], [row["gpu_score"] for row in result["baseline"]["scores"]])
         self.assertIn("unmatched", " ".join(result["missing"]))
 
     def test_threshold_only_applies_to_matching_source_scope_and_score(self):
@@ -112,11 +112,11 @@ class PublicBaselineQualification(unittest.TestCase):
         with self.assertRaises(ValueError):
             model_origin({"model_name":"MoDeL", "model_repository_id":"Other/MoDeL"}, self.origin)
 
-    def test_weight_mismatch_overrules_matching_model_name(self):
+    def test_weight_hash_difference_does_not_gate_published_score(self):
         self.proto["model_identity"] = "8"*64
         result = qualify(self.task,self.origin,self.evidence())
-        self.assertIsNone(result["baseline"])
-        self.assertTrue(result["missing"])
+        self.assertIsNotNone(result["baseline"])
+        self.assertFalse(result["missing"])
 
     def test_no_gpu_proof_or_immutable_origin_no_measurement(self):
         for origin, hardware in [(self.origin, "unknown"), ({**self.origin,"revision":"main"}, "gpu")]:
@@ -128,16 +128,16 @@ class PublicBaselineQualification(unittest.TestCase):
         self.static["chat_template_sha256"] = None
         result = qualify(self.task,self.origin,self.evidence())
         self.assertIsNone(result["baseline"])
-        self.assertGreaterEqual(len(result["missing"]),2)
+        self.assertIn("数据集版本或原始内容摘要", result["missing"])
 
     def test_source_unchanged_but_derived_report_mismatch_rejected(self):
         evidence = self.evidence(reported="another-model")
         self.assertIsNone(qualify(self.task,self.origin,evidence)["baseline"])
 
-    def test_incomplete_deployment_is_ineligible(self):
+    def test_published_source_qualification_independent_of_deployment(self):
         path = Path(self.origin["deployment_receipt"]["path"])
         self.origin["deployment_receipt"] = save(path, {**json.loads(path.read_text()), "success": False})
-        self.assertIsNone(qualify(self.task, self.origin, self.evidence())["baseline"])
+        self.assertIsNotNone(qualify(self.task, self.origin, self.evidence())["baseline"])
 
     def test_conflicting_repository_despite_matching_report_alias_is_ineligible(self):
         self.assertIsNone(qualify(self.task, self.origin, self.evidence(config_model="other/model"))["baseline"])
@@ -150,9 +150,9 @@ class PublicBaselineQualification(unittest.TestCase):
         self.origin["artifact_url"] = "https://raw.githubusercontent.com/other/eval/" + "b"*40 + "/index.json"
         self.assertIsNone(qualify(self.task, self.origin, self.evidence())["baseline"])
 
-    def test_random_fewshot_requires_selected_examples_or_selection_seed(self):
+    def test_fewshot_fingerprints_do_not_gate_published_score(self):
         self.proto["prompt_config"].update(few_shot_num=5, few_shot_random=True)
-        self.assertIsNone(qualify(self.task, self.origin, self.evidence())["baseline"])
+        self.assertIsNotNone(qualify(self.task, self.origin, self.evidence())["baseline"])
         self.static["reader_sha256_by_subset"] = {"a":"1"*64}
         self.assertEqual([], qualify(self.task, self.origin, self.evidence())["missing"])
 
@@ -165,7 +165,8 @@ class PublicBaselineQualification(unittest.TestCase):
         self.static["effective_max_tokens"] = 128
         result = qualify(self.task, self.origin, self.evidence())
         self.assertEqual([], result["missing"])
-        self.assertNotIn("max_tokens", result["baseline"]["generation_config"])
+        self.assertNotIn("generation_config", result["baseline"])
+        self.assertNotIn("prompt_config", result["baseline"])
 
     def test_complete_public_source_through_download_relocation_and_actual_inspection(self):
         from customer_workflow.quality.baseline_search import discover

@@ -67,3 +67,33 @@ class TargetedRerun(unittest.TestCase):
         trigger = {'metric': 'acc', 'subset': None, 'direction': 'higher', 'selection_basis': 'failed_subset_roster'}
         with self.assertRaises(ValueError):
             checked_rows([{'subset': 'default', 'sample_id': 3, 'triggers': [trigger]}], [trigger])
+
+    def test_native_score_failure_preserves_the_bound_prediction(self):
+        from contextlib import ExitStack, nullcontext
+        from tempfile import TemporaryDirectory
+        from precision.token_run import measurement as capture
+        prompt = [{'role': 'user', 'content': 'question'}]
+        expected = {'input': prompt, 'target': 'answer'}
+        task = {'endpoint': 'local', 'config': 'config', 'sample_snapshot': 'samples',
+                'benchmark': 'custom', 'subset': 'main', 'served_model': 'model', 'model_abbr': 'model'}
+        request = {'measurement': {'evaluator': {'python': sys.executable}}, 'scores': []}
+        http_response = {'choices': [{'message': {'content': 'answer'}, 'finish_reason': 'stop'}]}
+        bound = {'req': {'messages': prompt, 'model': 'model'}, 'resp': http_response, 'tokens': {'sample_id': 9}}
+        with TemporaryDirectory() as name, ExitStack() as stack:
+            folder = Path(name)
+            for symbol, value in {'bound_list': [expected], 'recording': nullcontext('http://proxy'),
+                                  'post_pair': {'request': 'req', 'response': 'resp'}}.items():
+                stack.enter_context(patch.object(capture, symbol, return_value=value))
+            stack.enter_context(patch.object(capture, 'bound', side_effect=bound.__getitem__))
+            stack.enter_context(patch.object(capture, 'load', return_value={'generation_config': {}}))
+            stack.enter_context(patch.object(capture, 'invoke', return_value={'token_sample': 'tokens'}))
+            process = stack.enter_context(patch.object(capture, 'execute'))
+            for code in (0, 1):
+                process.return_value = {'returncode': code}
+                record, review = capture.measure_case(folder, request, {}, {'sample_id': 9}, task, 0)
+                self.assertEqual(record, 'tokens')
+                self.assertEqual(review['status'], 'unavailable')
+                self.assertTrue(review['reason'])
+            bound['req']['messages'] = [{'role': 'user', 'content': 'wrong question'}]
+            with self.assertRaises(ValueError):
+                capture.measure_case(folder, request, {}, {'sample_id': 9}, task, 0)

@@ -1,4 +1,4 @@
-"""将原生任务默认值和 GPU 的显式覆盖编译为一个全量 EvalScope 请求。"""
+"""将原生任务默认值和本端测量配置编译为一个全量 EvalScope 请求。"""
 import copy
 
 from coordination.runtime import sources
@@ -37,8 +37,10 @@ def metric_definitions(source, scores, metadata):
             spec = {'selector': {'name': 'accuracy', 'aggregation': 'mean', 'dimensions': {}},
                     'unit': 'ratio', 'direction': 'higher', 'sample_metric': key, 'sample_kind': 'binary'}
         else:
-            raise ValueError('缺少该版本原生指标及逐题评分字段的唯一映射：' + name)
+            continue  # 报告将该指标列为缺项，已有映射的其他分项仍可测量。
         specs[name] = spec
+    if not specs:
+        raise ValueError('没有可测量的原生指标映射')
     return specs
 
 
@@ -114,7 +116,7 @@ def scoring_conditions(base, source, catalog, config, args):
                 'benchmark': base['dataset'], 'adapter_sha256': catalog['adapter_source']['sha256'],
                 'scoring_config': scoring}
     if proof != expected:
-        raise ValueError('实测版本、原生评分器或 GPU 显式规则与评分配置映射不同')
+        raise ValueError('实测版本、原生评分器或 本端显式规则与评分配置映射不同')
     return {**scoring, 'declaration': declaration}, {'scoring_proof': source['scoring_proof']}
 
 
@@ -128,10 +130,10 @@ def compile_run(base, source, catalog, selected, model, evaluated, data, root):
     config_ref = publish(root / 'configs' / (identity(config) + '.json'), config)
     scoring, proof = scoring_conditions(base, source, catalog, config, args)
     task_revision = catalog['metadata'].get('evaluation_version') or selected['evaluator_version']
-    if base.get('task_revision', task_revision) != task_revision or source.get('task_revision', task_revision) != task_revision:
-        raise ValueError('任务实现版本与 GPU 显式版本不一致')
+    if source.get('task_revision', task_revision) != task_revision:
+        raise ValueError('本端任务实现版本与原生配置不同')
     task_name = catalog['metadata'].get('name') or catalog['name']
-    if base.get('task_name', task_name) != task_name or source.get('task_name', task_name) != task_name:
+    if source.get('task_name', task_name) != task_name:
         raise ValueError('指定的任务变体缺少对应原生实现与配置')
     protocol = {'evaluator': 'evalscope', 'evaluator_version': selected['evaluator_version'],
                 'dataset': name, 'dataset_revision': selected['dataset_revision'],
@@ -148,5 +150,7 @@ def compile_run(base, source, catalog, selected, model, evaluated, data, root):
                    'evaluator': {'python': evaluated['python'], 'backend': 'evalscope',
                                  'version': selected['evaluator_version'], 'config': config_ref}}
     scores = [{**metrics[row['metric']], 'metric': row['metric'], 'subset': row.get('subset')}
-              for row in base['scores']]
+              for row in base['scores'] if row['metric'] in metrics and row.get('subset') in (None, *subsets)]
+    if not scores:
+        raise ValueError('所选 NPU 数据集中没有对应分项')
     return {'schema_version': '1.0', 'measurement': measurement, 'protocol': protocol, 'scores': scores, 'datasets': receipts, **proof}

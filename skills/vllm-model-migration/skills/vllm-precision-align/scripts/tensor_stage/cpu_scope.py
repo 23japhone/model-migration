@@ -82,7 +82,7 @@ def side_spec(call, side):
 
 
 def derive(call):
-    if 'cpu_reference' in call:
+    if 'cpu_reference' in call or call.get('unpaired_slots'):
         return call
     gpu = side_spec(call, 'gpu')
     if gpu is not None and gpu == side_spec(call, 'npu'):

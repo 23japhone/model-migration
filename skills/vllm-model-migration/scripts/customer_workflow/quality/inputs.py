@@ -62,6 +62,8 @@ def score(row):
     optional(value, 'subset', 'target', 'sample_results')
     if 'subset' in value:
         name(value['subset'], 'subset')
+    if value.get('target') == {}:
+        value.pop('target')
     if 'target' in value:
         target = fields(value['target'], ('max_drop',))
         if number(target['max_drop']) < 0:

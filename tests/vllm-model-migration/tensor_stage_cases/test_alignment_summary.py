@@ -73,7 +73,7 @@ class AlignmentSummaryTests(unittest.TestCase):
                       'case': key, 'position': 2, 'plan': plan, 'tensor_alignment': self.policy,
                       'result': outcome, 'evidence': {**pair, 'plan': plan}, 'calls': [call],
                       'capture_status': 'complete', 'scope_uncovered': [], 'evidence_kind': self.kinds,
-                      'cpu_check': {'common_reference': 'not_evaluated'}, 'hardware_target_status': 'not_evaluated'}
+                      'cpu_check': {'common_reference': 'not_evaluated'}, 'target_status': 'fail' if outcome == 'mismatch' else 'pass'}
             rows.append({**row, **pair, 'reproduction': {'status': 'reproduced'}, 'comparison': self.put(report)})
         self.tensor = self.put({'task_id': 'vllm-precision-align', 'operation': 'tensor', 'quality_report': self.quality,
                                 'token_report': self.token, 'cases': rows, 'comparison_result': 'partially_evaluated'})
@@ -121,8 +121,9 @@ class AlignmentSummaryTests(unittest.TestCase):
     def test_no_common_cpu_can_still_report_device_alignment(self):
         self.tensors('aligned', missing_peer=False)
         layer = self.summary()['operator_tensor']
-        self.assertEqual((layer['result'], layer['hardware_target_status']), ('aligned', 'not_evaluated'))
+        self.assertEqual((layer['result'], layer['target_status']), ('aligned', 'pass'))
         self.assertIn('共同 CPU 参考不足', layer['summary'])
+        self.assertNotIn('hardware_target_status', layer)
 
     def test_damaged_token_comparison_only_invalidates_its_case(self):
         self.tensors()
@@ -136,12 +137,24 @@ class AlignmentSummaryTests(unittest.TestCase):
         self.tensors(missing_peer=False)
         report = sources.bound(self.tensor)
         row = report['cases'][1]
-        row['comparison'] = self.put({**sources.bound(row['comparison']), 'cpu_check': None})
+        row['comparison'] = self.put({**sources.bound(row['comparison']), 'calls': None})
         self.value['tensor_alignment'][0]['tensor_report'] = self.put(report)
         layer = self.summary()['operator_tensor']
         self.assertEqual(layer['result'], 'mismatch')
         self.assertEqual(layer['coverage']['by_result']['insufficient_evidence'], 1)
         self.assertEqual(layer['gaps'][0]['sample_id'], 31)
+
+    def test_absent_cpu_and_unspecified_sources_preserve_direct_comparison(self):
+        self.kinds = {'gpu': 'unspecified', 'npu': 'runtime'}
+        self.tokens(['mismatch', 'mismatch'])
+        self.tensors('aligned', missing_peer=False)
+        report = sources.bound(self.tensor)
+        row = report['cases'][1]
+        row['comparison'] = self.put({**sources.bound(row['comparison']), 'cpu_check': None})
+        self.value['tensor_alignment'][0]['tensor_report'] = self.put(report)
+        layer = self.summary()['operator_tensor']
+        self.assertEqual((layer['result'], layer['target_status']), ('aligned', 'pass'))
+        self.assertFalse(layer['gaps'])
 
     def test_mixed_simulated_difference_and_missing_record(self):
         self.kinds = {'gpu': 'synthetic', 'npu': 'runtime'}

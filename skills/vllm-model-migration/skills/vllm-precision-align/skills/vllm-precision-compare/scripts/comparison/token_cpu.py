@@ -1,4 +1,5 @@
 """在已冻结的本地 safetensors 权重上完成首疑点的独立 CPU 前向。"""
+from copy import deepcopy
 from decimal import Decimal
 import hashlib
 import inspect
@@ -65,39 +66,82 @@ def verify_files(spec):
     return root
 
 
-def check_model(model, loading):
+def check_model(model, loading, dtype):
     if any(loading.get(key) for key in ("missing_keys", "unexpected_keys", "mismatched_keys", "error_msgs")):
         raise ValueError("CPU 模型未完整使用已冻结权重")
+    floating = set()
     for parameter in model.parameters():
-        if parameter.device.type != "cpu" or (parameter.is_floating_point() and parameter.element_size() < 4):
-            raise ValueError("模型参数的实际设备或精度不满足 CPU 高精度复核要求")
+        if parameter.device.type != "cpu":
+            raise ValueError("模型参数位于 CPU 以外的设备")
+        if parameter.is_floating_point():
+            floating.add(parameter.dtype)
+    if dtype not in floating:
+        raise ValueError(f"模型未采用指定浮点类型 {dtype}，实际参数类型为 {floating}")
+    return sorted(str(item).removeprefix("torch.") for item in floating)
 
 
-def forward(spec, prefix):
+def at_dtype(root, config, spec, prefix, dtype):
     import torch
-    import transformers
-    from transformers import AutoConfig, AutoModelForCausalLM
+    from transformers import AutoModelForCausalLM
 
-    root = verify_files(spec)
-    config = AutoConfig.from_pretrained(root, local_files_only=True, trust_remote_code=False)
-    if getattr(config, "quantization_config", None):
-        raise ValueError("该量化模型尚未核验 CPU 有效权重")
-    default_dtype = "float64" if getattr(config, "torch_dtype", None) == torch.float64 else "float32"
-    dtype = getattr(torch, spec.get("dtype", default_dtype))
-    model, loading = AutoModelForCausalLM.from_pretrained(
-        root, config=config, local_files_only=True, trust_remote_code=False, use_safetensors=True,
-        torch_dtype=dtype, output_loading_info=True, attn_implementation="eager")
-    check_model(model, loading)
+    # 常规模型使用本地 CPU 的默认分配。量化加载器必须显式绑定 CPU，避免自行选择加速设备。
+    placement = {"device_map": "cpu"} if getattr(config, "quantization_config", None) else {}
+    with torch.device("cpu"):
+        model, loading = AutoModelForCausalLM.from_pretrained(
+            root, config=deepcopy(config), local_files_only=True, trust_remote_code=False, use_safetensors=True,
+            torch_dtype=dtype, output_loading_info=True, attn_implementation="eager", **placement)
+    parameter_dtypes = check_model(model, loading, dtype)
     model.eval()
     inputs = torch.tensor([prefix], device="cpu", dtype=torch.long)
     options = {"logits_to_keep": 1} if "logits_to_keep" in inspect.signature(model.forward).parameters else {}
     with torch.inference_mode():
-        scores = model(input_ids=inputs, use_cache=False, **options).logits[0, -1].to(torch.float64)
+        logits = model(input_ids=inputs, use_cache=False, **options).logits[0, -1]
+        if logits.device.type != "cpu":
+            raise ValueError("模型实际输出来自 CPU 以外的设备")
+        scores = logits.to(torch.float64)
         if not bool(torch.isfinite(scores).all()):
             raise ValueError("CPU 前向产生非有限分数")
         raw = [Decimal.from_float(value) for value in scores.tolist()]
         probs = ([Decimal.from_float(value) for value in torch.softmax(scores, dim=0).tolist()]
                  if spec.get("plain_greedy") else None)
-    return (raw, probs), {"device": "cpu", "dtype": str(dtype).removeprefix("torch."),
-                          "model_identity": spec["model_identity"], "torch_version": str(torch.__version__),
-                          "transformers_version": transformers.__version__}
+    return (raw, probs), {"output_dtype": str(logits.dtype).removeprefix("torch."), "parameter_dtypes": parameter_dtypes}
+
+
+def precision_unsupported(exc):
+    if not isinstance(exc, (RuntimeError, ValueError, TypeError, AssertionError)):
+        return False
+    message = str(exc).lower()
+    if "could not run" in message and "'cpu' backend" in message:
+        return True
+    types = ("dtype", "scalar type", "double", "float", "half", "bfloat", "fp16", "fp32", "fp64", "fp8")
+    unsupported = ("not implemented", "not supported", "unsupported", "only support", "does not support",
+                   "doesn't support", "invalid dtype", "expected scalar type", "same dtype", "must be", "未采用指定浮点类型")
+    return any(word in message for word in types) and any(reason in message for reason in unsupported)
+
+
+def forward(spec, prefix, attempts, on_start=None):
+    import torch
+    import transformers
+    from transformers import AutoConfig
+
+    validate_spec(spec)
+    root = verify_files(spec)
+    config = AutoConfig.from_pretrained(root, local_files_only=True, trust_remote_code=False)
+    default_dtype = "float64" if getattr(config, "torch_dtype", None) == torch.float64 else "float32"
+    dtypes = ["float64", "float32", "bfloat16", "float16"]
+    dtypes += [name for name in ("float8_e4m3fn", "float8_e5m2", "float8_e4m3fnuz", "float8_e5m2fnuz")
+               if hasattr(torch, name)]
+    candidates = dtypes[dtypes.index(spec.get("dtype", default_dtype)):]
+    for name in candidates:
+        if on_start is not None:
+            on_start(name)
+        try:
+            oracle, details = at_dtype(root, config, spec, prefix, getattr(torch, name))
+        except Exception as exc:
+            attempts.append({"dtype": name, "status": "failed", "error": str(exc) or type(exc).__name__})
+            if not precision_unsupported(exc) or name == candidates[-1]:
+                raise
+        else:
+            attempts.append({"dtype": name, "status": "completed"})
+            return oracle, {**details, "device": "cpu", "dtype": name, "model_identity": spec["model_identity"],
+                            "torch_version": str(torch.__version__), "transformers_version": transformers.__version__}

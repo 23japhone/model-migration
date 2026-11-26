@@ -11,34 +11,35 @@ from .targets import upstream
 
 
 def validate(request):
-    fields(request, ('schema_version','quality_report','token_report','tensor_alignment','evidence'), ('native_request',))
+    fields(request, ('schema_version','quality_report','token_report','evidence'), ('native_request','tensor_alignment'))
     if request['schema_version'] != '1.0' or not isinstance(request['evidence'], list):
         raise ValueError('张量对齐需要 1.0 版请求与证据列表')
     for source in (request['quality_report'], request['token_report'], *request['evidence']):
         reference(source)
     if 'native_request' in request and not isinstance(request['native_request'], dict):
         raise ValueError('原生复测请求无效')
-    validate_policy(request['tensor_alignment'])
+    validate_policy(request.get('tensor_alignment', {}))
     return request
 
 
 def validate_policy(policy):
-    if not isinstance(policy, dict) or set(policy) not in (set(), {'atol','rtol'}):
-        raise ValueError('张量容差须为空或同时提供 atol、rtol')
+    if not isinstance(policy, dict) or policy.keys() - {'atol','rtol'}:
+        raise ValueError('张量容差仅接受 atol、rtol')
     if any(type(value) not in (int,float) or not 0 <= value <= float_info.max for value in policy.values()):
         raise ValueError('张量容差必须为有限非负数值')
 
 
 def aggregate(rows):
-    active = [row for row in rows if row['result'] != 'not_triggered']
-    if not active:
+    states = {row['result'] for row in rows} - {'not_triggered'}
+    if not states:
         return 'not_triggered'
-    states = {row['result'] for row in active}
-    if len(states) == 1:
-        return next(iter(states))
-    if states.issubset({'aligned','mismatch'}):
+    if 'mismatch' in states:
         return 'mismatch'
-    return 'partially_evaluated'
+    return 'aligned' if states == {'aligned'} else 'insufficient_evidence'
+
+
+def target_status(result):
+    return {'aligned': 'pass', 'mismatch': 'fail'}.get(result, 'not_evaluated')
 
 
 def run(request, work_root, run_id, action):
@@ -58,19 +59,17 @@ def run(request, work_root, run_id, action):
         case_dir.mkdir()
         rows.append(process(context, original, selected[case_key(original)], case_dir))
     for row in rows:
-        kinds = [*row['prediction_evidence_kind'].values(), *row['evidence_kind'].values()]
-        row['simulated'] = 'synthetic' in kinds
-    simulated = any(row['simulated'] for row in rows)
-    comparison_result = aggregate(rows)
-    state = 'simulated' if simulated and comparison_result in ('mismatch', 'aligned', 'not_evaluated') else comparison_result
+        row['target_status'] = target_status(row['result'])
+    result = aggregate(rows)
+    verdict = {'comparison_result': result, 'alignment_status': result, 'target_status': target_status(result)}
     report = {key: manifest[key] for key in ('schema_version','task_id','operation','run_id')}
     report.update(quality_report=request['quality_report'], token_report=request['token_report'], cases=rows,
-                  uncovered=sources.issues, simulated=simulated, comparison_result=comparison_result, alignment_status=state)
+                  uncovered=sources.issues, **verdict)
     report_path = folder / 'tensor-report.json'
     write(report_path, report)
     manifest.update(status='completed', success=True, finished_at=now(), tensor_report=ref(report_path),
-                    simulated=simulated, comparison_result=comparison_result, alignment_status=state, plans=[row['plan'] for row in rows if row.get('plan')],
+                    **verdict, plans=[row['plan'] for row in rows if row.get('plan')],
                     npu_bundles=[row['npu'] for row in rows if row.get('npu_capture_status') == 'complete'])
     write(path, manifest)
     return 0, {k: manifest[k] for k in ('task_id','operation','run_id','status','manifest','alignment_status',
-                                         'plans','npu_bundles','tensor_report','simulated','comparison_result')}
+                                         'plans','npu_bundles','tensor_report','target_status','comparison_result')}

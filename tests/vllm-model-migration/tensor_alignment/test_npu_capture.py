@@ -73,6 +73,21 @@ class TargetCapture(unittest.TestCase):
         self.assertEqual(saved.tolist(), [[3,3,3]])
         self.assertEqual(saved.untyped_storage().nbytes(), 12)
 
+    def test_native_fp8_scale_is_captured_with_its_tensor(self):
+        import torch
+        folder = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        slot = {'id':'x', 'role':'input', 'npu':['input_args',0],
+                'fp8_scale_source':{'npu':{'path':['input_kwargs','scales'],'block_shape':[2]}}}
+        call = {'id':'op', 'kind':'api', 'npu':{'owner':'m','name':'Torch.quant_op'},
+                'occurrence':0,'slots':[slot]}
+        gate = TargetGate({'calls':[call]},folder)
+        x = torch.zeros(3).to(torch.float8_e4m3fn)
+        io = SimpleNamespace(args=(x,),kwargs={'scales':torch.tensor([.5,2.])})
+        proc = SimpleNamespace(api_parent_node={get_ident():'Module.m.Test.forward.0'})
+        gate.observe('input',proc,'Torch.quant_op.0.forward',None,os.getpid(),io)
+        self.assertFalse(gate.errors)
+        self.assertEqual(gate.rows[0]['fp8_scale'], {'block_shape':[2], 'values':[.5,2.]})
+
     def test_recorder_only_calls_probe_and_persists_logits_on_target(self):
         import hashlib
         import json

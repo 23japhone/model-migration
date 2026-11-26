@@ -38,8 +38,6 @@ def tensor_scopes(manifest, predictions, layer, policy):
         origin = fields(row, ('dataset', 'subset', 'sample_id', 'quality_report'))
         if row['result'] in ('input_mismatch', 'insufficient_evidence'):
             layer.gap(origin, '缺少同一前文下的可比预测：' + str(row['reason']))
-        elif row['evidence_kind'] == 'unspecified':
-            layer.gap(origin, 'Token 预测的双端运行或模拟来源未核实')
         if row['result'] == 'mismatch':
             by_report.setdefault(row['token_report']['sha256'], []).append(row)
     for origin in predictions.reports:
@@ -65,19 +63,12 @@ def inactive(manifest, requested, intent_known):
     return None
 
 
-def hardware_status(layer):
-    statuses = {row.get('hardware_target_status') for row in layer['cases'] if row.get('evidence_kind') == 'runtime'}
-    if 'fail' in statuses:
-        return 'fail'
-    return 'pass' if layer['result'] == 'aligned' and statuses == {'pass'} else 'not_evaluated'
-
-
 def tensor_target(layer, policy):
-    status = hardware_status(layer)
-    layer['hardware_target_status'] = status
+    status = {'aligned': 'pass', 'mismatch': 'fail'}.get(layer['result'], 'not_evaluated')
+    layer['target_status'] = status
     if layer['cases']:
         labels = {'pass': '已达标', 'fail': '未达标', 'not_evaluated': '尚无法判定'}
-        layer['summary'] += '硬件目标' + labels[status] + '。'
+        layer['summary'] += '双端张量目标' + labels[status] + '。'
         if policy:
             layer['summary'] += '指定容差 ' + '、'.join(f'{k}={v}' for k, v in policy.items()) + '。'
     reference_labels = {'aligned': '与共同 CPU 参考一致', 'mismatch': '与共同 CPU 参考有差异',
@@ -104,7 +95,7 @@ def summarize(manifest, accuracy, *, intent_known):
         if state == 'insufficient_evidence':
             layer.gap({}, '尚未确认本次诊断意图')
     token_result = predictions.finish(token_state)
-    tensor_result = tensors.finish(tensor_state)
+    tensor_result = tensors.finish(tensor_state, direct=True)
     tensor_target(tensor_result, accuracy.get('tensor_alignment'))
     quality = manifest['task_quality_conclusion']
     headline = quality['summary'].partition('。')[0] + '。'

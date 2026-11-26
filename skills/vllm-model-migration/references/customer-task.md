@@ -45,20 +45,20 @@ subset_list 的 -1 不控制题数。limit 为正整数 N 时取 test.jsonl 的�
 | --- | --- | --- | --- |
 | `accuracy.gpu_baselines` | GPU 历史评测基线数组，每项对应一套评测协议和成绩 | 否 | 省略、`null`、整数 `-1` 或 `[]` 均表示未提供基线。有精度意图时按模型查公开基线，材料不足记为 `not_evaluated` 并继续其他任务。仅要求性能且无基线时记为 `not_requested`。 |
 
-下表字段均相对于一项 `accuracy.gpu_baselines[]`。用户显式提供基线时，最少填写 `evaluator`、`dataset` 和含实际分数的 `scores`。要判定达标，还须核验历史 GPU 成绩、两端评测条件与目标。自动选择的工具版本只描述本次 NPU 复测条件。详见[任务质量的证据要求](task-quality.md)。
+下表字段均相对于一项 `accuracy.gpu_baselines[]`。用户显式提供基线时，最少填写 `evaluator`、`dataset` 和含实际分数的 `scores`。客户分数直接作为基线，按数据集、指标和可选子集匹配有效 NPU 成绩。逐题匹配另用题号。自动选择的工具版本只描述本次 NPU 复测条件。详见[任务质量的证据要求](task-quality.md)。
 
 | 字段 | 含义及格式 | 是否必填 | 缺省行为 |
 | --- | --- | --- | --- |
 | `evaluator` | GPU 使用的评测工具。当前质量复测支持 EvalScope | 是 | 无默认值，须独立于普通测试的 `accuracy.evaluator` 声明。 |
 | `dataset` | GPU 评测使用的原生 benchmark 标识 | 是 | 无默认值，须按 GPU 实际使用的数据集填写。 |
 | `scores` | 总分或分项分数组，同一指标与子集的组合唯一 | 是 | 至少填一条，零分可填 `0`。 |
-| `evaluator_version` | GPU 使用的评测器精确发行版本 | 否 | 手填基线省略版本时，NPU 复测选择 PyPI 最新可用的 EvalScope 稳定版，本次任务续接沿用冻结版本。 |
+| `evaluator_version` | GPU 使用的评测器精确发行版本 | 否 | 留空即未声明 GPU 版本。NPU 独立选用本端已绑定的评测环境。 |
 | `subset_list` | 基线覆盖的子集名数组，显式填写时须非空、唯一 | 否 | 取该版本原生任务声明的全部评测子集。每个所选子集用全量原题，基线对象不接受 `limit`。 |
-| `task_name` | GPU 使用的注册任务名，须与该 benchmark 的原生任务一致 | 否 | 从固定版本的原生注册信息取得。 |
-| `task_revision` | 原生评测任务实现版本 | 否 | 取该任务的 `evaluation_version`，缺失时取实际 EvalScope 发行版本。 |
-| `prompt_config` | 提示词、聊天模板和请求形式 | 否 | 使用固定版本的原生任务和服务模板，质量复测走 `chat`。 |
-| `generation_config` | GPU 生成答案时的解码配置 | 否 | 使用该版本的原生生成配置，显式给出的参数逐项覆盖。 |
-| `scoring_config` | GPU 自定义评分器和规则声明 | 否 | 使用原生规则评分、过滤和聚合。显式声明须能与实际评分器及其配置对应。 |
+| `task_name` | GPU 使用的注册任务名 | 否 | 未声明。 |
+| `task_revision` | GPU 侧评测任务实现版本 | 否 | 未声明。 |
+| `prompt_config` | GPU 提示词、聊天模板和请求形式 | 否 | 未声明。 |
+| `generation_config` | GPU 生成答案时的解码配置 | 否 | 未声明 GPU 生成配置。 |
+| `scoring_config` | GPU 自定义评分器和规则声明 | 否 | 未声明 GPU 评分配置。 |
 
 **每条成绩。** 以下字段相对于 `accuracy.gpu_baselines[].scores[]`。
 
@@ -67,33 +67,33 @@ subset_list 的 -1 不控制题数。limit 为正整数 N 时取 test.jsonl 的�
 | `metric` | 原生指标名，如 `accuracy` | 是 | 无默认值。 |
 | `gpu_score` | 该范围与指标下的 GPU 实际成绩，按原生单位填写有限数值 | 是 | 无默认值。 |
 | `subset` | 这条分数所属的单个子集 | 否 | 使用所选范围的原生总分。 |
-| `target` | 该指标允许的退化量，格式为 `{"max_drop": 数值}` | 否 | 可比时仍报告 `NPU − GPU` 分差，目标状态为 `not_evaluated`。 |
-| `target.max_drop` | 按指标好坏方向允许的最大退化量，有限非负数 | 给出 `target` 时必填 | 无默认容差。退化量等于阈值算达标，`0` 表示不允许变差。对 0～1 准确率，`0.005` 代表 0.5 个百分点。 |
+| `target` | 该指标允许的退化量，格式为 `{"max_drop": 数值}` | 否 | 采用同指标、同范围的发布者阈值；缺省时按下一行计算。 |
+| `target.max_drop` | 按指标好坏方向允许的最大退化量，有限非负数 | 给出 `target` 时必填 | 非负且适合相对比较的指标取 GPU 分数 × 0.01。零基线或零点任意的分数取 0。退化量等于阈值算达标，`0` 表示不允许变差。对 0～1 准确率，`0.005` 代表 0.5 个百分点。 |
 | `sample_results` | 请求逐题比较的 GPU 评分明细数组 | 否 | 省略表示不请求逐题核对。显式 `[]` 会把逐题项记为未评估，保留有效的总分或分项分。 |
 | `sample_results[].sample_id` | 原始题号，字符串或整数 | 每条明细必填 | 无默认值。原题没有显式 ID 时，填写“相对源文件名#从零开始的数据行号”。 |
 | `sample_results[].score` | 此题的 GPU 原生得分，二元评分也可用布尔值 | 每条明细必填 | 无默认值。 |
 | `sample_results[].subset` | 此题所在的子集 | 题号无法唯一配对时必填 | 优先继承所属分项的 `subset`。总分下按题号匹配，跨子集重号时须明确子集。 |
 
-**提示、生成与评分参数。** 以下字段相对于一项 `accuracy.gpu_baselines[]`。三个配置对象内部的字段均可省略。要继承原生配置，直接省略相应键，显式值须符合各自类型。
+**提示、生成与评分参数。** 以下字段相对于一项 `accuracy.gpu_baselines[]`。这些可选字段记录客户 GPU 成绩的取得方式。NPU 复测按本端绑定的工具、注册任务、模板和评分器执行；本次复测使用的实际参数记录在 NPU 测量回执中。
 
-| 字段 | 含义及格式 | 是否必填 | 缺省行为 |
-| --- | --- | --- | --- |
-| `prompt_config.request_format` | 请求形式，可填 `chat` 或 `completion` | 否 | 默认 `chat`。`completion` 可通过静态校验，当前质量复测执行时报告不支持。 |
-| `prompt_config.enable_thinking` | 是否启用模型思考模式，布尔值 | 否 | 沿用原生生成配置或服务模板生效的设置。 |
-| `prompt_config.system_prompt` | 系统提示词文本 | 否 | 沿用原生任务配置。 |
-| `prompt_config.prompt_template` | 把题目组成评测提示的模板文本 | 否 | 沿用原生 benchmark 模板。 |
-| `prompt_config.chat_template` | 把聊天消息格式化为模型输入的模板文本 | 否 | 使用服务实际生效的聊天模板。 |
-| `generation_config.temperature` | 采样温度，有限非负数 | 否 | 沿用原生生成配置。 |
-| `generation_config.top_p` | 核采样累积概率，范围为 `(0, 1]` | 否 | 沿用原生生成配置。 |
-| `generation_config.top_k` | 采样候选数，整数 | 否 | 沿用原生生成配置。 |
-| `generation_config.max_tokens` | 最大生成 Token 数，正整数 | 否 | 优先用原生预算。若原生也未设上限，推理沿用服务实际策略，预检以剩余上下文为上界。 |
-| `generation_config.seed` | 随机种子，整数 | 否 | 沿用原生生成配置。 |
-| `generation_config.stop` | 停止字符串或非空字符串列表 | 否 | 保留原生停止条件。 |
-| `scoring_config.scorer_name` | 评分器名称 | 否 | 使用原生评分器。 |
-| `scoring_config.scorer_version` | 评分器版本标识 | 否 | 随本次绑定的原生评分实现。 |
-| `scoring_config.answer_extraction` | 从回答中提取待评分答案的规则 | 否 | 沿用原生答案提取规则。 |
-| `scoring_config.normalization` | 评分前对答案做标准化的规则 | 否 | 沿用原生标准化方法。 |
-| `scoring_config.invalid_answer_policy` | 无效或无法解析的答案如何计分 | 否 | 沿用原生评分器的处理规则。 |
+| GPU 字段 | 含义及格式 |
+| --- | --- |
+| `prompt_config.request_format` | 请求形式，可填 `chat` 或 `completion` |
+| `prompt_config.enable_thinking` | 是否启用模型思考模式，布尔值 |
+| `prompt_config.system_prompt` | 系统提示词文本 |
+| `prompt_config.prompt_template` | 把题目组成评测提示的模板文本 |
+| `prompt_config.chat_template` | 把聊天消息格式化为模型输入的模板文本 |
+| `generation_config.temperature` | 采样温度，有限非负数 |
+| `generation_config.top_p` | 核采样累积概率，范围为 `(0, 1]` |
+| `generation_config.top_k` | 采样候选数，整数 |
+| `generation_config.max_tokens` | 最大生成 Token 数，正整数 |
+| `generation_config.seed` | 随机种子，整数 |
+| `generation_config.stop` | 停止字符串或非空字符串列表 |
+| `scoring_config.scorer_name` | 评分器名称 |
+| `scoring_config.scorer_version` | 评分器版本标识 |
+| `scoring_config.answer_extraction` | 从回答中提取待评分答案的规则 |
+| `scoring_config.normalization` | 评分前对答案做标准化的规则 |
+| `scoring_config.invalid_answer_policy` | 无效或无法解析的答案如何计分 |
 
 ### Token 预测对齐与张量对齐
 
@@ -104,9 +104,9 @@ subset_list 的 -1 不控制题数。limit 为正整数 N 时取 test.jsonl 的�
 | `token_alignment` | 启用第二遍，比较同一前文下逐步预测的全词表分数与实际接受的 Token ID | 否 | 省略、`null` 或整数 `-1` 表示关闭。启用时须同时声明下面两项容差，`{}` 无效。 |
 | `token_alignment.raw_logits.atol` | 全词表原始 logits 允许的最大绝对差 | 开启第二遍时必填 | 无默认值。有限非负数，`0` 要求逐候选相等。 |
 | `token_alignment.processed_scores.atol` | 选词前、经规则处理并归一化后的全词表概率允许的最大绝对差 | 开启第二遍时必填 | 无默认值。有限非负数，等于容差仍通过。两端选中同一 Token 时，分数超限也会报告异常。 |
-| `tensor_alignment` | 启用第三遍，比较首个可比异常位置的模块和算子前向张量 | 否 | **省略、`null` 或整数 `-1` 表示关闭第三遍。显式 `{}` 表示开启**，报告有限浮点误差及其坐标，浮点数值无达标阈值。整数、布尔值、结构和非有限值仍按比较契约核对。 |
-| `tensor_alignment.atol` | 浮点张量逐元素比较的绝对容差，有限非负数 | 指定浮点阈值时与 `rtol` 同时必填 | 无默认值，单独提供一个容差会被拒绝。 |
-| `tensor_alignment.rtol` | 相对于 GPU 参考值幅度的容差，有限非负数 | 指定浮点阈值时与 `atol` 同时必填 | 无默认值。两项都填 `0` 时要求有限浮点元素数值相等。 |
+| `tensor_alignment` | 设置首个双端预测异常位置的张量容差 | 否 | 确认同前文的双端首差会自动进入第三遍。省略或填 `{}` 时逐张量使用实际 dtype 的默认值。 |
+| `tensor_alignment.atol` | 浮点张量逐元素比较的绝对容差，有限非负数 | 否 | 省略时按当前浮点张量的 dtype 补齐。显式 `0` 生效。 |
+| `tensor_alignment.rtol` | 相对于 GPU 参考值幅度的容差，有限非负数 | 否 | 省略时按当前浮点张量的 dtype 补齐。两项都填 `0` 时要求有限浮点元素数值相等。 |
 
 双端浮点阈值按元素计算，满足 `abs(NPU − GPU) ≤ atol + rtol × abs(GPU)` 即通过。在客户回执 `customer-manifest.json` 中，`alignment_summary` 并列给出任务质量、Token 预测和算子与张量的结论、范围及缺项。逐题记录保留首个异常 Token、张量超限调用和槽位，详细误差及坐标可追溯到绑定的比较报告。
 
@@ -114,9 +114,9 @@ subset_list 的 -1 不控制题数。limit 为正整数 N 时取 test.jsonl 的�
 
 ### 三层精度对齐完整示例
 
-将[完整 JSON 示例](../assets/three-level-alignment.example.json)复制到 Skill 目录外作为 `task.json`。示例选择一张 NPU，普通精度测试取 C-Eval 的 `accountant` 子集前 10 题。第一遍任务质量复测则使用该子集的全量原题。示例声明 GPU 准确率为 `0.75`，允许下降 `0.005`，因此在两端条件可比时，NPU 准确率达到 `0.745` 即达标。实际使用时请替换模型、设备、GPU 实测成绩、生成条件和约定容差。
+将[完整 JSON 示例](../assets/three-level-alignment.example.json)复制到 Skill 目录外作为 `task.json`。示例选择一张 NPU，普通精度测试取 C-Eval 的 `accountant` 子集前 10 题。第一遍任务质量复测则使用该子集的全量原题。示例声明 GPU 准确率为 `0.75`，省略 `max_drop`，本例没有发布者阈值，默认允许下降 `0.0075`。NPU 准确率达到 `0.7425` 即达标。实际使用时请替换模型、设备、GPU 实测成绩、生成条件和约定容差。
 
-若该子集可比且未达标，第二遍按题比较 logits 和概率，缺 GPU 预测包时先交付选题清单。发现可比的首异常后，第三遍按示例中的 `"tensor_alignment": {}` 记录张量误差。若需判定有限浮点元素是否超限，将该对象改为一对实际约定的 `atol`、`rtol`。
+若该子集未达标，第二遍按题比较 logits 和概率，缺 GPU 预测包时先交付选题清单。发现可比的首异常后，第三遍按示例中的 `"tensor_alignment": {}` 使用逐张量默认容差。也可单独覆盖 `atol` 或 `rtol`。CPU 参考用于解释已发现的偏差。
 
 将 `MIGRATION_SKILL_ROOT` 设为完整 Skill 的安装目录，在存有 `task.json` 的包外目录执行以下静态检查。合法输入返回 `status=not_run`。
 
@@ -214,7 +214,7 @@ work-root/run-id/
 
 全部校验后原子重命名整个交付目录，独立 export-manifest.json 标记 ready 后才能 completed。已有同内容三文件可幂等复用；不同内容拒绝覆盖。写入失败不交付半套；若目录已发布但回执失败，不能宣告成功，续接导出重新核验并补成独立回执。
 
-`--resume` 绑定原 task.json、run-id 与原回执。通常要求输入文件摘要一致。原任务已声明 `accuracy.tensor_alignment` 时，可在原路径只修改该对象的容差，并更新 `context.task_source` 摘要。已交付三文件且已有单题 Token 报告时，可按[第三遍续接约定](../skills/vllm-precision-align/references/tensor.md#续接与报告)复用上游证据。首次为已有任务启用该字段需使用新 run-id，或直接向精度阶段提供已冻结的报告。
+`--resume` 绑定原 task.json、run-id 与原回执。通常要求输入文件摘要一致。可在原路径补填、移除或修改 `accuracy.tensor_alignment` 的容差，并更新 `context.task_source` 摘要。已交付三文件且已有单题 Token 报告时，可按[第三遍续接约定](../skills/vllm-precision-align/references/tensor.md#续接与报告)复用上游证据。重新执行 Token 比较时，遇到双端首差会现场复算 CPU。
 
 进入常规准备时，已准备文件重新核对摘要，已执行配方冻结，环境继承原选择。每次有效正式准备仍调用安装脚本，安装前后核对实际 Python 与 EvalScope 版本绑定。迁移和评测原始引用均保留；有效评测通过公开 analyze 只读复核后复用。导出重试不部署、不重新评测；发布前仍重新核验完整来源。
 
