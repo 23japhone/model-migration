@@ -63,7 +63,7 @@ class OfficialDiscovery(unittest.TestCase):
         self.assertIn(other+'README.md', self.urls)
         self.assertEqual(result['status'], 'not_evaluated')
 
-    def test_only_one_of_two_same_named_repositories_can_prove_matching_deployment(self):
+    def test_different_weight_hashes_do_not_resolve_ambiguous_publisher_names(self):
         from urllib.parse import urlencode
         from importlib import import_module
         fixture_module = (self.__module__.rpartition('.')[0]+'.test_baseline_qualification').lstrip('.')
@@ -88,9 +88,9 @@ class OfficialDiscovery(unittest.TestCase):
                 self.records[base+file] = (corpus.root/Path(file).name).read_bytes()
         observed = {'deployment_receipt':corpus.origin['deployment_receipt']}
         result = self.discover(self.task, observed, self.root)
-        self.assertEqual(result['status'], 'found', result['missing'])
-        self.assertEqual(result['baselines'][0]['origin']['repository_id'], repos[0])
-        self.assertIn('权重', ' '.join(result['missing']))
+        self.assertEqual('not_evaluated', result['status'])
+        self.assertEqual([], result['baselines'])
+        self.assertIn('不能唯一归属', ' '.join(result['missing']))
 
     def test_matching_distinct_publishers_remain_ambiguous_even_for_equal_scores(self):
         other, other_api = self.same_names()

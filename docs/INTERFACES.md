@@ -43,7 +43,7 @@
 
 ## 精度与交接兼容性
 
-客户 `task.json` 必须包含 `model`、`environment` 和 `accuracy` 三组对象。正式执行会合成 prompt 与 JSON 中的显式条件。可选的 `accuracy.gpu_baselines` 定义第一遍的 GPU 成绩与评测条件。`accuracy.token_alignment` 为第二遍指定两项容差，只有有效质量报告中的可比未达标分项进入选题。`accuracy.tensor_alignment` 省略、填 `null` 或填整数 `-1` 均表示未指定，若 prompt 也未指定则关闭第三遍。显式填 `{}` 会启用张量对齐。此时有限浮点值记录误差和坐标，不设达标阈值。整数与布尔值仍逐元素精确比较，结构和非有限值仍按比较契约判定。普通精度测试的 `accuracy.datasets[].limit` 只约束普通测试的样本范围。评测结果和缺项记录在客户回执中，三个交付 JSON 沿用既有结构。[客户字段与默认值](../skills/vllm-model-migration/references/customer-task.md#字段) · [基线字段及示例](../skills/vllm-model-migration/references/task-quality.md)
+客户 `task.json` 必须包含 `model`、`environment` 和 `accuracy` 三组对象。正式执行会合成 prompt 与 JSON 中的显式条件。可选的 `accuracy.gpu_baselines` 定义第一遍的 GPU 成绩与评测条件。`accuracy.token_alignment` 为第二遍指定两项容差，只有有效质量报告中的可比未达标分项进入选题。一旦确认双端在同前文的首个预测差异，就进入张量比较。省略 `accuracy.tensor_alignment` 或填写空对象时使用逐张量 dtype 默认容差，两项容差均可单独覆盖。CPU 重算提供偏差归因。普通精度测试的 `accuracy.datasets[].limit` 只约束普通测试的样本范围。评测结果和缺项记录在客户回执中，三个交付 JSON 沿用既有结构。[客户字段与默认值](../skills/vllm-model-migration/references/customer-task.md#字段) · [基线字段及示例](../skills/vllm-model-migration/references/task-quality.md)
 
 执行时先校验显式 JSON，再由 context 一次合成 prompt、应用静态默认；前置检查与业务执行共享实际参数。inputs 保留原归一化快照用于续接比较。--plan 不读取 context，仅作尚未合成 prompt 的 JSON 预览，其后端与默认参数不表示最终执行选择。
 

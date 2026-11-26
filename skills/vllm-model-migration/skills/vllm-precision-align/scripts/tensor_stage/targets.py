@@ -1,10 +1,8 @@
 """从已完成的两轮报告固定首个可比较异常及实际前文。"""
 from alignment.evidence import bound
 from alignment.request import reference
-from token_stage.native import NativeScores, read_npu
-from token_stage.selection import case_key, failing_rows, select_rows
-
-from .delegation import compare
+from token_stage.native import read_npu
+from token_stage.selection import case_key, failing_rows
 
 
 def upstream(request):
@@ -19,14 +17,26 @@ def upstream(request):
     if (selection.get('quality_report'), selection.get('dataset'), selection.get('format')) != (
             request['quality_report'], dataset, 'token-case-selection-v1'):
         raise ValueError('Token 选题清单和首轮评测不一致')
-    current = select_rows(failed, NativeScores(quality, bool(failed)), request['quality_report'], dataset)
-    if index(current['cases']) != index(selection['cases']):
-        raise ValueError('Token 选题不能由绑定的原生质量报告复现')
     selected = index(selection['cases'])
+    scopes = {(score['subset'], score['metric'], score['direction']) for score in failed}
+    for (subset, _), item in selected.items():
+        validate_triggers(item['triggers'], subset, scopes)
     rows = index(token['cases'])
     if rows.keys() != selected.keys() or (rows and not failed):
         raise ValueError('Token 阶段逐题覆盖与失败范围不一致')
     return quality, token, selected
+
+
+def validate_triggers(triggers, subset, scopes):
+    if not isinstance(triggers, list) or not triggers:
+        raise ValueError('冻结的题目缺少退化来源')
+    for trigger in triggers:
+        scope = trigger['subset']
+        if scope not in (None, subset) or (scope, trigger['metric'], trigger['direction']) not in scopes:
+            raise ValueError('冻结的题目与首轮未达标分项不同')
+        basis = trigger['selection_basis']
+        if basis not in ('regressed_sample', 'failed_subset_roster') or (basis == 'failed_subset_roster' and scope is None):
+            raise ValueError('冻结的题目缺少逐题退化或失败子集依据')
 
 
 def index(rows):
@@ -46,15 +56,10 @@ def comparison_for(case, row):
             report.get('result'), case_key(report)) != (
             'vllm-precision-compare', 'token', 'completed', 'valid', 'mismatch', case_key(case)):
         raise ValueError('二遍单题比较证据无效或首异常不一致')
-    kinds = row.get('evidence_kind') or {}
-    for side in ('gpu', 'npu'):
-        kind = kinds.get(side)
-        if kind not in ('runtime','synthetic') or report['evidence_kind'].get(side) not in (kind,'unspecified'):
-            raise ValueError('二遍采集包与预测回执的真实或模拟来源不一致')
     return report
 
 
-def make_target(folder, context, case, row):
+def make_target(context, case, row):
     quality, request = context
     report = comparison_for(case, row)
     comparison_input = bound(report['evidence']['request'])
@@ -64,15 +69,15 @@ def make_target(folder, context, case, row):
     if any(comparison_input[side] != source for side, source in predictions.items()):
         raise ValueError('二遍预测记录与请求不一致')
     policy = comparison_input['token_alignment']
-    # 重新读取原预测文件和逐步向量，避免仅信任外层一基位置。
-    replay, _ = compare(folder, 'second-pass-check', 'token', {**predictions, 'case':case, 'token_alignment':policy})
     position = row['first_anomalous_token']
-    if (replay.get('result'), replay.get('first_anomalous_token'), replay.get('differences')) != (
-            'mismatch', position, report.get('differences')) or report['first_anomalous_token'] != position:
-        raise ValueError('原始预测不能复核该题的首个异常')
+    if type(position) is not int or position < 1 or position != report['first_anomalous_token']:
+        raise ValueError('二遍首异常位置与固定的单题比较回执不同')
     gpu = bound(predictions['gpu'])
+    npu = bound(predictions['npu'])
     prompt = gpu['prompt_token_ids']
     prefix = prompt + gpu['output_token_ids'][:position - 1]
+    if npu['prompt_token_ids'] != prompt or prefix != prompt + npu['output_token_ids'][:position - 1]:
+        raise ValueError('固定的首异常前文不同')
     measurement, _ = read_npu(quality['evidence'], quality['baseline']['dataset'])
     protocol = measurement['protocol']
     identity = protocol['model_identity']
@@ -87,4 +92,4 @@ def make_target(folder, context, case, row):
             'capture_mode': {'world_size':1, 'execution':'eager', 'request_count':1,
                              'scheduling':'synchronous', 'input':'text', 'sampling':'greedy'},
             'static_conditions': measurement.get('static_conditions') or {},
-            'triggers': sorted(report['differences']), 'vocab_size': vocab_size, 'prediction_evidence_kind': row['evidence_kind']}
+            'triggers': sorted(report['differences']), 'vocab_size': vocab_size, 'prediction_evidence_kind': row.get('evidence_kind', {})}

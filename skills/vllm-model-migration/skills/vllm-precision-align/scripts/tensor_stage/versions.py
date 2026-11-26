@@ -12,12 +12,12 @@ def pair(sources, target, scope, prior):
     return (prior or {}).get('runtime_versions', {})
 
 
-def missing(versions, kinds):
+def missing(versions, required=()):
     if not isinstance(versions, dict) or versions.keys() - set(SIDES):
         raise ValueError('清单 runtime_versions 应按 gpu、npu 标明实际版本')
     issues = []
     for side in SIDES:
-        if side in versions or kinds[side] == 'runtime':
+        if side in versions or side in required:
             record = versions.get(side)
             if not isinstance(record, dict) or not all(isinstance(record.get(key),str) and record[key].strip()
                                                       for key in ('torch','vllm','msprobe')):

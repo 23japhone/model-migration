@@ -46,9 +46,7 @@ def local_vector(source, root, directory, name):
 
 
 def sample(directory, plan, bundle, data):
-    kind = data.get('evidence_kind')
-    if kind not in ('runtime', 'synthetic'):
-        raise ValueError('第三遍采集包缺少真实或模拟来源')
+    kind = data.get('evidence_kind', 'unspecified')
     return target_record(directory, plan, bundle, data['hardware'], kind, data['prediction'])
 
 

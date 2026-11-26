@@ -4,6 +4,21 @@
 
 ## 当前验证基准
 
+### 三阶段精度结论与仅补张量的续接
+
+[客户入口离线用例](../tests/vllm-model-migration/tensor_stage_cases/test_customer_verdicts.py)通过自定义数据集 `custom_qa` 的客户任务验证三个出口。GPU 总分 0.80，NPU 总分 0.79，默认允许下降 0.008，首轮失败。客户逐题分数与 NPU 第 2 题的成绩配对；两端第 2 个输出位置出现预测差异。CPU 读取绑定的本地权重失败。只补交张量时，沿用同一 Token 报告，分别验证缺少 GPU 包、双端 FP32 张量全部通过和一个元素超限。用例核对终端 JSON、落盘客户回执、阶段和单题报告。客户部署与 NPU 测量由夹具提供；数值比较使用实际比较器。
+
+运行以下离线专项，低精度 CPU 兼容路径和 FP8 比例另有独立用例。缺少可选 msProbe 时，原生适配器专项的相关用例会跳过。
+
+```bash
+for suite in task_quality token_alignment tensor_alignment tensor_stage_cases
+do
+    python3 -B -m unittest discover -s "tests/vllm-model-migration/$suite" -q || exit 1
+done
+```
+
+本轮全量离线回归收集 942 项，940 项通过，2 项因缺少可选 msProbe 跳过。标准 unittest 发现会把 `tests/vllm-model-migration/diagnosis` 与业务包 `diagnosis` 同名导入，该问题也在开发基线复现。全量验收复制固定的工作区源码和测试，只在临时副本中将测试目录改名为 `diagnosis_cases`，然后运行全量发现。真实 GPU/NPU 双端采集与 FP8 初始容差的设备校准待实机验证。
+
 ### 单卡 Eager 批次的联合数值采集
 
 同一批次专项覆盖同步与异步身份及数值。异步用例令两个 Future 逆序完成并更换成员行，核对接受的输出序号、被丢弃的候选、延迟写盘与再次 seal。数值测试通过公开入口给两个重复 Token 分配不同 BF16 激活，并读回各自的字节。它还覆盖未知张量轴、密集投影的共享权重、摘要变化、缺少一个成员的 logits、不同物理槽、多请求的 GDN 续块与冷初态、MLA 子批起点和成员预算。全量离线回归 886 项通过，批次专项 27 项通过，独立 `source_contract` 52 项通过。异步专项还覆盖引擎发出 `ENGINE_CORE_DEAD` 后的失败回执。逆序完成由离线用例构造。设备上已观察到的共享前向、在途前向及单前向数值见[异步批次实机记录](MSPROBE_RUNTIME_CAPTURE.md#单卡-eager-的异步批次采集)。

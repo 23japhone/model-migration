@@ -140,7 +140,7 @@ flowchart TD
     R -. 新请求显式续接 .-> M
 ```
 
-客户 `migrate.py --task` 在普通精度步骤后、三文件交付前调度任务质量对齐，将质量报告引用写入 `customer-manifest.json` 的 `task_quality[]`。启用 `accuracy.token_alignment` 后，精度阶段从可比的未达标分项选题。已有双端预测的题可直接比较。有 GPU 预测、缺 NPU 记录且具备首轮冻结请求的题委托原生评测重跑。客户通过 `token_alignment[]` 查看选题和比较报告。启用 `accuracy.tensor_alignment` 时，阶段使用本次生成或外部提供的同题 Token 报告，从 `tensor_alignment[]` 可查逐调用结果。三文件交付按普通精度、部署和导出回执独立判定。[定向重跑与比较的阶段契约](../skills/vllm-model-migration/skills/vllm-precision-align/references/contract.md#token-预测对齐)
+客户 `migrate.py --task` 在普通精度步骤后、三文件交付前调度任务质量对齐，将质量报告引用写入 `customer-manifest.json` 的 `task_quality[]`。启用 `accuracy.token_alignment` 后，精度阶段从可比的未达标分项选题。已有双端预测的题可直接比较。有 GPU 预测、缺 NPU 记录且具备首轮冻结请求的题委托原生评测重跑。客户通过 `token_alignment[]` 查看选题和比较报告。确认双端同前文的首差时，阶段使用本次生成或外部提供的同题 Token 报告自动发起张量诊断。实际张量 dtype 决定缺省容差，直接比较 GPU、NPU 得出结论，从 `tensor_alignment[]` 可查逐调用结果。三文件交付按普通精度、部署和导出回执独立判定。[定向重跑与比较的阶段契约](../skills/vllm-model-migration/skills/vllm-precision-align/references/contract.md#token-预测对齐)
 
 ### 4.2 支持度分流与明确续接
 

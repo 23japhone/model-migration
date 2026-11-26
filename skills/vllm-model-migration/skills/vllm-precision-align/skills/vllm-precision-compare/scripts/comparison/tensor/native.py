@@ -94,12 +94,10 @@ def disk_inventory(bundle):
         raise ValueError('定向采集目录与原生张量清单不同')
 
 
-def verify(bundle, plan):
+def verify(bundle, plan, rows, issues):
     data = bundle.value
-    if data.get('evidence_kind') == 'synthetic':
+    if 'native_index' not in data:
         return
-    if data.get('evidence_kind') != 'runtime':
-        raise ValueError('须明确标记 runtime 或 synthetic 采集来源')
     native = relative_json(bundle, data['native_index'])
     if native.get('format') != 'tensor-native-index-v1':
         raise ValueError('原生调用索引格式不符')
@@ -108,7 +106,12 @@ def verify(bundle, plan):
             raise ValueError('原生索引与本次张量包不同：' + key)
     execution_origin(bundle, plan, native)
     targets = {(c['id'], s['id']): (c, s) for c in plan['calls'] for s in c['slots']}
-    for row in native['tensors']:
-        call, slot = targets[row['call'], row['slot']]
-        native_call(row, call, slot, data['hardware'])
+    for key, row in rows.items():
+        if row is None:
+            continue
+        try:
+            native_call(row, *targets[key], data['hardware'])
+        except (ValueError, KeyError, TypeError) as error:
+            rows[key] = None
+            issues.append(f'{key} 原生调用核验失败：{error}')
     disk_inventory(bundle)

@@ -115,12 +115,12 @@ def arguments(spec, slots):
 
 
 def promoted(names, values, torch):
-    return {name: values[slot].to(torch.float64) if values[slot].is_floating_point() else values[slot]
-            for name, slot in names.items()}
+    tensors = {name: values[slot].decoded() for name, slot in names.items()}
+    return {name: tensor.double() if tensor.is_floating_point() else tensor for name, tensor in tensors.items()}
 
 
 def same_input(left, right, torch):
-    return left.dtype == right.dtype and left.shape == right.shape and torch.equal(left, right)
+    return left.tensor.dtype == right.tensor.dtype and torch.equal(left.decoded(), right.decoded())
 
 
 def output_result(rows):

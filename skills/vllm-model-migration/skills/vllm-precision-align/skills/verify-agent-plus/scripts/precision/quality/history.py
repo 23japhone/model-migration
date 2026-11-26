@@ -7,7 +7,7 @@ from ..evidence import begin, bound, finish, load, record, verify_files
 from ..history import process_succeeded
 from ..inputs import deployment
 from ..runtime.evalscope.configuration import load_config, validate
-from . import runtime, static_gate
+from . import runtime
 from .native import measure
 from .protocol import check_assets, check_config, ref, stable_ids, subset_assets
 from .run import ERRORS, fail, project
@@ -122,6 +122,7 @@ def quality(original, expected):
     if any(details['files'].get(k) != v for k,v in result['files'].items()):
         raise ValueError('原生证据未完整绑定在原测量中')
     check_static_conditions(original, stored, result, expected)
+    result['stable_samples'] = details['stable_samples']
     return protocol, result
 
 
@@ -186,7 +187,7 @@ def ordinary(original, expected):
     conditions = details['conditions']
     runtime.check_deployment(original['inputs']['deployment'], expected['measurement']['deployment'],
                              conditions['server_generation'])
-    return p, {'scores': result, 'static_conditions': runtime.ordinary(conditions)}
+    return p, {'scores': result, 'stable_samples': stable, 'static_conditions': runtime.ordinary(conditions)}
 
 
 def analyze(request, parent, run_id):
@@ -201,10 +202,9 @@ def analyze(request, parent, run_id):
     try:
         restore = quality if original['operation'] == 'quality-run' else ordinary
         protocol, result = restore(original, request.get('expected'))
-        static_gate.check(request.get('expected', {}), result['static_conditions'])
         if ref(request['source']['path']) != request['source']:
             raise ValueError('历史测量回执在复核期间发生变化')
-        manifest['detailed_report'].update(hardware='npu', formal_requests=0)
+        manifest['detailed_report'].update(hardware='npu', formal_requests=0, stable_samples=result['stable_samples'])
         manifest['evidence']['source'] = request['source']
         project(attempt, manifest, protocol, result)
         return finish(manifest, 'completed')

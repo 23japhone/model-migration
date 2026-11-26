@@ -60,6 +60,29 @@ class TensorStage(unittest.TestCase):
                 {'id': 'x', 'role': 'input', 'path': ['input_args',0]},
                 {'id': 'y', 'role': 'output', 'path': ['output',0]}]}]})
 
+    def test_legacy_frozen_selection_survives_missing_archived_per_sample_scores(self):
+        quality = self.get(self.quality)
+        quality['scores'][0].pop('sample_comparison')
+        quality_ref = self.put('historical-quality.json', quality)
+        token = self.get(self.token)
+        scope = self.get(token['selection'])
+        scope['quality_report'] = quality_ref
+        token.update(quality_report=quality_ref, selection=self.put('historical-selection.json', scope))
+        self.action.update(quality_report=quality_ref, token_report=self.put('historical-token.json', token))
+        report = self.get(self.invoke()['tensor_report'])
+        self.assertEqual((report['cases'][0]['sample_id'],report['cases'][0]['position']), (2,1))
+        self.assertEqual(report['cases'][0]['result'], 'needs_scope')
+
+    def test_known_case_failure_wins_over_uncovered_cases(self):
+        scripts = str(fixture.STAGE.parent)
+        sys.path.insert(0, scripts)
+        self.addCleanup(sys.path.remove, scripts)
+        from tensor_stage.runner import aggregate
+        for incomplete in ('needs_scope', 'awaiting_gpu', 'awaiting_npu','insufficient_evidence'):
+            missing = {'result':incomplete}
+            self.assertEqual(aggregate([missing, {'result':'mismatch'}]), 'mismatch')
+            self.assertEqual(aggregate([{'result':'aligned'}, missing]), 'insufficient_evidence')
+
     def test_target_without_scope_is_identified_and_no_npu_launched(self):
         summary = self.invoke()
         row = self.get(summary['tensor_report'])['cases'][0]
@@ -121,6 +144,51 @@ class TensorStage(unittest.TestCase):
                                   'token_id':record['output_token_ids'][at]})
         return self.put('tensor-'+side+'.json',bundle)
 
+    def test_automatic_plan_preserves_one_sided_fp8_scale(self):
+        import hashlib
+        import torch
+        gpu = self.get(self.inventory('gpu'))
+        gpu['calls'][0]['slots'][0]['fp8_scaled'] = True
+        self.action['evidence'] = [self.put('gpu-scaled.json',gpu),self.inventory('npu')]
+        plan = self.invoke()['plans'][0]
+        sources = [plan]
+        for side, values in (('gpu',[2,4]),('npu',[1,2])):
+            data = self.get(self.runtime_bundle(plan, side))
+            row = data['tensors'][0]
+            file = self.root / row['path']
+            torch.save(torch.tensor(values).to(torch.float8_e4m3fn), file)
+            row.update(dtype='float8_e4m3fn',sha256=hashlib.sha256(file.read_bytes()).hexdigest())
+            if side == 'gpu':
+                row['fp8_scale'] = .5
+            sources.append(self.put(side+'-tensor.json',data))
+        self.action['evidence'] = sources
+        report = self.get(self.invoke()['tensor_report'])
+        self.assertEqual((report['alignment_status'],report['target_status']), ('aligned','pass'))
+
+    def test_inventory_preserves_shared_slots_when_only_one_device_lists_an_extra(self):
+        gpu = self.get(self.inventory('gpu'))
+        gpu['calls'][0]['slots'].append({'role':'weight','id':'extra','path':['parameters','weight']})
+        self.action['evidence'] = [self.put('gpu-extra.json',gpu),self.inventory('npu')]
+        report = self.get(self.invoke()['tensor_report'])
+        row = report['cases'][0]
+        plan = self.get(row['plan'])
+        self.assertEqual([slot['id'] for slot in plan['calls'][0]['slots']], ['x','y'])
+        self.assertIn('extra',str(plan['scope_uncovered']))
+        import hashlib
+        import torch
+        plan_ref = row['plan']
+        gpu = self.runtime_bundle(plan_ref,'gpu')
+        npu = self.get(self.runtime_bundle(plan_ref,'npu'))
+        tensor = npu['tensors'][1]
+        file = self.root / tensor['path']
+        torch.save(torch.tensor([1.,3.]), file)
+        tensor['sha256'] = hashlib.sha256(file.read_bytes()).hexdigest()
+        self.action['evidence'] = [plan_ref,gpu,self.put('partial-known-fail.json',npu)]
+        summary = self.invoke()
+        self.assertEqual((summary['alignment_status'],summary['target_status']), ('mismatch','fail'))
+        self.assertIn('extra', str(self.get(summary['tensor_report'])['cases'][0]['scope_uncovered']))
+
+
     def third_pass(self, raw_shift=0):
         self.action['evidence'] = [self.inventory(s) for s in ('gpu', 'npu')]
         plan = self.invoke()['plans'][0]
@@ -141,7 +209,7 @@ class TensorStage(unittest.TestCase):
         self.action['tensor_alignment'] = {}
         summary = self.invoke()
         self.assertEqual(summary['plans'], [plan])
-        self.assertEqual(self.get(summary['tensor_report'])['cases'][0]['result'], 'not_evaluated')
+        self.assertEqual(self.get(summary['tensor_report'])['cases'][0]['result'], 'aligned')
 
     def test_target_that_no_longer_reproduces_stops_before_tensor_verdict(self):
         row, _ = self.third_pass(-2)
@@ -180,11 +248,11 @@ class TensorStage(unittest.TestCase):
         plan = self.get(generated['plan'])
         self.assertEqual((plan['phase'], plan['position'], plan['prefix_token_ids']), ('decode',2,[1,0,1]))
         states = {k:v['comparison_result'] for k,v in generated['runs'].items()}
-        self.assertEqual(list(states.values()), ['awaiting_npu','aligned','mismatch','aligned'])
+        self.assertEqual(list(states.values()), ['insufficient_evidence','aligned','mismatch','aligned'])
         output = generated['runs']['04-gpu-outlier']
-        self.assertEqual(output['alignment_status'], 'simulated')
+        self.assertEqual((output['alignment_status'], output['target_status']), ('mismatch', 'fail'))
         case = self.get(output['tensor_report'])['cases'][0]
-        self.assertTrue(case['simulated'])
+        self.assertNotIn('simulated', case)
         self.assertEqual(case['evidence_kind'], {'gpu':'synthetic','npu':'synthetic'})
         physical = self.get(case['comparison'])
         self.assertEqual(physical['largest_error']['call'], 'add0')

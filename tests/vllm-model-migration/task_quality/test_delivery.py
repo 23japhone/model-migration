@@ -78,7 +78,7 @@ class AutomaticBaselineTests(unittest.TestCase):
                 self.assertEqual(self.session.value['task_quality'][0]['missing'], missing)
                 self.session.finish.assert_not_called()
 
-    def test_discovered_model_dataset_mismatch_does_not_infer(self):
+    def test_discovered_protocol_difference_allows_native_measurement(self):
         from customer_workflow import quality
         explicit = {'evaluator':'evalscope','dataset':'gsm8k','scores':[{'metric':'accuracy','gpu_score':1}]}
         p = {k: 'hash' for k in ('dataset', 'dataset_revision', 'dataset_identity', 'model_identity',
@@ -88,12 +88,13 @@ class AutomaticBaselineTests(unittest.TestCase):
         entry={'baseline':explicit,'gpu_evidence':{'path':'/gpu','sha256':'a'*64},'protocol':p}
         self.session.ready.return_value={'tasks':{'verify':{'receipt':'deployment'}}}
         with patch.object(stage.selection, 'discover', return_value={'status':'found','baselines':[entry]}), \
-             patch.object(quality, 'prepare', return_value={'protocol':{**p,'dataset_revision':'different'}}), \
+             patch.object(quality, 'prepare', return_value={'protocol':{**p,'dataset_revision':'different'}, 'native_request':{'protocol': p}}), \
              patch.object(stage, 'execute') as execute:
             stage.compare_all(self.session, self.task, {}, self.intent, Path('/unused'), runner.guarded)
-        execute.assert_not_called()
-        self.assertEqual(self.session.value['task_quality'][0]['status'], 'not_evaluated')
-        self.assertIn('dataset_revision', str(self.session.value['task_quality'][0]['missing']))
+        execute.assert_called_once()
+        request = execute.call_args.args[3]
+        self.assertEqual('publisher', request['baseline_source'])
+        self.assertNotIn('expected_static_conditions', request['native_request'])
 
 
 class DiscoveryDeliveryIntegrationTests(unittest.TestCase):
@@ -150,7 +151,7 @@ class DiscoveryDeliveryIntegrationTests(unittest.TestCase):
 
     def native_measurement(self, action, native, label):
         self.assertEqual('quality-run', action)
-        self.assertEqual(self.published.static, native['expected_static_conditions'])
+        self.assertNotIn('expected_static_conditions', native)
         scores = [{**scope, 'value': 0.5, 'unit': 'ratio', 'direction': 'higher',
                    'aggregation': 'mean', 'sample_kind': 'binary', 'samples': []} for scope in native['scores']]
         projection = self.session.artifact('npu-data', {'format': 'task-quality-native-v1', 'hardware': 'npu',
@@ -186,25 +187,25 @@ class DiscoveryDeliveryIntegrationTests(unittest.TestCase):
 
     def test_found_complete_baseline_dispatches_public_quality_once_without_a_target(self):
         report = self.reported_alignment()
-        self.assertEqual('not_evaluated', report['conclusions']['precision_target'])
+        self.assertEqual('pass', report['conclusions']['precision_target'])
         conclusion = self.session.finish('blocked')[1]['task_quality_conclusion']
-        self.assertEqual('not_evaluated', conclusion['precision_target'])
-        self.assertIn('已取得分差，尚无达标判据', conclusion['summary'])
+        self.assertEqual('pass', conclusion['precision_target'])
+        self.assertIn('均已达标', conclusion['summary'])
         for row in report['scores']:
-            self.assertNotIn('target', row)
+            self.assertEqual(0, row['target']['max_drop'])
             self.assertEqual(0.5, row['npu_minus_gpu'])
 
     def test_public_gpu_target_reaches_comparison_in_customer_delivery(self):
         report = self.reported_alignment([{'metric':'acc', 'subset':'a', 'gpu_score':0, 'target':{'max_drop':0}}])
         self.assertEqual('pass', report['conclusions']['precision_target'])
         total, subset = report['scores']
-        self.assertEqual('not_evaluated', total['precision_target'])
+        self.assertEqual('pass', total['precision_target'])
         self.assertEqual('pass', subset['precision_target'])
         self.assertEqual('publisher', subset['target_evidence']['kind'])
         conclusion = self.session.finish('blocked')[1]['task_quality_conclusion']
         self.assertEqual('pass', conclusion['precision_target'])
         self.assertIn('a acc 已达标', conclusion['summary'])
-        self.assertIn('总分 acc 未设阈值', conclusion['summary'])
+        self.assertIn('总分 acc 已达标', conclusion['summary'])
         original = self.sources.bound(subset['target_evidence']['source'])
         self.assertEqual({'max_drop':0}, original['scores'][0]['target'])
 

@@ -32,10 +32,14 @@ def artifacts(entry, run_id):
         raise ValueError('质量报告没有绑定到当前候选')
     if report.get('task_id') != 'vllm-precision-compare' or report.get('status') != 'completed':
         raise ValueError('缺少已完成质量比较')
-    source = stage['inputs']['gpu_evidence']
-    if report['evidence'].get('gpu_evidence') != source:
-        raise ValueError('首轮报告与 GPU 原生评测来源不同')
-    sources.bound(source)
+    if report.get('comparison_basis') == 'customer_provided':
+        if report['baseline'] != stage['inputs']['baseline']:
+            raise ValueError('质量报告与阶段请求的客户 GPU 基线不同')
+    else:
+        source = stage['inputs']['gpu_evidence']
+        if report['evidence'].get('gpu_evidence') != source:
+            raise ValueError('首轮报告与 GPU 原生评测来源不同')
+        sources.bound(source)
     sources.bound(stage['receipt'])
     return stage, report
 
@@ -45,7 +49,10 @@ def same_measurement(a, b):
     current = b['inputs']
     if a['receipt'] != b['receipt'] or b.get('source') != 'reused':
         return False
-    if any(first.get(key) != current.get(key) for key in ('baseline', 'native_request', 'gpu_evidence')):
+    keys = ['baseline', 'native_request', 'baseline_source']
+    if current.get('baseline_source') == 'publisher':
+        keys.append('gpu_evidence')
+    if any(first.get(key) != current.get(key) for key in keys):
         return False
     verification = sources.bound(b['verification'])
     if (verification.get('task_id'), verification.get('operation'), verification.get('status')) != (
@@ -83,7 +90,9 @@ def prior_candidate(session, key, dataset, baseline, native, gpu):
         saved = previous(session, {'step': key, 'dataset': dataset})
         if saved:
             stage, report = artifacts(saved, session.value['run_id'])
-            wanted = {'baseline': baseline, 'native_request': native, 'gpu_evidence': gpu}
+            wanted = {'baseline': baseline, 'native_request': native}
+            if stage['inputs'].get('baseline_source') == 'publisher':
+                wanted['gpu_evidence'] = gpu
             if (report['conclusions']['precision_target'] == 'fail'
                     and all(stage['inputs'].get(k) == v for k, v in wanted.items())):
                 return stage['receipt']

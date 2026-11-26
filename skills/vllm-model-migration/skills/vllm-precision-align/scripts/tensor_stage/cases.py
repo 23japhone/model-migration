@@ -25,7 +25,7 @@ def obtain_npu(context, case, plan, plan_ref, folder, row):
     if not native:
         row.update(result='awaiting_npu', reason='缺少 NPU 张量包或冻结的原生复测请求')
         return None
-    if versions.missing(plan.get('runtime_versions', {}), {'gpu':'synthetic','npu':'runtime'}):
+    if versions.missing(plan.get('runtime_versions', {}), {'npu'}):
         row.update(result='needs_scope', reason='NPU 原生复测前须在清单冻结 torch、vllm、msprobe 实际版本')
         return None
     if native.get('protocol') != plan['protocol']:
@@ -47,7 +47,7 @@ def inspect_npu(folder, row, source, plan, policy):
 
 
 def choose_npu(context, case, folder, row, plan, supplied, gpu_complete):
-    policy = context['request']['tensor_alignment']
+    policy = context['request'].get('tensor_alignment', {})
     fallback = None
     if supplied:
         try:
@@ -87,7 +87,7 @@ def evaluate(context, case, folder, row):
     sources = context['sources']
     plan_ref = row['plan']
     plan = bound(plan_ref)
-    policy = context['request']['tensor_alignment']
+    policy = context['request'].get('tensor_alignment', {})
     gpu, _ = sources.bundle(plan_ref, plan, 'gpu')
     if not gpu:
         row.update(result='awaiting_gpu', reason='等待与本题计划摘要一致的 GPU 张量包')
@@ -109,7 +109,7 @@ def evaluate(context, case, folder, row):
         return
     request = {'plan': plan_ref, 'gpu': gpu, 'npu': row['npu'], 'tensor_alignment': policy}
     report, row['comparison'] = delegation.compare(folder, 'tensor-comparison', 'tensor', request)
-    if report['result'] not in ('aligned','mismatch','insufficient_evidence','not_evaluated'):
+    if report['result'] not in ('aligned','mismatch','insufficient_evidence'):
         raise ValueError('双端张量结果无效')
     row.update(result=report['result'], capture_status=report['capture_status'])
 
@@ -124,7 +124,7 @@ def process(context, original, selected, folder):
     try:
         if original.get('triggers') != selected['triggers']:
             raise ValueError('二遍的退化题来源与选题清单不符')
-        target = make_target(folder, (context['quality'], context['request']), case, original)
+        target = make_target((context['quality'], context['request']), case, original)
         selection = folder / 'target.json'
         write(selection, target)
         row.update(target=ref(selection), position=target['position'], comparison_token=original['comparison'])

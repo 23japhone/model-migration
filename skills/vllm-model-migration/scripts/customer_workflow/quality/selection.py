@@ -48,20 +48,3 @@ def select(session, task, observations, supplied):
         return [{**row, 'discovery': evidence} for row in found['baselines']], []
     missing = found.get('missing') or ['缺少可核验的同模型 GPU 评测基线']
     return [], [unresolved(session, 'quality-alignment', missing, evidence)]
-
-
-def mismatches(candidate, protocol):
-    """上游 GPU 与本任务可编译的评测条件必须相同，才为自动基线分配模型推理。"""
-    from .inputs import normalize_one
-    normalized = normalize_one(candidate['baseline'])
-    source = candidate['protocol']
-    keys = ('dataset', 'dataset_revision', 'dataset_identity', 'model_identity', 'task_name', 'task_revision',
-            'evaluator', 'evaluator_version', 'subsets', 'split', 'sample_identities',
-            'prompt_config', 'generation_config', 'scoring_config')
-    issues = [key for key in keys if source.get(key) is None or source[key] != protocol.get(key)]
-    for item in normalized['scores']:
-        metric = item['metric']
-        old = source.get('metrics', {}).get(metric)
-        if not old or old != protocol.get('metrics', {}).get(metric):
-            issues.append('metrics.' + metric)
-    return issues

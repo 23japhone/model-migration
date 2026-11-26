@@ -38,7 +38,7 @@ python3 /完整资源/skills/vllm-model-migration/skills/vllm-precision-align/sc
 
 客户流程可为 evaluation 提供 `blocked_reason` 保存未就绪项，并让其他独立项继续；也可提供 `result` 引用复用同一完整输入的有效原 run。复用前委托 verify-agent-plus 的公开 analyze 核验，再保留原 run 引用，不生成新测量。结果/来源变化阻塞该项；契约见 references/contract.md。
 
-客户声明 GPU 基线或总入口查到完整的公开基线时，使用阶段的 `--action quality`。先按冻结的测量条件复核候选，再按需运行 EvalScope。将同一轮原生分数、逐题评分与 GPU 历史证据交给 [vllm-precision-compare](skills/vllm-precision-compare/SKILL.md)。单题验收使用专用单题题库，分别记录首次测量的正式请求数和第二次复用所引用的原回执。字段与输出路径见[阶段契约](references/contract.md#任务质量对齐)。
+客户声明 GPU 基线或总入口查到完整的公开基线时，使用阶段的 `--action quality`。先按冻结的测量条件复核候选，再按需运行 EvalScope。将有效的 NPU 原生分数、逐题评分与客户声明或经过核验的公开 GPU 分数交给 [vllm-precision-compare](skills/vllm-precision-compare/SKILL.md)。单题验收使用专用单题题库，分别记录首次测量的正式请求数和第二次复用所引用的原回执。字段与输出路径见[阶段契约](references/contract.md#任务质量对齐)。
 
 任务质量报告出现可比较的未达标项时，可用 `--action token` 导出退化题或失败学科的候选清单，并比较双端同轮逐 Token 预测。按题目查看首个异常 Token、缺失证据、CPU 核验及第二遍评分是否复现原退化。[Token 阶段请求与回执](references/contract.md#token-预测对齐)
 

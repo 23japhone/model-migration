@@ -162,7 +162,27 @@ class TokenStage(unittest.TestCase):
         self.assertFalse(selected['cases'])
         self.assertIsNone(selected['pending_scopes'][0]['subset'])
 
-    def test_expands_original_gpu_reviews_without_declared_sample_results(self):
+    def test_reused_quality_recovers_failed_subset_roster_from_original_measurement(self):
+        self.rows[0].pop('sample_comparison')
+        projection = self.put('verified-projection.json', {'hardware': 'npu', 'protocol': {'dataset': 'exam'},
+                              'format': 'task-quality-native-v1', 'scores': []})
+        original = self.put('original.json', {'task_id': 'verify-agent-plus', 'operation': 'quality-run',
+                            'status':'completed', 'conclusions': {'evaluation_validity':'pass'}, 'detailed_report': {
+                            'hardware':'npu', 'stable_samples': {'math': [5, 8]} }})
+        check = {'task_id':'verify-agent-plus', 'operation':'quality-analyze','status':'completed',
+                 'conclusions':{'evaluation_validity':'pass'}, 'detailed_report':{'hardware':'npu'},
+                 'inputs':{'source':original}, 'evidence':{'quality_evidence':projection}}
+        refs = {'receipt':original, 'verification':self.put('verified.json', check), 'measurement':projection}
+        self.report = self.quality(self.rows, refs)
+        _, selected, _ = self.run_stage()
+        self.assertEqual([case['sample_id'] for case in selected['cases']], [5, 8])
+        check['inputs'] = {'source': {'path': '/different', 'sha256': 'a' * 64}}
+        refs['verification'] = self.put('unbound.json', check)
+        self.report = self.quality(self.rows, refs)
+        _, selected, _ = self.run_stage()
+        self.assertFalse(selected['cases'])
+
+    def test_aggregate_failure_without_sample_results_does_not_read_gpu_archive(self):
         import importlib.util
         source = Path(__file__).resolve().parents[1] / 'task_quality/test_compare.py'
         spec = importlib.util.spec_from_file_location('quality_fixture', source)
@@ -181,8 +201,28 @@ class TokenStage(unittest.TestCase):
         self.assertNotIn('sample_comparison', report['scores'][0])
         self.report = self.put('original-quality.json', report)
         _, selected, _ = self.run_stage()
-        self.assertEqual([(r['subset'], r['sample_id']) for r in selected['cases']], [('a', 18)])
-        self.assertFalse(selected['uncovered'])
+        self.assertEqual(selected['cases'], [])
+        self.assertIn('无法定位到题', selected['pending_scopes'][0]['reason'])
+
+    def test_no_second_round_reviews_still_delivers_paired_mismatch(self):
+        bundles = []
+        for hardware in ("gpu", "npu"):
+            path = self.bundle(hardware)["path"]
+            bundle = json.loads(Path(path).read_text())
+            case = bundle["cases"][0]
+            del case["review"]
+            case["cpu"] = {"path": "/stale/reference", "sha256": "0" * 64}
+            if hardware == "npu":
+                record = json.loads(Path(case["record"]["path"]).read_text())
+                record["raw_logits"][0][0] = 3
+                case["record"] = self.put("new-npu.json", record)
+            bundles.append(self.put(hardware + "-new-bundle.json", bundle))
+        _, _, report = self.run_stage(bundles)
+        case = report["cases"][0]
+        self.assertEqual(case["quality_reproduction"][0]["status"], "not_evaluated")
+        self.assertEqual((case["result"], case["first_anomalous_token"]), ("mismatch", 1))
+        self.assertEqual(case["cpu_check"]["status"], "unavailable")
+        self.assertEqual(case["validity"], "valid")
 
     def test_cpu_reference_reuses_original_protocol_model_identity(self):
         files = {'model.safetensors': 'c' * 64}
@@ -202,7 +242,13 @@ class TokenStage(unittest.TestCase):
                            'inputs': original, 'detailed_report': {'hardware': 'npu'},
                            'conclusions': {'evaluation_validity': 'pass'}, 'evidence': {'quality_evidence': measurement}})
         self.report = self.quality(self.rows, {'measurement': measurement, 'receipt': receipt})
-        summary, _, _ = self.run_stage([self.bundle('gpu'), self.bundle('npu')])
+        bundles = []
+        for device in ('gpu', 'npu'):
+            bundle = json.loads(Path(self.bundle(device)['path']).read_text())
+            bundle['cases'][0]['cpu'] = {'path': '/outdated/cpu.json', 'sha256': 'd' * 64}
+            bundles.append(self.put(device + '-legacy.json', bundle))
+        summary, _, _ = self.run_stage(bundles)
         req = json.loads((Path(summary['manifest']).parent / 'case-0/request.json').read_text())
         self.assertEqual(req['cpu_model']['model_identity'], identity)
         self.assertTrue(req['cpu_model']['plain_greedy'])
+        self.assertNotIn('cpu', req)

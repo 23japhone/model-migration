@@ -2,7 +2,7 @@
 from .. import contract
 from ..evidence import begin, bound, finish, record, verify_files, write
 from ..inputs import collect
-from ..quality import runtime, static_gate
+from ..quality import runtime
 from ..quality.contract import run_request
 from ..quality.protocol import check_assets, ref, stable_ids, subset_assets
 from ..quality.run import ERRORS, freeze
@@ -50,7 +50,7 @@ def selection(request):
         raise ValueError('定向重跑与原始质量测量协议不同')
     if selected['quality_report'] != request['quality_report'] or selected['dataset'] != protocol['dataset']:
         raise ValueError('选题不属于当前质量报告与数据集')
-    failed = [r for r in report['scores'] if r.get('precision_target') == 'fail' and r.get('comparability') == 'pass']
+    failed = [r for r in report['scores'] if r.get('precision_target') == 'fail']
     if ((report.get('task_id'), report.get('operation'), report.get('status')) != ('vllm-precision-compare', 'run', 'completed')
             or report['conclusions'].get('precision_target') != 'fail'
             or report['baseline']['dataset'] != selected['dataset'] or not failed
@@ -81,7 +81,6 @@ def prepare(native, inputs, assets, attempt, first):
     before = service.snapshot(inputs, native['measurement'], attempt, 'before')
     snapshot = freeze(native, inputs, assets, attempt, before)
     current = runtime.recorded(snapshot, before)
-    static_gate.check(native, current)
     original = first.get('static_conditions') or {}
     for field, observed in original.items():
         if observed is not None and current.get(field) != observed:
@@ -101,10 +100,10 @@ def capture_case(folder, request, row, prepared):
     index = prepared['ids'][subset][row['sample_id']]
     folder.mkdir()
     with session(folder, prepared['raw']) as source:
-        record_ref, metrics = measure_case(folder, native, source, row, prepared['tasks'][subset], index)
+        record_ref, review = measure_case(folder, native, source, row, prepared['tasks'][subset], index)
     identity = {'subset': subset, 'sample_id': row['sample_id']}
     path = folder / 'review.json'
-    write(path, {**identity, 'hardware': 'npu', 'evidence_kind': 'runtime', 'metrics': metrics,
+    write(path, {**identity, 'hardware': 'npu', 'evidence_kind': 'runtime', **review,
                  'record_sha256': record_ref['sha256'], 'quality_report_sha256': request['quality_report']['sha256']})
     return {**identity, 'record': record_ref, 'review': ref(path)}
 

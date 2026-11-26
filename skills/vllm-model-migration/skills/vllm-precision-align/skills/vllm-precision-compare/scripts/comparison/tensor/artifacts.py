@@ -3,6 +3,7 @@ import hashlib
 from pathlib import Path
 
 from ..evidence import bound
+from .tolerance import Captured, slot_scale
 from .contract import capture_region, natural, numbers, phase, text
 
 
@@ -102,10 +103,18 @@ def verified(bundle, row, slot, torch):
         raise ValueError('张量形状无效')
     if row['dtype'] != str(tensor.dtype).removeprefix('torch.') or row['shape'] != list(tensor.shape):
         raise ValueError('张量原件与 shape 或 dtype 声明不符')
-    result = tensor.detach()
-    for step in slot.get('transforms', {}).get(side, []):
+    return normalized(tensor.detach(), row, slot, side, torch)
+
+
+def normalized(result, row, slot, side, torch):
+    steps = slot.get('transforms', {}).get(side, [])
+    for step in steps:
         result = transform(result, step)
-    return result
+    try:
+        scale = slot_scale(row, slot, side, steps, torch, transform)
+    except ValueError as error:
+        return Captured(result, None, str(error))
+    return Captured(result, scale)
 
 
 def transform(tensor, step):

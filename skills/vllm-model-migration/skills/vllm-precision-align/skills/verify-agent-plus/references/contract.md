@@ -92,8 +92,8 @@ EvalScope 在固定输出预算下保留原生评分：HTTP `finish_reason=lengt
 
 `validator.py --action token-run --request /abs/request.json --work-root /abs/output --run-id ID` 消费 `schema_version="1.0"`、首轮的完整 `native_request`、质量报告和阶段选题的 `quality_report`、`selection` 两份 path/sha256 引用。请求中的原生协议须与首轮 NPU 质量测量一致。
 
-评测器通过准备回执将稳定题号映射到原生 subset/index，核对原生样本的提示、few-shot 和答案。在已准备的单卡同步 Eager 服务上，每题用独立租约关联实际 HTTP、worker 预测和原生 review。每次只接受一个成功的正式生成请求。输出 `evidence.token_bundle` 绑定成功题目的单题记录与同轮评分。当个别题失败，进程以非零结束，`detailed_report.case_errors` 逐项列明原因。只有前后服务和资产仍一致时才发布成功题的包。
+评测器通过准备回执将稳定题号映射到原生 subset/index，核对原生样本的提示、few-shot 和答案。在已准备的单卡同步 Eager 服务上，每题用独立租约关联实际 HTTP、worker 预测和原生 review。每次只接受一个成功的正式生成请求。输出 `evidence.token_bundle` 绑定成功采集的单题记录。已取得预测、同轮评分不可用时，评分回执写明 `status=unavailable` 和原因，逐 Token 比较继续。当个别题失败，进程以非零结束，`detailed_report.case_errors` 逐项列明原因。只有前后服务和资产仍一致时才发布成功题的包。
 
 ## 张量定向重跑
 
-`validator.py --action tensor-run` 复用首轮 NPU 的 `native_request`、`quality_report` 和阶段的 `selection`。请求另传 `tensor_plans` 引用列表，每道入选题对应一份冻结清单，绑定其首异常位置与两端预测。回执的 `evidence.tensor_bundles` 与 `evidence.replay_reviews` 分别指向成功题的 NPU 张量包和此次原生评分，失败题的原因见 `detailed_report.case_errors`。[阶段采集与续接](../../../references/tensor.md)
+`validator.py --action tensor-run` 复用首轮 NPU 的 `native_request`、`quality_report` 和阶段的 `selection`。请求另传 `tensor_plans` 引用列表，每道入选题对应一份冻结清单，绑定其首异常位置与两端预测。回执的 `evidence.tensor_bundles` 与 `evidence.replay_reviews` 分别指向已采集题目的 NPU 张量包和同轮评分记录。定向采集核验实际 HTTP 模型、输入、响应和封存回执。评分缺失时保留采集结果，在对应评分记录写入 `status=unavailable` 和原因。采集失败的题目见 `detailed_report.case_errors`。[阶段采集与续接](../../../references/tensor.md)

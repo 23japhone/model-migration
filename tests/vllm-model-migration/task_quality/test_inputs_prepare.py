@@ -4,6 +4,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[3] / 'skills/vllm-model-migration'
 sys.path.insert(0, str(ROOT / 'scripts'))
@@ -18,6 +19,10 @@ def save(path, value):
 
 class PrepareIntegration(unittest.TestCase):
     def setUp(self):
+        installation = patch('customer_workflow.quality.environment.call',
+                             side_effect=AssertionError('离线准备测试意外触发环境安装'))
+        installation.start()
+        self.addCleanup(installation.stop)
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         root = self.tmp = Path(tmp.name).resolve()
@@ -63,8 +68,23 @@ class PrepareIntegration(unittest.TestCase):
                      'generation_config': {'temperature': 0.3, 'stop': 'END'},
                      'scores': [{'metric': 'accuracy', 'gpu_score': 0.9}]}
 
+    def test_foreign_gpu_protocol_does_not_filter_or_configure_npu_measurement(self):
+        self.ctx['quality_sources']['quiz']['evaluator_environment'] = self.ctx['evaluator']
+        self.base.update(evaluator_version='0.42', task_name='gpu-only', task_revision='gpu-rev',
+                         scoring_config={'scorer_name': 'other'}, prompt_config={'request_format': 'completion'},
+                         generation_config={'temperature': 0.8, 'max_tokens': 777})
+        req = prepare(self.base, self.task, self.ctx, self.tmp/'native')['native_request']
+        self.assertEqual('1.2', req['protocol']['evaluator_version'])
+        self.assertEqual('quiz', req['protocol']['task_name'])
+        self.assertEqual('chat', req['protocol']['prompt_config']['request_format'])
+        self.assertEqual(27, req['protocol']['generation_config']['max_tokens'])
+        self.assertNotIn('declaration', req['protocol']['scoring_config'])
+
     def test_all_real_samples_native_defaults_and_reuse(self):
         root = self.tmp / 'quality'
+        self.ctx['quality_sources']['quiz'].update(
+            prompt_config={'request_format': 'chat', 'enable_thinking': True},
+            generation_config={'temperature': 0.3, 'stop': 'END'})
         result = prepare(self.base, self.task, self.ctx, root)
         self.assertEqual(result['protocol']['subsets'], ['a', 'b'])
         self.assertEqual(result['protocol']['task_revision'], 'v1.1')
@@ -87,6 +107,14 @@ class PrepareIntegration(unittest.TestCase):
             'files': {'a.jsonl': self.files['a.jsonl']}})
         with self.assertRaisesRegex(ValueError, '完整文件清单'):
             prepare(self.base, self.task, self.ctx, self.tmp / 'quality')
+
+    def test_absent_requested_subset_keeps_available_item_and_omits_joint_total(self):
+        self.base['subset_list'] = ['a', 'absent']
+        self.base['scores'].extend({'metric':'accuracy', 'subset':subset, 'gpu_score':1}
+                                   for subset in self.base['subset_list'])
+        native = prepare(self.base, self.task, self.ctx, self.tmp/'partial')['native_request']
+        self.assertEqual(['a'], native['protocol']['subsets'])
+        self.assertEqual(['a'], [row['subset'] for row in native['scores']])
 
     def test_changed_local_files_cannot_pass_cached_preparation(self):
         root = self.tmp / 'quality'
@@ -137,8 +165,17 @@ class PrepareIntegration(unittest.TestCase):
         index = save(self.tmp/'gpu-index.json', {'format':'evalscope-gpu-history-v1','source':original,'report':report,'config':config})
         return base, index, compiled['protocol']
 
+    def test_metric_scale_and_partial_mapping_reach_native_request(self):
+        spec = {'selector': {'name': 'mae', 'aggregation': 'mean', 'dimensions': {}},
+                'unit': 'value', 'direction': 'lower', 'sample_metric': 'mae', 'sample_kind': 'numeric',
+                'scale_type': 'ratio'}
+        self.ctx['quality_sources']['quiz']['metrics'] = {'MAE': spec}
+        self.base['scores'] = [{'metric': 'MAE', 'gpu_score': 4}, {'metric': 'unavailable', 'gpu_score': 1}]
+        native = prepare(self.base, self.task, self.ctx, self.tmp/'mae')['native_request']
+        self.assertEqual(spec, native['protocol']['metrics']['MAE'])
+        self.assertEqual([{**spec, 'metric': 'MAE', 'subset': None}], native['scores'])
+
     def test_public_f1_uses_bound_historical_dataset_after_latest_moves(self):
-        from customer_workflow.quality import selection
         from customer_workflow.quality.resolution import resolve
         base, archive, historical = self.public_f1_run()
         source = self.ctx['quality_sources']['quiz']
@@ -153,7 +190,7 @@ class PrepareIntegration(unittest.TestCase):
         self.assertEqual(new, resolve(base, source, self.tmp/'new-ordinary')['dataset_revision'])
         root = self.tmp / 'historical-npu'
         plan = prepare(base, self.task, self.ctx, root, public_gpu=archive)
-        self.assertEqual([], selection.mismatches({'baseline':base, 'protocol':historical}, plan['protocol']))
+        self.assertEqual('quiz', plan['protocol']['dataset'])
         self.assertEqual('a'*40, plan['protocol']['dataset_revision'])
         self.assertEqual(historical['metrics']['F1'], plan['protocol']['metrics']['F1'])
         self.assertEqual('macro', plan['native_request']['scores'][0]['selector']['dimensions']['average'])

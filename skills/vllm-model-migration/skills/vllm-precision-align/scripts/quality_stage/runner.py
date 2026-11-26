@@ -5,18 +5,20 @@ import uuid
 
 from alignment.evidence import EvidenceError, digest, now, ref, safe, write
 from alignment.request import fields, output, reference, roots
-from .children import Children, ConditionsMismatch
+from .children import Children, PublicSourceError
 from .measurement import select
 from .discovered import recheck
 
 
 def validate(request):
-    fields(request, ('schema_version', 'baseline', 'native_request'), ('gpu_evidence', 'candidates', 'timeout_seconds', 'require_reuse'))
+    fields(request, ('schema_version', 'baseline', 'native_request'), ('gpu_evidence', 'candidates', 'timeout_seconds', 'require_reuse', 'baseline_source'))
     if request['schema_version'] != '1.0' or not isinstance(request['native_request'], dict):
         raise ValueError('质量任务需要版本 1.0 和原生评测请求')
     baseline = request['baseline']
-    if not isinstance(baseline, dict) or baseline.get('evaluator') != 'evalscope' or not baseline.get('scores'):
-        raise ValueError('首版质量任务需要 EvalScope 基线及评分项')
+    if not isinstance(baseline, dict) or not baseline.get('evaluator') or not baseline.get('scores'):
+        raise ValueError('质量任务需要 GPU 评测器标识及评分项')
+    if request.get('baseline_source', 'customer_provided') not in ('customer_provided', 'publisher'):
+        raise ValueError('GPU 基线来源无效')
     candidates = request.get('candidates', [])
     if not isinstance(candidates, list):
         raise ValueError('历史候选须为引用数组')
@@ -68,9 +70,10 @@ def run(request, work_root, run_id, action):
         value.update(measured)
         write(path, value)
         gpu = historical(request.get('gpu_evidence'), value['uncovered'])
-        value['quality_report'] = children.compare(request['baseline'], measured, gpu)
+        basis = request.get('baseline_source', 'customer_provided')
+        value['quality_report'] = children.compare(request['baseline'], measured, gpu, basis)
         value.update(status='completed', success=True)
-    except ConditionsMismatch as error:
+    except PublicSourceError as error:
         cause = safe(error)
         report = attempt / 'quality-report.json'
         write(report, {'baseline': request['baseline'], 'quality_measurement_started': False, 'formal_requests': 0,

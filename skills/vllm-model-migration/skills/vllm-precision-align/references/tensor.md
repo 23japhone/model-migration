@@ -4,9 +4,9 @@
 
 ## 客户任务与独立入口
 
-新建客户任务时在 `task.json` 中声明 `accuracy.tensor_alignment`。例如取 `{"atol":0.001,"rtol":0.0001}`，或用 `{}` 保留浮点误差观测；整数、布尔值、结构和非有限值仍按比较契约判定。第二遍的 `accuracy.token_alignment` 使用自己的两项绝对容差。也可在上下文提供与本次质量报告匹配的外部 Token 报告。已有客户任务若从未声明张量对齐，可用新 run-id 启用，或携带已冻结的上游报告独立调用阶段。
+第二遍确认某题有双端同前文预测的首个差异后，客户入口自动触发该题的张量诊断。`accuracy.tensor_alignment` 是可选的浮点容差覆盖，例如 `{"rtol":0}` 只覆盖相对容差。每个槽位使用自身实际 dtype 的默认值。第二遍的 `accuracy.token_alignment` 使用自己的绝对容差。上下文也可提供与本次质量报告匹配的外部 Token 报告。
 
-独立调用的请求包含 `schema_version="1.0"`、`quality_report`、`token_report`、`tensor_alignment` 和数组 `evidence`。两个报告及数组项使用 `{path,sha256}` 引用。需要本地 NPU 采集时再给首轮冻结的 `native_request`。以下命令中，`MIGRATION_SKILL_ROOT` 指向已安装的完整 `vllm-model-migration` 目录，其下可见 `SKILL.md`、`scripts/` 和 `skills/`。
+独立调用的请求包含 `schema_version="1.0"`、`quality_report`、`token_report` 和数组 `evidence`，支持可选的 `tensor_alignment`。两个报告及数组项使用 `{path,sha256}` 引用。需要本地 NPU 采集时再给首轮冻结的 `native_request`。以下命令中，`MIGRATION_SKILL_ROOT` 指向已安装的完整 `vllm-model-migration` 目录，其下可见 `SKILL.md`、`scripts/` 和 `skills/`。
 
 ```bash
 python3 "$MIGRATION_SKILL_ROOT/skills/vllm-precision-align/scripts/precision.py" --action tensor --request "$REQUEST" --work-root "$WORK_ROOT" --run-id "$RUN_ID"
@@ -55,7 +55,7 @@ NPU 端核对 GPU 材料后，通过 `validator.py --action tensor-run` 重用�
 
 ## 续接与报告
 
-客户任务已声明 `accuracy.tensor_alignment` 时，可沿用原 run-id 和 `migrate.py --task … --context … --resume <上次客户回执> …`。只改张量容差时保留原 task.json 路径和其他客户字段，同时更新上下文的 `task_source` 摘要。三文件已交付、已有单题 Token 报告且上下文仅补充三遍材料时，客户入口直接复用冻结的上游回执。也可独立调用阶段或离线比较器。
+已有单题首差回执时，可沿用原 run-id 和 `migrate.py --task … --context … --resume <上次客户回执> …`。只改张量容差时保留原 task.json 路径和其他客户字段，同时更新上下文的 `task_source` 摘要。三文件已交付、已有单题 Token 报告且上下文仅补充三遍材料时，客户入口直接复用冻结的上游回执。也可独立调用阶段或离线比较器。
 
 `customer-manifest.json` 的 `tensor_alignment[]` 指向各数据集的报告。查看 `cases[]` 中的目标位置、清单、GPU/NPU 核验、目标步能否复现、比较回执和缺项。已证实超限的调用保留其坐标、双端原值与 CPU 误差；上游输入已漂移时，输出差异用于定位传播路径。只在所需操作数、等价语义和 CPU 参考齐备时给出 CPU 结论。
 
@@ -67,4 +67,4 @@ NPU 端核对 GPU 材料后，通过 `validator.py --action tensor-run` 重用�
 python3 -B tests/vllm-model-migration/tensor_stage_cases/build_tensor_stage_fixture.py --output "$NEW_FIXTURE_DIR"
 ```
 
-查看输出的 `fixture-result.json` 和关联报告。模拟输入保留 `evidence_kind=synthetic`，阶段汇总中的 `simulated` 和 `comparison_result` 分别说明来源及数值结果。
+查看输出的 `fixture-result.json` 和关联报告。来源保存在 `evidence_kind`。阶段汇总按双端比较给出 `comparison_result`、`alignment_status` 和 `target_status`。任一题已证实差异即汇总为 `mismatch/fail`，缺项见各题回执。所有触发题均对齐时汇总为 `aligned/pass`，其余证据不足的题使汇总为 `insufficient_evidence/not_evaluated`。

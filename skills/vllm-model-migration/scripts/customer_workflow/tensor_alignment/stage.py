@@ -38,7 +38,7 @@ def previous_sources(session, key, token):
     if not step.get('receipt'):
         return []
     stage = sources.bound(step['receipt'])
-    if (stage.get('operation'), stage.get('inputs', {}).get('quality_report')) != ('tensor', token['quality_report']):
+    if stage.get('operation') != 'tensor' or stage['inputs'].get('token_report') != token['token_report']:
         return []
     return [*stage['inputs']['evidence'], *stage.get('plans', []), *stage.get('npu_bundles', [])]
 
@@ -63,7 +63,7 @@ def compare_one(session, key, token, policy, supplied, root):
             raise ValueError('冻结的原生采集请求与质量报告不同')
         request['native_request'] = origin['inputs']['native_request']
     result = execute(session, key, 'vllm-precision-align', request, root, action='tensor')
-    return {**{k: result[k] for k in ('status', 'alignment_status', 'comparison_result', 'simulated', 'tensor_report', 'plans') if k in result},
+    return {**{k: result[k] for k in ('status', 'alignment_status', 'comparison_result', 'target_status', 'tensor_report', 'plans') if k in result},
             'stage': session.value['steps'][key]['receipt'], 'quality_report': quality, 'token_report': token['token_report']}
 
 
@@ -76,6 +76,18 @@ def token_quality(source):
             and isinstance(info.get('cases'), list)):
         return info.get('quality_report')
     return None
+
+
+def has_first_difference(token):
+    if not token.get('token_report'):
+        return False
+    try:
+        report = sources.bound(token['token_report'])
+        return (report.get('quality_report') == token['quality_report'] and
+                any(case.get('result') == 'mismatch' and case.get('first_anomalous_token')
+                    for case in report['cases']))
+    except sources.ERRORS:
+        return False
 
 
 def external_tokens(quality_rows, supplied):
@@ -95,15 +107,23 @@ def external_tokens(quality_rows, supplied):
 
 def compare_all(session, policy, supplied, root, guarded):
     results = []
+    session.value['tensor_alignment'] = results
     tokens = session.value.get('token_alignment')
     if not tokens:
         tokens = external_tokens(session.value.get('task_quality', []), supplied)
-        session.value['token_alignment'] = tokens
+    selected = [policy is not None or has_first_difference(token) for token in tokens]
+    if policy is None and not any(selected):
+        return
+    session.value['token_alignment'] = tokens
     for index, token in enumerate(tokens):
+        if not selected[index]:
+            results.append({'status': 'not_triggered', 'quality_report': token.get('quality_report'),
+                            'reason': '该范围没有已确认的双端预测首差'})
+            continue
         key = f'tensor-{index}'
-        row = guarded(session, key, lambda: compare_one(session, key, token, policy, supplied, root))
-        results.append(row or {'status': 'blocked', 'step': key})
+        row = guarded(session, key, lambda: compare_one(session, key, token, policy or {}, supplied, root))
+        results.append(row or {'status': 'blocked', 'step': key, 'quality_report': token.get('quality_report'),
+                               'token_report': token.get('token_report')})
     if not tokens:
         results.append({'status': 'insufficient_evidence', 'reason': '等待任务质量报告和二遍 Token 首异常'})
-    session.value['tensor_alignment'] = results
     session.save()

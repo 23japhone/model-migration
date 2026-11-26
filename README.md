@@ -148,7 +148,7 @@ flowchart TD
 
 需要定位首个异常输出 Token 时，在 `accuracy.token_alignment` 下填写两项绝对容差。按失败分项选题并取得二遍预测包后，查看客户回执中的 `token_alignment[].token_report`。[字段、二遍选择与续接](skills/vllm-model-migration/references/task-quality.md#从未达标分项进入-token-预测对齐)
 
-若 Token 报告已定位同一前文下的预测差异，可用 `accuracy.tensor_alignment` 对比该步的模块和算子。在客户回执的 `tensor_alignment[].tensor_report` 中查看超限调用、元素坐标和缺项。当前覆盖单卡、单请求、同步 Eager 文本贪心生成，离线用例使用合成 GPU/NPU 证据。[采集、客户证据和复算](skills/vllm-model-migration/skills/vllm-precision-align/references/tensor.md)
+若 Token 报告已定位同一前文下的预测差异，流程自动对比该步的模块和算子。省略 `accuracy.tensor_alignment` 时按各张量的实际 dtype 补齐容差。在客户回执的 `tensor_alignment[].tensor_report` 中查看超限调用、元素坐标和缺项。当前覆盖单卡、单请求、同步 Eager 文本贪心生成，离线用例使用合成 GPU/NPU 证据。[采集、客户证据和复算](skills/vllm-model-migration/skills/vllm-precision-align/references/tensor.md)
 
 ## 支持范围与当前限制
 

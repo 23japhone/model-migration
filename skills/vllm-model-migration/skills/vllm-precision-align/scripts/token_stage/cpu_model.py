@@ -49,12 +49,17 @@ def verified_deployment(source):
 
 def model_binding(request, report, projection):
     if not projection:
-        return None
+        raise ValueError("缺少首轮有效 NPU 测量的模型身份")
     native = request.get('native_request')
     if not native:
-        receipt = report['evidence']['receipt']
-        reference(receipt)
-        native = bound(receipt)['inputs']
+        evidence = report['evidence']
+        original = evidence['receipt']
+        verification = evidence.get('verification')
+        if verification and verification != original:
+            native = bound(verification)['inputs'].get('expected')
+        if not native:
+            reference(original)
+            native = bound(original)['inputs']
     source = native['measurement']['deployment']
     reference(source)
     verification = verified_deployment(source)
@@ -72,7 +77,6 @@ def model_binding(request, report, projection):
 
 def optional_model(request, report, native):
     try:
-        return model_binding(request, report, native.npu)
+        return {'cpu_model': model_binding(request, report, native.npu)}
     except DATA_ERRORS as error:
-        native.issues.append('不能由现有部署交接确定 CPU 参照模型：' + safe(error))
-        return None
+        return {'cpu_model_error': '不能由部署交接确定 CPU 复算模型：' + safe(error)}
