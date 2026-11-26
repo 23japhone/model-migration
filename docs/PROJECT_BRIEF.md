@@ -35,9 +35,9 @@
 
 ## 当前状态
 
-2026-11-25，EvalScope 任务质量对齐经 `9966590` 合入本地 `dev`。Qwen3.5-27B 单题重跑与复用已有 NPU 实测。张量与算子对齐经 `a115d86` 合入本地 `dev`，离线回归覆盖双端合成证据，真实 GPU/NPU 联合验证仍待完成。[质量验收](TESTING.md#2026-11-25-任务质量对齐单题验收) · [张量验收](TESTING.md#2026-11-25-运行时张量与算子对齐)
+2026-11-26，三阶段判定优化经 `f1c1180` 合入本地 `dev`。[客户入口离线验收](TESTING.md#三阶段精度结论与仅补张量的续接)覆盖 CPU 复算失败后的张量达标、超限和证据不足三个出口。此前 Qwen3.5-27B 已完成 NPU 单题重跑和复用验证，真实 GPU/NPU 联合验证仍待完成。[质量验收](TESTING.md#2026-11-25-任务质量对齐单题验收) · [张量验收](TESTING.md#2026-11-25-运行时张量与算子对齐)
 
-截至 2026-11-25，`verify-agent` 可独立采集 msProbe 张量并通过 mindie-debugger 观察已适配层的缓存状态。普通注意力和 GDN 的单机同步 Eager 采集按所选物理卡数工作。Llama 和 Qwen 的单卡、双卡已有 NPU 实测，四卡和八卡已通过离线验证。单卡还分别验收了 Llama 和 Qwen 的 ACLGraph 文本请求，以及 DeepSeek-V2-Lite-Chat 的 Eager MLA 缓存。[使用契约](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/runtime-capture.md) · [按模型和模式查看实测证据](MSPROBE_RUNTIME_CAPTURE.md)
+截至 2026-11-26，`verify-agent` 可独立采集 msProbe 张量并通过 mindie-debugger 观察已适配层的缓存状态。普通注意力和 GDN 的单机同步 Eager 采集按所选物理卡数工作。Llama 和 Qwen 的单卡、双卡已有 NPU 实测，四卡和八卡已通过离线验证。单卡还分别验收了 Llama 和 Qwen 的 ACLGraph 文本请求，以及 DeepSeek-V2-Lite-Chat 的 Eager MLA 缓存。单卡同步文本批次已有双模型全程数值对照。异步批次已有 Llama 共享前向的请求归属和双模型单前向数值证据，双模型多请求全程联合验收待完成。[使用契约](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/runtime-capture.md) · [按模型和模式查看实测证据](MSPROBE_RUNTIME_CAPTURE.md)
 
 2026-11-05，缺省镜像选择功能 `e6dc69e` 已通过 `1a21cf0` 合入本地 `dev`。客户未指定镜像时，准备阶段从官方 Quay 选版，客户入口将选中的标签和目标平台 digest 交给镜像任务。同一任务续接沿用冻结的选择。显式镜像和模板的用法见[缺省镜像选择](../skills/vllm-model-migration/references/customer-task.md#缺省镜像选择)。
 

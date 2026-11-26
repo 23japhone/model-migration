@@ -7,6 +7,7 @@ import json
 from time import monotonic
 
 from . import state
+from .batch import members
 from .streaming import engine_event, traced_stream
 
 CURRENT = ContextVar('verify_precision_request', default=None)
@@ -23,8 +24,7 @@ def wrap_client(client):
             folder, trace = target
             bound = signature.bind(*args, **kwargs)
             external = bound.arguments['request_id']
-            if (folder/'frontend.json').exists(): raise ValueError('一道题出现多次或并行引擎请求')
-            state.write(folder/'frontend.json', {'trace_id': trace, 'external_id': external})
+            target = members.publish_frontend(folder, trace, external)
             params = bound.arguments.get('sampling_params')
             delta = getattr(getattr(params, 'output_kind', None), 'name', '') == 'DELTA'
             tokens, prompt = [], []
@@ -51,7 +51,7 @@ def install(cls, method):
         bound = signature.bind(self, *args, **kwargs)
         raw = bound.arguments.get('raw_request')
         trace = raw.headers.get('X-Precision-Trace') if raw is not None else None
-        folder = state.active()
+        folder = members.frontend_folder(trace) if trace else None
         if not trace or not folder: return await original(self, *args, **kwargs)
         intent = state.read(folder/'intent.json')
         if not intent.get('session_mode') or trace != intent.get('trace_id'):
@@ -70,8 +70,9 @@ def install(cls, method):
             if hasattr(response, '__aiter__'):
                 streaming = True
                 return traced_stream(response, (folder, trace), CURRENT, started)
-            mapped = state.read(folder/'frontend.json')
-            state.write(folder/'frontend.json', {**mapped, 'response_id': response.id})
+            if (folder/'frontend.json').exists():
+                mapped = state.read(folder/'frontend.json')
+                state.write(folder/'frontend.json', {**mapped, 'response_id': getattr(response, 'id', None)})
             return response
         except Exception as error:
             state.fail(folder, error)

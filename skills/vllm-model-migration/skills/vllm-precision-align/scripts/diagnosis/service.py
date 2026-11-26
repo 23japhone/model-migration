@@ -15,6 +15,7 @@ from pathlib import Path
 import hashlib
 import subprocess
 import sys
+import uuid
 
 
 def _demarcation_cli():
@@ -40,7 +41,7 @@ def demarcate(service, badcase, work_root, run_id, timeout=120):
                'render_mode': 'auto', 'timeout_seconds': timeout}
     req_dir = Path(work_root) / run_id / 'diagnosis'
     req_dir.mkdir(parents=True, exist_ok=True)
-    req_path = req_dir / 'demarcation.request.json'
+    req_path = req_dir / (uuid.uuid4().hex + '.request.json')
     req_path.write_text(json.dumps(request, ensure_ascii=False), encoding='utf-8')
 
     args = [sys.executable, '-B', str(_demarcation_cli()),
@@ -51,8 +52,14 @@ def demarcate(service, badcase, work_root, run_id, timeout=120):
         return 1, {'status': 'failed', 'diagnostic': {'type': 'TimeoutExpired', 'message': '定界超时'}}
     try:
         receipt = json.loads(proc.stdout) if proc.stdout.strip() else {}
-    except ValueError:
-        receipt = {'status': 'failed', 'diagnostic': {'type': 'InvalidReceipt', 'message': proc.stdout[:300]}}
+        if not isinstance(receipt, dict):
+            raise ValueError('定界未交付 JSON 对象')
+        if receipt.get('report_path') and (receipt.get('inputs') != request
+                or receipt.get('task_id') != 'three-step-demarcation' or receipt.get('run_id') != run_id
+                or receipt.get('operation') != 'run'):
+            raise ValueError('定界回执与委托身份不符')
+    except ValueError as error:
+        receipt = {'status': 'failed', 'diagnostic': {'type': 'InvalidReceipt', 'message': str(error)}}
     return proc.returncode, receipt
 
 
@@ -60,8 +67,7 @@ def demarcate_anomaly(anomaly, work_root, run_id, timeout=120):
     """对一条异常样本做三步定界；anomaly 含 request（内联）与 service。"""
     folder = Path(work_root) / run_id / 'diagnosis' / 'badcases'
     folder.mkdir(parents=True, exist_ok=True)
-    name = '%s-%s.json' % (anomaly.get('sample_id', 'x'), anomaly.get('anomaly_type', 'x'))
-    path = folder / name
+    path = folder / (uuid.uuid4().hex + '.json')
     path.write_text(json.dumps(anomaly['request'], ensure_ascii=False), encoding='utf-8')
     badcase = {'path': str(path), 'sha256': _sha256(path)}
     return demarcate(anomaly['service'], badcase, work_root, run_id, timeout)

@@ -1,4 +1,4 @@
-"""在同一同步 runner 的 execute/sample 状态间传递前向身份。"""
+"""采集实际 runner 前向，按执行模式登记 worker 能力。"""
 from pathlib import Path
 from time import perf_counter
 from .architecture import discover
@@ -7,6 +7,8 @@ import uuid
 from . import parallel as tp
 
 from . import state
+from .batch import worker as batch_worker
+from .joint import window as joint
 from .alignment import worker as targeted
 from .decode_cache.runtime import observe_decode, prepare_worker, selected
 from .coverage import Coverage
@@ -31,6 +33,13 @@ def save_vector(path, tensor, size):
     return persist_vector(path, vector_snapshot(tensor, size))
 
 
+def worker_hooks(rank, asynchronous):
+    if rank:
+        return ['_model_forward']
+    sample = 'AsyncGPUModelRunnerOutput.get_output' if asynchronous else 'greedy_sample'
+    return ['_model_forward', 'compute_logits', 'sample_tokens', sample]
+
+
 class Recorder:
     rank = 0
     world_size = 1
@@ -46,9 +55,8 @@ class Recorder:
         self.architecture = discover(model, runner.model_config.hf_text_config)
         layers = [item['path'] for item in self.architecture['layers']]
         parallel = runner.vllm_config.parallel_config
-        if (not runner.model_config.enforce_eager or runner.use_async_scheduling or runner.speculative_config
-                or parallel.data_parallel_size != 1 or runner.debugger is not None):
-            raise ValueError('实际 runner 要求同步 Eager、DP=1、单请求采样和独占 debugger')
+        from .async_batch.sources import runner_mode
+        async_mode = runner_mode(runner, parallel)
 
         identity = tp.worker_group(runner)
         self.rank = identity['rank']
@@ -56,17 +64,22 @@ class Recorder:
         role = 'worker' if self.world_size == 1 else f'worker-rank{self.rank}'
         if self.world_size > 1:
             identity['state_shards'] = tp.shards(model, runner.model_config.hf_text_config, self.world_size)
-        if self.rank == 0:
+        single_eager = self.world_size == 1 and not async_mode
+        if self.rank == 0 and not async_mode:
             self.install_sampler()
         self.direct_calls = EagerCalls(model, self)
         self.coverage = Coverage(self, model)
         from .image_capture import install as install_images
         install_images(self, model)
-        state.ready(role, **prepare_worker(self, model), **identity, mode='eager', synchronous=True, vocab_size=self.size, layers=layers,
+        batch_capable = batch_worker.capable(runner, self.world_size)
+        if async_mode and not batch_capable:
+            raise ValueError('异步采集要求 BF16、单卡、冷前缀和至少两个请求行')
+        state.ready(role, **prepare_worker(self, model), **identity, mode='eager', synchronous=not async_mode,
+                    batch_identity=batch_capable, batch_joint=batch_capable, vocab_size=self.size, layers=layers,
                     modules=self.modules, architecture=self.architecture, direct_eager_modules=self.direct_calls.paths,
-                    coverage_capability='modules_and_registered_apis', token_prediction=self.world_size == 1,
-                    tensor_alignment=self.world_size == 1 and targeted.can_arm(),
-                    hooks=['_model_forward', 'compute_logits', 'sample_tokens', 'greedy_sample'] if self.rank == 0 else ['_model_forward'])
+                    coverage_capability='modules_and_registered_apis', token_prediction=single_eager,
+                    tensor_alignment=single_eager and targeted.can_arm(),
+                    hooks=worker_hooks(self.rank, async_mode))
 
     def install_sampler(self):
         sampler = self.runner.sampler
@@ -117,7 +130,7 @@ class Recorder:
         if self.world_size > 1:
             self.frame = tp.select_frame(self, schedule, internal)
         else:
-            self.frame = {'internal_id': internal, 'forward_id': uuid.uuid4().hex,
+            self.frame = {'internal_id': internal, 'forward_id': getattr(schedule, '_verify_prefix_forward_id', None) or uuid.uuid4().hex,
                           'count': schedule.num_scheduled_tokens[internal]}
         intent = state.read(tp.request_folder(self.folder) / 'intent.json')
         if intent.get('profile') in ('token_prediction', 'tensor_alignment'):
@@ -243,11 +256,15 @@ def install(cls):
         return result
     def scheduled(self, scheduler_output, *args, **kwargs):
         rec = getattr(self, '_verify_recorder', None)
+        self._verify_batch = getattr(scheduler_output, '_verify_batch', None)
         if rec:
             rec.observe(rec.select, scheduler_output)
         try:
             result = execute(self, scheduler_output, *args, **kwargs)
         finally:
+            batch, self._verify_batch = self._verify_batch, None
+            if batch and rec:
+                rec.observe(joint.finish, rec, batch)
             if rec and rec.frame:
                 rec.observe(rec.close)
                 state.write(rec.folder / ('end-' + rec.frame['forward_id'] + '.json'),
@@ -257,6 +274,13 @@ def install(cls):
         return result
     def invoked(self, num_tokens_padded, input_ids=None, positions=None, *args, **kwargs):
         rec = getattr(self, '_verify_recorder', None)
+        plan = getattr(self, '_verify_batch', None)
+        if plan and not plan['foreign_members']:
+            with batch_worker.forward(plan, self, input_ids, positions) as rows:
+                if rec and plan.get('profile') == 'batch_joint':
+                    with joint.model(rec, plan, rows):
+                        return forward(self, num_tokens_padded, input_ids, positions, *args, **kwargs)
+                return forward(self, num_tokens_padded, input_ids, positions, *args, **kwargs)
         if not rec or not rec.frame:
             return forward(self, num_tokens_padded, input_ids, positions, *args, **kwargs)
         rec.observe(rec.start, input_ids, positions)

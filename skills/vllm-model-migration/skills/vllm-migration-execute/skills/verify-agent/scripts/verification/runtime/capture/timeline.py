@@ -42,7 +42,7 @@ def describe(folder, ref, row, previous):
     if schedule and schedule.get('request_id') != row['client_request_id']:
         errors.append('调度所属请求与前向不同')
     observed = {layer['path'] for layer in cache.get('layers', []) if layer['invocations']}
-    missing = [layer for layer in row['layers'] if layer not in observed]
+    missing = [] if cache.get('format') == 'schedule_only' else [layer for layer in row['layers'] if layer not in observed]
     return {'missing_layers': missing, 'forward_id': row['forward_id'], 'request_id': row['client_request_id'], 'internal_id': row['internal_id'],
             'schedule_id': cache.get('schedule_id'), 'phase': schedule.get('phase'), 'step': row['step'],
             'rank': row['rank'], 'input_ids': row['input_ids'], 'position_range': [position, row['positions'][-1]+1],
@@ -74,6 +74,12 @@ def verify_progress(row, item, mapped, sequence, cursor, accepted, tokens):
     return stop, accepted + 1
 
 
+def initial_position(config, entries):
+    if config.get('prefix_reuse') and entries:
+        return entries[0][0]['positions'][0]
+    return 0
+
+
 def seal_timeline(folder, mapped, tokens, rows, extra, intent):
     entries = sorted(((read_bound(ref), ref) for ref in [*rows, *extra]), key=lambda item: item[0]['step'])
     steps = {row['step'] for row, _ in entries}
@@ -82,7 +88,8 @@ def seal_timeline(folder, mapped, tokens, rows, extra, intent):
     prompt = mapped['prompt_ids']
     sequence = prompt + tokens[:-1]
     timeline, previous, errors = [], {}, []
-    cursor = 0
+    config = intent['cache_capture']
+    cursor = initial_position(config, entries)
     accepted = 0
     for row, ref in entries:
         item = describe(folder, ref, row, previous)
@@ -97,7 +104,12 @@ def seal_timeline(folder, mapped, tokens, rows, extra, intent):
               ('msprobe_bytes', 'msprobe_window_seconds', 'snapshot_bytes', 'observer_seconds')}
     if totals['snapshot_bytes'] > intent['cache_capture']['max_request_snapshot_bytes']:
         errors.append('请求快照字节超过预算')
-    return {'timeline': timeline, 'cache_capture': intent['cache_capture'], 'capture_totals': totals, 'cache_status': 'incomplete' if errors else 'complete',
+    prefix = {}
+    if config.get('prefix_reuse'):
+        from .prefix.receipt import reconcile
+        prefix['prefix_reuse'] = reconcile(folder, timeline, prompt, config)
+        errors.extend(prefix['prefix_reuse']['errors'])
+    return {**prefix, 'timeline': timeline, 'cache_capture': intent['cache_capture'], 'capture_totals': totals, 'cache_status': 'incomplete' if errors else 'complete',
             'cache_errors': errors}
 
 

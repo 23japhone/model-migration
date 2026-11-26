@@ -1,12 +1,13 @@
 """获知外部到内部请求 ID 映射，以及调度器处理停止条件后的输出。"""
 from . import state
+from .batch import members, scheduler as batch
 
 
 def input_processor(cls):
     original = cls.assign_request_id
     def assign(request):
         result = original(request)
-        folder = state.active()
+        folder = members.engine_folder(request)
         if folder:
             try:
                 intent = state.read(folder / 'intent.json')
@@ -29,12 +30,17 @@ def input_processor(cls):
 def scheduler(cls):
     from .decode_cache.plan import prepare_scheduler
     cache = prepare_scheduler(cls)
+    batch.install(cls)
     init, update = cls.__init__, cls._update_request_with_output
     def initialize(self, *args, **kwargs):
         init(self, *args, **kwargs)
         state.ready('engine', **cache, hooks=['Scheduler._update_request_with_output'])
     def accept(self, request, new_token_ids):
         result = update(self, request, new_token_ids)
+        plan = batch.accepting.get()
+        if plan:
+            batch.accepted(plan, request, result)
+            return result
         folder, internal = state.mapped()
         if request.request_id == internal and result[0]:
             try:

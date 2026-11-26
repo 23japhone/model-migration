@@ -86,7 +86,7 @@ def collect(task, extra, search):
     except ERRORS as error:
         search.missing.append(str(error))
     if not found:
-        search.missing.append('缺少绑定同一 GPU 运行的模型权重、原生任务配置、数据范围、评分报告及静态服务条件')
+        search.missing.append('缺少绑定同一 GPU 运行的来源、原生任务配置、数据范围或评分报告')
     return {'archives': found, 'sources': list(search.sources.values()), 'missing': list(dict.fromkeys(search.missing))}
 
 

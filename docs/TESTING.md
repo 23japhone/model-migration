@@ -4,9 +4,76 @@
 
 ## 当前验证基准
 
-2026-11-25，张量与算子对齐合入本地 `dev`（`a115d86`）。Python 3.12 使用 CPU PyTorch 和 msProbe 运行全量离线回归，827 项通过，另行复跑的 `source_contract` 52 项通过。源码结构审计为 0 个错误、357 条软提示。各专项的设备、数据来源和历史版本见下文。
+### 普通精度评测与三步定界的独立汇总
+
+```bash
+python3 -B -m unittest discover -s tests/vllm-model-migration/diagnosis -q
+python3 -B -m unittest discover -s tests/vllm-model-migration/demarcation_cases -q
+```
+
+[阶段回执用例](../tests/vllm-model-migration/diagnosis/test_stage_summary.py)使用本地模拟 HTTP 服务，分别把评测目标设为通过和失败。两次运行都从单题报告读到 `TOOL_PARSER`，普通阶段成功发布回执，总入口校验接受各自的评测结论。用例还覆盖评测与诊断同名、显式与自动定界、定界超时、旧版台账，以及报告损坏或绑定错误题目的拒收。这里验证的是委托、汇总和回执核验，真实服务上的分类还需用可复现的异常请求验证。
+
+### 三阶段精度结论与仅补张量的续接
+
+[客户入口离线用例](../tests/vllm-model-migration/tensor_stage_cases/test_customer_verdicts.py)通过自定义数据集 `custom_qa` 的客户任务验证三个出口。GPU 总分 0.80，NPU 总分 0.79，默认允许下降 0.008，首轮失败。客户逐题分数与 NPU 第 2 题的成绩配对；两端第 2 个输出位置出现预测差异。CPU 读取绑定的本地权重失败。只补交张量时，沿用同一 Token 报告，分别验证缺少 GPU 包、双端 FP32 张量全部通过和一个元素超限。用例核对终端 JSON、落盘客户回执、阶段和单题报告。客户部署与 NPU 测量由夹具提供；数值比较使用实际比较器。
+
+运行以下离线专项，低精度 CPU 兼容路径和 FP8 比例另有独立用例。缺少可选 msProbe 时，原生适配器专项的相关用例会跳过。
+
+```bash
+for suite in task_quality token_alignment tensor_alignment tensor_stage_cases
+do
+    python3 -B -m unittest discover -s "tests/vllm-model-migration/$suite" -q || exit 1
+done
+```
+
+主题分支全量离线回归收集 942 项。合入客户三层回执汇总后再次收集 949 项，947 项通过，2 项因缺少可选 msProbe 跳过。集成版本同时验证逐题证据隔离、来源未声明和 CPU 参考缺失时保留已确认的双端张量结论。当前诊断测试包已配置业务模块的导入路径，可直接从仓库根运行[全量发现命令](#路径兼容回归)。真实 GPU/NPU 双端采集与 FP8 初始容差的设备校准待实机验证。
+
+### 客户总回执的三层结论
+
+在仓库根运行以下离线回归。第一组核对同层不同题、同题不同槽位上的差异与缺项，以及容差变化和单份损坏报告的影响范围。第二组使用公开客户入口完成阻塞交付与旧任务续接，核对终端 JSON 和落盘摘要。续接只调整张量容差，已发布的三个文件仍可核验，模拟张量一致、Token 差异与首轮质量失败同时保留。
+
+```bash
+python3.12 -B -m unittest discover -s tests/vllm-model-migration/tensor_stage_cases -p test_alignment_summary.py -v
+python3.12 -B -m unittest discover -s tests/vllm-model-migration/tensor_stage_cases -p 'test_customer_*.py' -v
+```
+
+### 单卡 Eager 批次的联合数值采集
+
+同一批次专项覆盖同步与异步身份及数值。异步用例令两个 Future 逆序完成并更换成员行，核对接受的输出序号、被丢弃的候选、延迟写盘与再次 seal。数值测试通过公开入口给两个重复 Token 分配不同 BF16 激活，并读回各自的字节。它还覆盖未知张量轴、密集投影的共享权重、摘要变化、缺少一个成员的 logits、不同物理槽、多请求的 GDN 续块与冷初态、MLA 子批起点和成员预算。全量离线回归 886 项通过，批次专项 27 项通过，独立 `source_contract` 52 项通过。异步专项还覆盖引擎发出 `ENGINE_CORE_DEAD` 后的失败回执。逆序完成由离线用例构造。设备上已观察到的共享前向、在途前向及单前向数值见[异步批次实机记录](MSPROBE_RUNTIME_CAPTURE.md#单卡-eager-的异步批次采集)。
+
+### 批次与请求的身份映射
+
+运行 `python3.12 -B -m unittest discover -s tests/vllm-model-migration/worker_capture/batch_cases -p 'test_*.py' -v`。公开会话用例让独立 worker 进程接收带身份的调度结果；A 提前封存，B 继续运行。两条查询分别取回同一前向的重复 Token 和无输出分块。用例也检查三成员重排、padding、采样行互换、缺少实际执行、未登记成员、摘要变化与在途请求租约。采集入口见[批次身份](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/runtime-capture.md#查询同一次前向中的多个请求)。
+
+### 2026-11-26 客户 task.json 的三层精度对齐
+
+[客户入口回归](../tests/vllm-model-migration/tensor_stage_cases/test_customer_dispatch.py)直接读取[三层示例](../skills/vllm-model-migration/assets/three-level-alignment.example.json)，隔离模型部署和首轮测量，使用合成质量报告和预测包，实际执行 Token 与张量阶段 CLI。示例的两项 Token 容差定位到第 2 个输出，显式 `tensor_alignment: {}` 使用同一份质量报告和 Token 报告生成采集计划，缺 GPU 张量包时该题为 `awaiting_gpu`。用例同时覆盖只启用 Token 时分次补包、旧子报告损坏后重新比较，以及由 prompt 开启第三遍后的续接。[字段合成回归](../tests/vllm-model-migration/test_prompt_resolution.py)检查空基线、等价声明、真实冲突和普通续接的证据摘要。
+
+```bash
+python3.12 -B -m unittest discover -s tests/vllm-model-migration/tensor_stage_cases -p 'test_customer_dispatch.py' -v
+```
+
+Python 3.12 全量离线回归 859 项通过，无跳过。独立运行的任务质量专项 119 项、张量阶段专项 21 项、`source_contract` 专项 52 项通过。结构审计为 0 个错误、363 条软提示。真实 GPU/NPU 模型部署与精度测量不在本次验证范围内。
+
+### 2026-11-26 客户回执的任务质量结论
+
+在仓库根运行 `python3.12 -B -m unittest discover -s tests/vllm-model-migration/task_quality -p test_customer_conclusion.py -v`。客户入口用例读取合成的首轮质量报告，通过实际导出入口发布三个 JSON，检查每个文件的摘要、退出码 0，以及终端和落盘回执完全一致。GPU 准确率 80%、NPU 准确率 78%、允许下降 1 个百分点时，两处 `summary` 均以“任务已完成，任务质量未达标”开头。仅性能交付也经过同一导出入口。
+
+专项还覆盖有限范围达标、只有分差、失败与缺项并存、中断、报告摘要变化和旧回执只记录部分基线。[旧回执续接用例](../tests/vllm-model-migration/tensor_stage_cases/test_customer_resume.py)从绑定的首轮报告恢复失败结论，即使新一轮张量诊断已对齐。Python 3.12 全量离线回归 840 项通过，独立运行的任务质量专项 119 项通过。客户用例使用合成数据。结构审计为 0 个错误、358 条软提示，新增一条来自回执检查原报告的完成状态、测量有效性和约定目标覆盖范围。
+
+### 2026-11-26 单卡跨请求前缀缓存命中
+
+在 Python 3.12、CPU PyTorch 和 msProbe 26.0.0 的环境中，全量离线回归 840 项通过，单独运行的 `source_contract` 52 项通过。结构审计报告 0 个错误、364 条软提示。
+
+前缀专项的 13 项用例覆盖块被回收或重置、相同哈希对应不同物理块、重复 Token、命中后仍须计算的尾部、两次前向间的 GDN 状态复制、部分字节缺失及封存后文件损坏。用同一个公开读取入口检查命中位置、消费请求的后缀及输出序号。[前缀专项用例](../tests/vllm-model-migration/worker_capture/prefix_cases/) · [查询契约](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/runtime-capture.md#跨请求前缀缓存命中)
+
+```bash
+python3.12 -B -m unittest discover -s tests/vllm-model-migration/worker_capture/prefix_cases -p 'test_*.py' -q
+```
 
 ### 2026-11-25 运行时张量与算子对齐
+
+2026-11-25，张量与算子对齐合入本地 `dev`（`a115d86`）。Python 3.12 使用 CPU PyTorch 和 msProbe 运行全量离线回归，827 项通过，另行复跑的 `source_contract` 52 项通过。源码结构审计为 0 个错误、357 条软提示。各专项的设备、数据来源和历史版本见下文。
 
 在维护仓库根目录运行下面的生成器。它按失败题号构造 GPU 和 NPU 数据，将评分证据、两端预测、调用映射、张量文件和公开阶段回执保存到指定的新目录。
 

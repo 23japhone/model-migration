@@ -106,11 +106,11 @@ model_migration/
 | 迁移任务 | [verify-agent](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/SKILL.md) | 部署或核验已有服务、最终载体注册复验、真实权重功能验证及服务生命周期 | `scripts/verify.py` |
 | 精度任务 | [verify-agent-plus](../skills/vllm-model-migration/skills/vllm-precision-align/skills/verify-agent-plus/SKILL.md) | 执行原生测量或复核已有结果，记录有效性、可比性和目标结论。定向复测时关联原生评分与同一请求的预测，按张量计划采集 NPU 证据 | `scripts/validator.py` |
 | 精度任务 | [vllm-precision-compare](../skills/vllm-model-migration/skills/vllm-precision-align/skills/vllm-precision-compare/SKILL.md) | 比较 GPU 与 NPU 的总分、分项和可选逐题评分。按相同前文定位首个异常 Token，再按单题计划对照两端张量与适用的 CPU 参考 | `scripts/compare.py` |
-| 精度任务 | [three-step-demarcation](../skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/SKILL.md) | 针对可复现的异常 Chat 请求独立执行服务链路三步定界 | `scripts/demarcation.py` |
+| 精度任务 | [three-step-demarcation](../skills/vllm-model-migration/skills/vllm-precision-align/skills/three-step-demarcation/SKILL.md) | 接收普通精度阶段的异常请求并逐题定界，也可独立调用 | `scripts/demarcation.py` |
 
 独立任务可以直接调用；这不表示把单个子目录复制出去就足够，跨技能定位、公共 Schema 和注册复验等依赖仍须一并满足。
 
-`verify-agent` 另提供可选 msProbe 运行时采集：准备配置及部署摘要 → 实际前端/引擎/worker 挂点 → 会话逐请求授权与封存 → 按输出 Token 反查前向及模块/API 文件。指定一次 decode 或冷前缀完整请求时，调度器逐次记录分配，目标层算子实参和 mindie-debugger 数值快照沿同一 forward_id 封存。完整请求的时间线还索引没有接受输出的 prompt 块，并记录每次前向实际消费的 Token。全部实现归 `verification/runtime/capture/`，直接消费部署报告，不依赖 GPU 基线解析或评测 SDK。输入输出及实际覆盖边界见[运行时采集工具](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/runtime-capture.md)；独立离线验证及固定环境的真实 NPU 验收见[交付记录](MSPROBE_RUNTIME_CAPTURE.md)。
+`verify-agent` 另提供可选 msProbe 运行时采集：准备配置及部署摘要 → 实际前端/引擎/worker 挂点 → 会话登记单个请求或一组请求并按请求封存 → 按输出 Token 反查前向及模块/API 文件。指定一次 decode 或冷前缀完整请求时，调度器逐次记录分配，目标层算子实参和 mindie-debugger 数值快照沿同一 forward_id 封存。完整请求的时间线还索引没有接受输出的 prompt 块，并记录每次前向实际消费的 Token。单卡 Eager 批次中的成员共用物理前向的 `forward_id`，各自记录输入行区间、缓存槽位和接受的输出。异步模式还核对 worker 采样对象与引擎提交的身份，允许多个前向同时在途。全部实现归 `verification/runtime/capture/`，直接消费部署报告，不依赖 GPU 基线解析或评测 SDK。输入输出及实际覆盖边界见[运行时采集工具](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/runtime-capture.md)；独立离线验证及固定环境的真实 NPU 验收见[交付记录](MSPROBE_RUNTIME_CAPTURE.md)。
 
 模型预检读取配置声明的层数和类型。加载模型后，worker 用实际文本层实例生成结构清单，并据此核对 msProbe 调用。缓存采集按实际后端类匹配观察点，核验实现源码、挂点和执行模式。普通注意力观察 K/V，GDN 观察卷积与递归状态，单卡同步 Eager 的 MLA 观察融合输入及写入物理槽的压缩 KV 和 RoPE。两种工具通过同一 `forward_id`、层和调用序号关联。遇到未知实现时，回执逐层标出缺失的内部状态并保留已取得的层边界。[后端适配与查询字段](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/runtime-capture.md#单卡同步-eager-的-mla-缓存)
 
@@ -131,16 +131,19 @@ flowchart TD
     P --> M[迁移阶段：预检、注册、部署功能验收]
     M --> A[普通精度评测]
     D --> A
+    A -. HTTP 记录命中异常规则 .-> B[按原始 Chat 请求执行三步定界]
     A --> H[独立导出：三个交付 JSON]
     E -. 客户任务的 GPU 基线或精度意图 .-> Q[任务质量对齐]
     Q --> S[客户回执中的质量报告]
-    S -. 启用 Token 对齐且有可比失败分项 .-> T[定界选题并比较首个异常输出位置]
-    T -. 启用张量对齐且目标位置有双端预测差异 .-> X[按单题计划核验并比较模块和算子张量]
+    S -. 启用 Token 对齐且有已确认的失败分项 .-> T[定界选题并比较首个异常输出位置]
+    T -. 同一前文已定位双端预测首差 .-> X[按单题计划核验并比较模块和算子张量]
     M -. 需要适配回执 .-> R[Agent 按 adapt-agent 完成实现与公开检查]
     R -. 新请求显式续接 .-> M
 ```
 
-客户 `migrate.py --task` 在普通精度步骤后、三文件交付前调度任务质量对齐，将质量报告引用写入 `customer-manifest.json` 的 `task_quality[]`。启用 `accuracy.token_alignment` 后，精度阶段从可比的未达标分项选题。已有双端预测的题可直接比较。有 GPU 预测、缺 NPU 记录且具备首轮冻结请求的题委托原生评测重跑。客户通过 `token_alignment[]` 查看选题和比较报告。启用 `accuracy.tensor_alignment` 时，阶段使用本次生成或外部提供的同题 Token 报告，从 `tensor_alignment[]` 可查逐调用结果。三文件交付按普通精度、部署和导出回执独立判定。[定向重跑与比较的阶段契约](../skills/vllm-model-migration/skills/vllm-precision-align/references/contract.md#token-预测对齐)
+普通精度阶段默认对评测回执中的每条 HTTP 异常调用一次三步定界。阶段请求可用 `auto_diagnose: false` 关闭自动调用，也可用 `diagnoses[]` 指定异常请求和部署。阶段回执将评测结果写入 `results`，将单题报告引用写入 `tasks.diagnoses`。例如，服务重放得到 `TOOL_PARSER` 时，`conclusions.demarcation` 可以是 `pass`，同一份回执的 `precision_target` 仍可为 `fail`。客户三层精度比较按各层自己的证据启动。[普通精度阶段回执契约](../skills/vllm-model-migration/skills/vllm-precision-align/references/contract.md#结果和退出码)
+
+客户 `migrate.py --task` 在普通精度步骤后、三文件交付前调度任务质量对齐，将质量报告引用写入 `customer-manifest.json` 的 `task_quality[]`。启用 `accuracy.token_alignment` 后，精度阶段按质量报告中已确认的失败分项选题。已有双端预测的题可直接比较。有 GPU 预测、缺 NPU 记录且具备首轮冻结请求的题委托原生评测重跑。客户通过 `token_alignment[]` 查看选题和比较报告。确认双端同前文的首差时，阶段使用本次生成或外部提供的同题 Token 报告自动发起张量诊断。实际张量 dtype 决定缺省容差，直接比较 GPU、NPU 得出结论，从 `tensor_alignment[]` 可查逐调用结果。三文件交付按普通精度、部署和导出回执独立判定。[定向重跑与比较的阶段契约](../skills/vllm-model-migration/skills/vllm-precision-align/references/contract.md#token-预测对齐)
 
 ### 4.2 支持度分流与明确续接
 
@@ -224,7 +227,7 @@ flowchart TD
 
 普通精度测试中，EvalScope 的 `limit` 为正整数时表示每个所选 subset 的题数上限；未填或为 `null` 时表示所选范围全量。数据选择、实际 sample_ids、评测配置和交接保持一致，不能用示例的小样本数量替代用户输入。输出达到配置上限时保留原生分数并记录截断，不能擅自增加“零截断才算完成”的门槛。 任务质量重跑按 GPU 基线选择的数据范围和原生配置单独预检提示长度与生成预算。
 
-任务质量对齐只使用 EvalScope 的评分证据。报告按原生名称、聚合方式、单位与方向匹配指标。未设置目标时可报告分差。客户提供基线时，精度阶段按评测条件核验已有 NPU 成绩，或委托原生重跑；每次按当前 GPU 分数和目标重新比较。有精度意图且缺少客户基线时，先检索同模型的公开 GPU 基线，查无可核验资料即记录 `not_evaluated` 并继续后续任务。质量评测只留评分及复核所需的证据。对未达标样本，Token 定向复测通过单卡同步 Eager 服务，在同一次贪心生成中关联原生评分和逐步预测。跨端比较使用相同样本和前文，报告首个异常位置。单题张量比较沿用这里确定的题目、前文和异常位置。[客户质量与 Token 复测契约](../skills/vllm-model-migration/references/task-quality.md#从未达标分项进入-token-预测对齐)
+任务质量对齐使用客户声明的 GPU 成绩，按数据集、指标及可选子集匹配有效 NPU 成绩。当前 NPU 原生测量使用 EvalScope，可复核已有测量或按本次请求重跑。未填写 `max_drop` 时，取同指标同范围的发布者阈值或项目默认值，报告退化量、有效阈值和是否达标。有精度意图且缺少客户基线时，先检索同模型的公开 GPU 基线，查无可核验资料即记录 `not_evaluated` 并继续后续任务。质量评测只留评分及复核所需的证据。对未达标样本，Token 定向复测通过单卡同步 Eager 服务，在同一次贪心生成中关联原生评分和逐步预测。跨端比较使用相同样本和前文，报告首个异常位置。单题张量比较沿用这里确定的题目、前文和异常位置。[客户质量与 Token 复测契约](../skills/vllm-model-migration/references/task-quality.md#从未达标分项进入-token-预测对齐)
 
 历史 `analyze` 按原报告或 native 来源身份处理，不查询当前最新版本、不导入评测 SDK、不产生新推理或重新评分；缺失的历史来源不能用新默认值补齐。
 

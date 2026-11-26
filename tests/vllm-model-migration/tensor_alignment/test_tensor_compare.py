@@ -88,7 +88,7 @@ class TensorComparison(unittest.TestCase):
         data = self.example()
         report = self.compare(data, data)
         self.assertEqual(report['result'], 'aligned')
-        self.assertEqual(report['hardware_target_status'], 'not_evaluated')
+        self.assertNotIn('hardware_target_status', report)
         self.assertEqual(report['calls'][0]['cpu_check']['result'], 'aligned')
         report = self.compare(data, {**data, 'y': torch.tensor([[8.]])})
         self.assertEqual(report['result'], 'mismatch')
@@ -101,7 +101,8 @@ class TensorComparison(unittest.TestCase):
     def test_one_sided_preflight_and_incomplete_coverage(self):
         data = self.example()
         report = self.compare(data)
-        self.assertEqual((report['result'], report['capture_status']), ('awaiting_peer', 'complete'))
+        self.assertEqual((report['result'], report['capture_status']), ('insufficient_evidence', 'complete'))
+        self.assertEqual(report['missing_devices'], ['npu'])
         report = self.compare(data, {'x': data['x']})
         self.assertEqual(report['result'], 'insufficient_evidence')
         self.assertEqual(report['coverage']['npu']['verified_slots'], 1)
@@ -119,7 +120,7 @@ class TensorComparison(unittest.TestCase):
         data = {**self.example(), 'y': torch.tensor([[12.]])}
         report = self.compare(data, data)
         self.assertEqual(report['result'], 'aligned')
-        self.assertEqual(report['target_status'], 'fail')
+        self.assertEqual(report['target_status'], 'pass')
         self.assertEqual(report['cpu_check']['result'], 'mismatch')
 
     def test_cpu_alpha_matches_real_semantics_and_missing_scope(self):
@@ -131,7 +132,7 @@ class TensorComparison(unittest.TestCase):
         self.call['cpu_reference']['op'] = 'unknown_fusion'
         report = self.compare(data, data)
         self.assertEqual(report['result'], 'aligned')
-        self.assertEqual(report['target_status'], 'not_evaluated')
+        self.assertEqual(report['target_status'], 'pass')
 
     def test_explicit_oracle_uses_observed_scalars_from_each_device(self):
         data = {**self.example(), 'y':torch.tensor([[4.,6.]])}
@@ -145,7 +146,7 @@ class TensorComparison(unittest.TestCase):
         self.assertEqual(cpu['result'], 'not_evaluated', cpu)
         self.assertIn('alpha',cpu['reason'])
         self.assertIn('npu',cpu['reason'])
-        self.assertEqual(report['target_status'],'not_evaluated')
+        self.assertEqual(report['target_status'],'pass')
         self.call['gpu']['scalar_args'] = {'alpha':2}
         self.call['cpu_reference']['attributes'] = {'alpha':2}
         actual = {**data, 'y':torch.tensor([[7.,10.]])}
@@ -269,7 +270,114 @@ class TensorComparison(unittest.TestCase):
         self.policy = {'atol': .99, 'rtol': 0}
         self.assertEqual(self.compare(data, changed)['result'], 'mismatch')
         self.policy = {}
-        self.assertEqual(self.compare(data, changed)['result'], 'not_evaluated')
+        self.assertEqual(self.compare(data, changed)['result'], 'mismatch')
+
+    def test_actual_dtype_defaults_and_partial_explicit_tolerance(self):
+        self.call.pop('cpu_reference')
+        self.policy = {}
+        defaults = [(torch.float64, 1e-7, 1e-7), (torch.float32, 1e-5, 1.3e-6),
+                    (torch.float16, 1e-5, 1e-3), (torch.bfloat16, 1e-5, .016),
+                    (torch.float8_e4m3fn, 2**-9, .125), (torch.float8_e5m2, 2**-16, .25),
+                    (torch.int64, 0, 0), (torch.bool, 0, 0)]
+        slots = [f's{i}' for i in range(len(defaults))]
+        self.call['slots'] = [{'id': k, 'role': 'output', 'gpu': ['output',i], 'npu':['output',i]}
+                              for i,k in enumerate(slots)]
+        data = {k:torch.tensor([0,1]).to(dtype) for k,(dtype,_,_) in zip(slots, defaults)}
+        report = self.compare(data, data, update=lambda req: req.pop('tensor_alignment'))
+        self.assertEqual((report['result'], report['target_status']), ('aligned','pass'))
+        self.assertEqual([s['tolerances'] for s in report['calls'][0]['slots']],
+                         [{'atol':a,'rtol':r} for _,a,r in defaults])
+        self.policy = {'rtol': 0}
+        changed = {**data, 's4':torch.tensor([2**-9,1]).to(torch.float8_e4m3fn)}
+        self.assertEqual(self.compare(data, changed)['target_status'], 'pass')
+        self.policy = {'atol': 0}
+        self.assertEqual(self.compare(data, changed)['target_status'], 'fail')
+
+    def test_fp8_block_scales_dequantize_each_side_and_bound_near_zero(self):
+        self.call.pop('cpu_reference')
+        self.call['slots'] = [self.call['slots'][-1]]
+        self.call['slots'][0]['fp8_scaled'] = True
+        self.policy = {}
+        dtype = torch.float8_e4m3fn
+        gpu = {'y':torch.tensor([0,1,0,1]).to(dtype)}
+        npu = {'y':torch.tensor([2**-8,2,2**-10,0.5]).to(dtype)}
+        def scale(req, incomplete=False):
+            for side,multipliers in [('gpu',[1,4]), ('npu',[.5,8])]:
+                file = Path(req[side]['path'])
+                package = json.loads(file.read_text())
+                if not (incomplete and side == 'npu'):
+                    package['tensors'][0]['fp8_scale'] = {'block_shape':[2],'values':multipliers}
+                req[side] = write(file, package)
+        report = self.compare(gpu, npu, update=scale)
+        self.assertEqual(report['target_status'], 'pass', report['calls'])
+        npu['y'] = torch.tensor([2**-8,2,2**-8,.5]).to(dtype)
+        row = self.compare(gpu, npu, update=scale)['first_exceedance']
+        self.assertEqual((row['first_exceedance'],row['first_values']), ([2],{'gpu':0.,'npu':.03125}))
+        partial = self.compare(gpu, npu, update=lambda req: scale(req, True))
+        self.assertEqual(partial['result'], 'insufficient_evidence')
+        self.assertIn('fp8_scale', partial['coverage']['npu']['missing'][0]['reason'])
+
+    def test_extreme_fp8_scales_preserve_decision_beyond_fp64_arithmetic(self):
+        self.call['slots'] = [self.call['slots'][-1]]
+        self.policy = {}
+        gpu = {'y':torch.tensor([0, 120]).to(torch.float8_e4m3fn)}
+        npu = {'y':torch.tensor([.5,120]).to(torch.float8_e4m3fn)}
+        def scaled(request):
+            for side in ('gpu', 'npu'):
+                path = Path(request[side]['path'])
+                bundle = json.loads(path.read_text())
+                bundle['tensors'][0]['fp8_scale'] = {'block_shape':[1], 'values':[5e-324, 1e308]}
+                request[side] = write(path, bundle)
+        failed = self.compare(gpu, npu, scaled)
+        self.assertEqual(failed['target_status'], 'fail')
+        self.assertEqual(failed['first_exceedance']['first_exceedance'], [0])
+        self.assertEqual(self.compare(gpu, gpu, scaled)['target_status'], 'pass')
+
+    def test_fp8_e5m2_scalar_and_block_scale_cross_chunk_boundary(self):
+        self.call.pop('cpu_reference')
+        self.call['slots'] = [self.call['slots'][-1]]
+        self.policy = {'rtol':0}
+        unit = 2**-16
+        gpu = {'y':torch.zeros(65537).to(torch.float8_e5m2)}
+        def scaled(request):
+            for side in ('gpu','npu'):
+                path = Path(request[side]['path'])
+                bundle = json.loads(path.read_text())
+                scale = {'block_shape':[65536], 'values':[1,8]} if side == 'gpu' else 4
+                bundle['tensors'][0]['fp8_scale'] = scale
+                request[side] = write(path, bundle)
+        raw = torch.zeros(65537)
+        raw[-1] = 2*unit
+        report = self.compare(gpu, {'y':raw.to(torch.float8_e5m2)}, scaled)
+        self.assertEqual(report['target_status'], 'pass')
+        raw[-1] = 3*unit
+        row = self.compare(gpu, {'y':raw.to(torch.float8_e5m2)}, scaled)['first_exceedance']
+        self.assertEqual(row['first_exceedance'], [65536])
+        self.assertEqual(row['first_values'], {'gpu':0., 'npu':12*unit})
+
+    def test_provenance_and_partial_cpu_output_coverage(self):
+        other = dict(self.call['slots'][-1], id='other', gpu=['output',1], npu=['output',1])
+        self.call['slots'].append(other)
+        data = {**self.example(), 'other':torch.tensor([17])}
+        def relabel(request):
+            for side in ('gpu','npu'):
+                path = Path(request[side]['path'])
+                body = json.loads(path.read_text())
+                body['evidence_kind'] = 'runtime' if side == 'gpu' else 'synthetic'
+                request[side] = write(path, body)
+        for update in (None, relabel):
+            report = self.compare(data, data, update)
+            self.assertEqual((report['result'], report['target_status']), ('aligned','pass'))
+            self.assertNotIn('hardware_target_status', report)
+            self.assertEqual(report['calls'][0]['cpu_check']['unassessed_outputs'], ['other'])
+
+    def test_partial_coverage_does_not_hide_numeric_failure(self):
+        data = self.example()
+        self.policy = {}
+        report = self.compare(data, {'y':data['y'] + 1})
+        self.assertEqual((report['result'],report['target_status']), ('mismatch','fail'))
+        self.assertEqual(report['first_exceedance']['slot'], 'y')
+        self.assertEqual({s['slot'] for s in report['coverage']['npu']['missing']}, {'x','w'})
 
     def test_nonfinite_integer_and_masked_range(self):
         data = self.example()
@@ -399,7 +507,7 @@ class TensorComparison(unittest.TestCase):
 
         data = self.example()
         report = self.compare(data, update=as_runtime)
-        self.assertEqual(report['capture_status'], 'incomplete')
+        self.assertEqual(report['capture_status'], 'complete')
         report = self.compare(data, update=lambda req: as_runtime(req, True))
         self.assertEqual(report['capture_status'], 'complete')
         report = self.compare(data, update=lambda req: as_runtime(req, True, True))

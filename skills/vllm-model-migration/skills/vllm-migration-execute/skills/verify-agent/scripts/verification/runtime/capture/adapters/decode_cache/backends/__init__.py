@@ -43,4 +43,4 @@ BY_CLASS = {item.implementation: item for item in (ATTENTION, GDN, MLA)}
 BY_KIND = {item.kind: item for item in BY_CLASS.values()}
 MLA_OUTPUTS = {'mla.latent.output', 'mla.rope.output'}
 
-STATE_SNAPSHOTS = frozenset().union(*(b.files for b in BY_KIND.values()), MLA_OUTPUTS, {'ssm.initial'})
+STATE_SNAPSHOTS = frozenset().union(*(b.files for b in BY_KIND.values()), MLA_OUTPUTS, {'ssm.initial', 'key.prefix', 'value.prefix', 'mla.latent.prefix', 'mla.rope.prefix'})

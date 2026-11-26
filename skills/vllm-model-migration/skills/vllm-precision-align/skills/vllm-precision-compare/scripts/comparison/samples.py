@@ -68,34 +68,28 @@ def locate(index, identity):
     return matches[0]
 
 
-def paired(identity, declaration, gpu_index, npu_index, kind):
-    gpu_key, original = locate(gpu_index, identity)
-    npu_key, measured = locate(npu_index, gpu_key)
-    if gpu_key != npu_key:
-        raise ValueError("GPU 与 NPU 原生题号未映射到相同子集")
-    gpu = sample_score(original.get("score"), kind)
-    if gpu != sample_score(declaration.get("score"), kind):
-        raise ValueError("客户逐题分与 GPU 历史证据不一致")
+def paired(identity, declaration, npu_index, kind):
+    matched_key, measured = locate(npu_index, identity)
+    gpu = sample_score(declaration.get("score"), kind)
     npu = sample_score(measured.get("score"), kind)
-    row = {"subset": gpu_key[0], "sample_id": gpu_key[1], "gpu_score": gpu, "npu_score": npu,
+    row = {"subset": matched_key[0], "sample_id": matched_key[1], "gpu_score": gpu, "npu_score": npu,
            "npu_minus_gpu": npu - gpu}
     if kind == "binary":
         row["change"] = {(1, 0): "correct_to_wrong", (0, 1): "wrong_to_correct"}.get((gpu, npu), "unchanged")
     return row
 
 
-def compare_samples(declared, gpu, npu):
+def compare_samples(declared, npu):
     parent = declared.get("subset")
     entries = sample_index(declared["sample_results"], parent)
-    gpu_index = lookup(gpu["samples"], parent)
-    npu_index = lookup(npu["samples"], parent)
+    npu_index = lookup(npu.get("samples", []), parent)
     rows = []
     unmatched = []
     for identity, group in entries.items():
         try:
             if len(group) != 1:
                 raise ValueError("客户逐题基线含重复记录")
-            rows.append(paired(identity, group[0], gpu_index, npu_index, npu["sample_kind"]))
+            rows.append(paired(identity, group[0], npu_index, npu["sample_kind"]))
         except ValueError as error:
             unmatched.append({"subset": identity[0], "sample_id": identity[1], "reason": str(error)})
     matched = reject_collisions(rows, unmatched, parent)

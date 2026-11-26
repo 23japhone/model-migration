@@ -7,8 +7,8 @@ from alignment.process import call
 from alignment.request import reference, release_skill
 
 
-class ConditionsMismatch(ValueError):
-    """自动发现的基线缺少当前测量所需的相同条件，尚未发起推理。"""
+class PublicSourceError(ValueError):
+    """公开 GPU 分数的固定来源失效。"""
 
 
 def completed_location(action, code, stdout, label):
@@ -16,10 +16,6 @@ def completed_location(action, code, stdout, label):
         returned = parse(stdout)
     except ValueError as error:
         raise ValueError(f'{label} 未交付原生回执，退出码 {code}，见 {label}.stderr.log') from error
-    diagnostic = returned.get('diagnostic') or {}
-    if (action == 'quality-run' and returned.get('status') == 'blocked' and isinstance(diagnostic, dict)
-            and diagnostic.get('code') == 'quality_static_mismatch'):
-        raise ConditionsMismatch(safe(diagnostic.get('message')))
     if code or returned.get('status') != 'completed':
         raise ValueError(safe(returned.get('diagnostic') or returned.get('summary') or f'{label} 退出 {code}'))
     return Path(returned['report_path'])
@@ -63,10 +59,10 @@ class Children:
             raise ValueError(detail[:800] or f'GPU 原生归档复核退出 {code}')
         return parse(stdout)
 
-    def compare(self, baseline, measured, gpu):
+    def compare(self, baseline, measured, gpu, basis='customer_provided'):
         path = self.attempt / 'compare.request.json'
         request = {key: measured[key]['path'] for key in ('measurement', 'receipt', 'verification')}
-        request.update(baseline=baseline, source=measured['source'])
+        request.update(baseline=baseline, source=measured['source'], baseline_source=basis)
         if gpu:
             request['gpu_evidence'] = gpu['path']
         write(path, request)
@@ -81,5 +77,5 @@ class Children:
             if evidence.get(key) != measured[key]:
                 raise ValueError('比较报告的证据与经过阶段核验的测量不同：' + key)
         if gpu and evidence.get('gpu_evidence') not in (None, gpu):
-            raise ValueError('GPU 历史文件在核验与出报告之间发生变化')
+            raise ValueError('GPU 发布文件在核验与出报告之间发生变化')
         return ref(report)

@@ -20,10 +20,8 @@ def numbers(values):
 
 
 def policy(value):
-    if value == {}:
-        return None
-    if not isinstance(value, dict) or set(value) != {'atol', 'rtol'}:
-        raise ValueError('tensor_alignment 须同时提供 atol、rtol 或使用空对象')
+    if not isinstance(value, dict) or value.keys() - {'atol', 'rtol'}:
+        raise ValueError('tensor_alignment 仅接受 atol、rtol')
     for tolerance in value.values():
         if type(tolerance) not in (int, float, Decimal) or not math.isfinite(tolerance) or tolerance < 0:
             raise ValueError('数值容差须为有限非负数')
@@ -32,9 +30,9 @@ def policy(value):
 
 def request(value):
     sides = set(value) & {'gpu', 'npu'}
-    if not sides or set(value) != sides | {'plan', 'tensor_alignment'}:
-        raise ValueError('张量比较须提供 plan、tensor_alignment 及至少一侧采集包')
-    policy(value['tensor_alignment'])
+    if not sides or 'plan' not in value or value.keys() - (sides | {'plan', 'tensor_alignment'}):
+        raise ValueError('张量比较须提供 plan 及至少一侧采集包')
+    policy(value.get('tensor_alignment', {}))
     for field in sides | {'plan'}:
         ref = value[field]
         if not isinstance(ref, dict) or set(ref) != {'path', 'sha256'}:

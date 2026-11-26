@@ -10,14 +10,19 @@ from .defaults.policy import pending
 
 
 def plan(task, parent):
-    return {'schema_version': '1.0', 'task_id': 'vllm-model-migration', 'status': 'not_run',
-            'success': False, 'inputs': task, 'evidence_parent': str(parent),
+    from .quality.conclusion import summarize
+    from .alignment_summary import summarize as alignment_summary
+    result = {'schema_version': '1.0', 'task_id': 'vllm-model-migration', 'status': 'not_run',
+            'success': False, 'task_quality_conclusion': summarize('not_run', [], {}, None),
+            'inputs': task, 'evidence_parent': str(parent),
             'deliverables': list(FILES) if task['accuracy']['evaluator'] == 'evalscope' else [],
             'delivery_supported': task['accuracy']['evaluator'] == 'evalscope',
             'next_action': 'agent_resolve_intent_and_observations',
             'uncovered': ['仅校验客户字段；未解析版本、查找资产、占用设备或完成任何评测',
                           '仅为 JSON 静态预览，尚未合成 prompt；后端与默认参数不代表最终执行选择',
                           *['待运行时解析默认字段：' + field for field in pending(task)]]}
+    result['alignment_summary'] = alignment_summary(result, task['accuracy'], intent_known=False)
+    return result
 
 
 def main(args):

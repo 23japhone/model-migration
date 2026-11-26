@@ -1,7 +1,7 @@
-"""正式测量开始前，按发现时绑定的归档身份重核原生条件与各项 GPU 成绩。"""
+"""正式测量开始前，按发现时绑定的归档身份重核发布来源、数据集与各项 GPU 成绩。"""
 from alignment.evidence import EvidenceError, digest, safe
 from alignment.request import reference
-from .children import ConditionsMismatch
+from .children import PublicSourceError
 
 
 def verify_ref(item):
@@ -11,29 +11,23 @@ def verify_ref(item):
 
 
 def verify_attachments(evidence):
-    # 公开检查器允许不依赖逐题 reviews 的总分比较。自动发现的归档还须保留其引用的附件。
-    for key, item in evidence.items():
-        if key == 'gpu_reviews':
-            for review in item.values():
-                verify_ref(review)
-        else:
-            verify_ref(item)
+    for key in ('gpu_receipt', 'gpu_config', 'gpu_report'):
+        verify_ref(evidence[key])
 
 
 def verify_scope(checked, request):
-    native = request['native_request']
-    if checked['static_conditions'] != native['expected_static_conditions']:
-        raise ValueError('GPU 静态条件与发现时的记录不同')
-    expected = native['protocol']
-    protocol = checked['protocol']
-    for key, value in expected.items():
-        if key != 'metrics' and protocol.get(key) != value:
-            raise ValueError('GPU/NPU 冻结评测协议不同：' + key)
+    if checked['protocol']['dataset'] != request['baseline']['dataset']:
+        raise ValueError('公开数据集与发现时的记录不同')
+    baseline = request['baseline']
+    if any(item.get('subset') is None for item in baseline['scores']):
+        scopes = checked['protocol']['subsets']
+        if set(baseline.get('subset_list', scopes)) != set(scopes):
+            raise ValueError('所声明的公开总分范围与 GPU 归档不同')
     scores = {(row['metric'], row['subset']): row for row in checked['scores']}
     for item in request['baseline']['scores']:
+        if item.get('gpu_score') is None:
+            continue  # 发现时已记录的公开缺项随其他可核验指标一并交付。
         name = item['metric']
-        if not expected['metrics'].get(name) or protocol['metrics'].get(name) != expected['metrics'][name]:
-            raise ValueError('GPU 指标口径与请求不同：' + name)
         scope = (name, item.get('subset'))
         score = scores.get(scope, {})
         if 'error' in score or score.get('value') is None or score['value'] != item['gpu_score']:
@@ -41,7 +35,7 @@ def verify_scope(checked, request):
 
 
 def recheck(request, inspect):
-    if 'expected_static_conditions' not in request['native_request']:
+    if request.get('baseline_source') != 'publisher':
         return
     try:
         source = request.get('gpu_evidence')
@@ -57,4 +51,4 @@ def recheck(request, inspect):
     except EvidenceError:
         raise
     except (ValueError, KeyError, TypeError, OSError) as error:
-        raise ConditionsMismatch('正式测量前无法重新核实自动 GPU 基线：' + safe(error)) from error
+        raise PublicSourceError('正式测量前无法重新核实自动 GPU 基线：' + safe(error)) from error

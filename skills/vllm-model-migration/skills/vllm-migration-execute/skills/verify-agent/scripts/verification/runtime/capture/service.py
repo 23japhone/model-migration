@@ -72,7 +72,20 @@ def live(handoff, preparation, attempt):
     read_bound(preparation['config'])
     if topology is not None:
         return validate_members(topology, identities)
-    return state.read(root / 'worker.json')
+    return worker_capabilities(root, preparation, identities)
+
+
+def worker_capabilities(root, preparation, identities):
+    ready = identities['worker']
+    if preparation.get('scheduling') == 'async':
+        from .adapters.async_batch.sources import CORE, DIGESTS
+        engine = state.read(root / 'async-engine.json')
+        if (ready.get('synchronous') is not False or engine['pid'] != identities['engine']['pid']
+                or engine['adapter_files'] != preparation['adapter_files'] or engine['queue_depth'] < 2
+                or state.read(root / ('hook-' + CORE + '.json'))['sha256'] != DIGESTS[CORE]):
+            raise ValueError('异步引擎、队列或 worker 的就绪身份不匹配')
+        ready = {**ready, 'async_queue': {k: engine[k] for k in ('queue_depth', 'executor', 'scheduler')}}
+    return ready
 
 
 def verify_sources(root, preparation):

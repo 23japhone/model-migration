@@ -1,0 +1,45 @@
+{
+  "model": {
+    "model_repository_id": "Qwen/Qwen3.5-27B"
+  },
+  "environment": {
+    "available_npu_devices": [0]
+  },
+  "accuracy": {
+    "evaluator": "evalscope",
+    "datasets": [
+      {
+        "name": "ceval",
+        "subset_list": ["accountant"],
+        "limit": 10
+      }
+    ],
+    "gpu_baselines": [
+      {
+        "evaluator": "evalscope",
+        "dataset": "ceval",
+        "subset_list": ["accountant"],
+        "prompt_config": {
+          "request_format": "chat",
+          "enable_thinking": false
+        },
+        "generation_config": {
+          "temperature": 0,
+          "top_p": 1
+        },
+        "scores": [
+          {
+            "subset": "accountant",
+            "metric": "accuracy",
+            "gpu_score": 0.75
+          }
+        ]
+      }
+    ],
+    "token_alignment": {
+      "raw_logits": {"atol": 0.05},
+      "processed_scores": {"atol": 0.001}
+    },
+    "tensor_alignment": {}
+  }
+}

@@ -8,12 +8,15 @@ from ... import outputs, request as schema
 from ...evidence import read_bound, write_json
 from .adapters.state import read
 from .generation import tensor_alignment, token_prediction
+from .batch_identity import session as batches
 from .lease import identity, locked, no_lease, owned
 from .service import deployment, live
 from .tensors import file_ref
 
 
 def validate(request):
+    if request.get('profile') in ('batch_identity', 'batch_joint'):
+        return batches.validate_arm(request, validate)
     schema.fields(request, ['operation', 'source'], ['owner_pid', 'sample_key', 'native_id', 'trace_id', 'http', 'cache_output_index', 'cache_capture', 'profile', 'tensor_plan'])
     schema.fields(request['source'], ['path', 'sha256']); schema.absolute(request['source']['path'])
     if not schema.HASH.fullmatch(str(request['source']['sha256'])): raise ValueError('来源摘要无效')
@@ -47,7 +50,11 @@ def validate_cache_selection(request):
 
 def validate_full_request(request):
     value = request['cache_capture']
-    schema.fields(value, ['mode', 'max_request_snapshot_bytes'])
+    schema.fields(value, ['mode', 'max_request_snapshot_bytes'], ['prefix_reuse', 'observe_values'])
+    if type(value.get('prefix_reuse', False)) is not bool:
+        raise ValueError('prefix_reuse 须为布尔值')
+    if 'observe_values' in value and (not value.get('prefix_reuse') or type(value['observe_values']) is not bool):
+        raise ValueError('observe_values 仅用于跨请求前缀观测')
     budget = value['max_request_snapshot_bytes']
     if (request['operation'] != 'arm' or 'cache_output_index' in request or value['mode'] != 'full_request'
             or type(budget) is not int or budget <= 0):
@@ -113,6 +120,8 @@ def verify_arm(request, root, ready, preparation):
         return tensor_alignment.verify_worker(ready)
     if 'profile' in request:
         return token_prediction.verify_worker(ready)
+    if request.get('cache_capture', {}).get('prefix_reuse') and not ready.get('decode_cache', {}).get('prefix_reuse'):
+        raise ValueError('实际 worker 缺少单卡 Eager 本地前缀缓存能力')
     if ready.get('mode') == 'aclgraph':
         if ('cache_capture' in request) != ready['graph']['observe_cache'] or 'cache_output_index' in request:
             raise ValueError('图采集的全程观测范围须匹配捕图时的配置')
@@ -127,6 +136,8 @@ def verify_arm(request, root, ready, preparation):
 
 
 def arm(request, root, lease, ready, preparation):
+    if ready.get('synchronous') is False:
+        raise ValueError('异步 worker 仅支持批次身份和联合采集')
     if lease['state'] != 'idle' or (root / 'active.json').exists(): raise ValueError('已有活动请求')
     if any(row['trace_id'] == request['trace_id'] for row in lease['sealed']): raise ValueError('trace_id 已使用')
     verify_arm(request, root, ready, preparation)
@@ -146,6 +157,24 @@ def arm(request, root, lease, ready, preparation):
     return {'status': 'completed', 'directory': folder.name, 'trace_id': request['trace_id']}
 
 
+def operation_worker(operation, root, lease, handoff, prep, attempt):
+    def inspect():
+        return live(handoff, prep, attempt)
+
+    if operation != 'seal':
+        return inspect()
+    if 'graph_worker' in lease:
+        from .aclgraph.receipt import seal_worker
+        return seal_worker(lease['graph_worker'], inspect)
+    if 'members' in lease:
+        from .parallel.topology import group_size, seal_members
+        size = group_size(read_bound(prep['parallel']))
+        return seal_members(root / lease['directory'], lease['members'], inspect, size=size)
+    if 'group_id' in lease and batches.confirmed(root / lease['group_id']):
+        return None
+    return inspect()
+
+
 def operate(request, target):
     authority = read_bound(request['source']); root = Path(authority['root'])
     with locked(root):
@@ -153,7 +182,9 @@ def operate(request, target):
         declared, handoff, prep = deployment(authority['source'])
         read_bound(authority['derived_config'])
         if request['operation'] == 'end':
-            if lease['state'] == 'armed':
+            if 'group_id' in lease:
+                batches.close_group(root, lease)
+            elif lease['state'] == 'armed':
                 folder = root / lease['directory']
                 if (folder/'request.json').exists() and not (folder/'frontend-end.json').exists():
                     raise ValueError('实际请求尚未结束，保留活动租约；不能让后续采集混入该前向')
@@ -163,15 +194,11 @@ def operate(request, target):
             (root / 'lease.json').unlink()
             return {'status': 'completed', 'sealed': lease['sealed'], 'previous_state': lease['state']}
         attempt = probe_directory(target, declared)
-        if request['operation'] == 'seal' and 'graph_worker' in lease:
-            from .aclgraph.receipt import seal_worker
-            ready = seal_worker(lease['graph_worker'], lambda: live(handoff, prep, attempt))
-        elif request['operation'] == 'seal' and 'members' in lease:
-            from .parallel.topology import group_size, seal_members
-            size = group_size(read_bound(prep['parallel']))
-            ready = seal_members(root / lease['directory'], lease['members'], lambda: live(handoff, prep, attempt), size=size)
-        else:
-            ready = live(handoff, prep, attempt)
+        ready = operation_worker(request['operation'], root, lease, handoff, prep, attempt)
+        if request.get('profile') in ('batch_identity', 'batch_joint'):
+            return batches.arm(request, root, lease, ready, prep)
+        if request['operation'] == 'seal' and 'group_id' in lease:
+            return batches.finish_member(root, lease, request, authority, handoff)
         if request['operation'] == 'arm': return arm(request, root, lease, ready, prep)
         if request['operation'] == 'seal':
             from .session_receipt import seal

@@ -155,12 +155,18 @@ def query_forward(request):
         raise ValueError('请求与全程采集回执不匹配')
     ready = verify_receipt(result)
     if 'view' in request:
+        if 'prefix_reuse' in result:
+            from .prefix.reader import timeline
+            timeline(result, ready)
         for entry in result['timeline']:
             row = read_bound(entry['row'])
             if row['forward_id'] != entry['forward_id'] or row['output_index'] != entry['output_index']:
                 raise ValueError('时间线行与已封存的前向不符')
         return {k: result[k] for k in ('request_id', 'timeline', 'token_ids', 'cache_capture', 'capture_totals',
-                                       'cache_status', 'cache_errors') if k in result}
+                                       'cache_status', 'cache_errors', 'prefix_reuse') if k in result}
+    if 'prompt_position' in request and request['prompt_position'] < result.get('prefix_reuse', {}).get('first_computed_position', 0):
+        from .prefix.reader import lookup
+        return lookup(result, request)
     item = select_entry(result['timeline'], request)
     ref = item['row']
     row = read_bound(ref)

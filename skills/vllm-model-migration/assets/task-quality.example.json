@@ -37,8 +37,7 @@
         "scores": [
           {
             "metric": "accuracy",
-            "gpu_score": 0.75,
-            "target": { "max_drop": 0.005 }
+            "gpu_score": 0.75
           },
           {
             "subset": "accountant",

@@ -34,7 +34,7 @@ def parameters(interpreted):
                 dataset_list(expected, dataset_fields)
             continue
         value[parts[0]][parts[1]] = expected
-    validate_task(value)
+    return validate_task(value)
 
 
 def dataset_values(actual, expected):
@@ -61,17 +61,18 @@ def dataset_values(actual, expected):
 
 def compose(task, interpreted):
     """一次返回实际声明及冲突；本地权重身份另由模型复核门禁检查。"""
-    parameters(interpreted)
+    checked = parameters(interpreted)
+    declared = validate_task({**dict.fromkeys(FIELDS, {}), **task})
     value, result = copy.deepcopy(task), []
     for field, expected in interpreted.items():
         group, key = field.split('.')
-        actual = value[group].get(key)
+        actual = declared[group][key]
         if field == 'accuracy.datasets':
-            value[group][key], differences = dataset_values(actual, expected)
+            value[group][key], differences = dataset_values(value[group].get(key), expected)
             result.extend(differences)
         elif unspecified(actual):
-            value[group][key] = copy.deepcopy(expected)
-        elif type(actual) is not type(expected) or actual != expected:
+            value[group][key] = checked[group][key]
+        elif not unspecified(checked[group][key]) and actual != checked[group][key]:
             result.append(field)
     return value, result
 

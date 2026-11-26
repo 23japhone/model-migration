@@ -38,38 +38,48 @@ def stage(root, action, label, request):
     return json.loads(proc.stdout)
 
 
-def quality_fixture(root):
+def quality_fixture(root, baseline=None):
+    if baseline is None:
+        baseline = {'dataset': PROTOCOL['dataset'], 'scores': [
+            {'subset': CASE['subset'], 'metric': 'accuracy', 'gpu_score': 1, 'target': {'max_drop': 0}}]}
+    expected = baseline['scores'][0]
+    case = {**CASE, 'subset': expected['subset']}
+    protocol = {**PROTOCOL, 'dataset': baseline['dataset'],
+                'generation_config': baseline.get('generation_config', PROTOCOL['generation_config'])}
     measurement = put(root / 'native-npu.json', {'hardware':'npu', 'format':'task-quality-native-v1',
-                      'protocol':PROTOCOL, 'evidence_kind':'synthetic', 'scores':[]})
+                      'protocol':protocol, 'evidence_kind':'synthetic', 'scores':[]})
     native = put(root / 'quality-receipt.json', {'task_id':'verify-agent-plus', 'operation':'quality-run',
                  'status':'completed', 'conclusions':{'evaluation_validity':'pass'},
                  'detailed_report':{'hardware':'npu'},'evidence':{'quality_evidence':measurement}})
-    score = {'subset':'math', 'metric':'accuracy', 'direction':'higher', 'precision_target':'fail',
-             'comparability':'pass', 'sample_comparison':{'status':'completed',
-             'items':[{**CASE, 'gpu_score':1, 'npu_score':0}]}}
+    score = {'target': {'max_drop': expected['gpu_score'] * 0.01}, **expected, 'direction':'higher', 'precision_target':'fail', 'comparability':'pass',
+             'unit':'ratio', 'npu_score':0, 'npu_minus_gpu':-expected['gpu_score'], 'drop':expected['gpu_score'],
+             'sample_comparison':{'status':'completed', 'items':[{**case, 'gpu_score':1, 'npu_score':0}]}}
     return put(root / 'quality.json', {'task_id':'vllm-precision-compare','operation':'run','status':'completed',
                'conclusions':{'precision_target':'fail','evaluation_validity':'pass'},'scores':[score],
-               'baseline':{'dataset':'fixture'},'evidence':{'receipt':native,'measurement':measurement},
+               'baseline':baseline,'evidence':{'receipt':native,'measurement':measurement},
                'next_action':{'requires_separate_run':True,
-                              'failed_scores':[{'dataset':'fixture','metric':'accuracy','subset':'math'}]}})
+                              'failed_scores':[{'dataset':baseline['dataset'], 'metric':expected['metric'],
+                                               'subset':case['subset']}]}})
 
 
 def token_bundle(root, quality, side):
+    selected = get(quality)['scores'][0]['sample_comparison']['items'][0]
+    case = {key: selected[key] for key in ('subset', 'sample_id')}
     logits = [[0,2], [0,2], [0,2]] if side == 'gpu' else [[0,2], [0.5,2.5], [2,0]]
     low = 1 / (1 + math.exp(2))
     probs = [[low,1-low] for _ in logits]
     if side == 'npu':
         probs[-1].reverse()
     accepted = [max(range(len(row)), key=row.__getitem__) for row in logits]
-    prediction = {**CASE, 'evidence_kind':'synthetic', 'prompt_token_ids':[1,0], 'output_token_ids':accepted,
+    prediction = {**case, 'evidence_kind':'synthetic', 'prompt_token_ids':[1,0], 'output_token_ids':accepted,
                   'raw_logits':logits, 'processed_probs':probs, 'stop_reason':'length'}
     record = put(root / ('token-'+side+'.json'), prediction)
-    review = put(root / ('review-'+side+'.json'), {**CASE, 'hardware':side, 'evidence_kind':'synthetic',
+    review = put(root / ('review-'+side+'.json'), {**case, 'hardware':side, 'evidence_kind':'synthetic',
                  'quality_report_sha256':quality['sha256'], 'record_sha256':record['sha256'],
                  'metrics':{'accuracy':int(side == 'gpu')}})
     return put(root / ('token-'+side+'-bundle.json'), {'format':'token-prediction-bundle-v1','hardware':side,
                'quality_report_sha256':quality['sha256'], 'evidence_kind':'synthetic',
-               'cases':[{**CASE, 'record':record, 'review':review}]})
+               'cases':[{**case, 'record':record, 'review':review}]})
 
 
 def common_scope(root):

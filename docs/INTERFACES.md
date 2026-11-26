@@ -39,11 +39,11 @@
 - 共享执行状态为 `not_run/running/completed/failed/blocked/skipped`；结论为 `pass/fail/not_evaluated/review_required`。内部台账可以有契约规定的其他状态，不机械套用共享枚举。
 - 回执须核对 task/run/operation、原始输入、stdout 与落盘结果、文件引用及摘要；摘要固定字节身份，不证明执行可信、当前服务存活或模型能力。
 - 原请求和已完成尝试不改写；绑定或续接形成新副本、摘要与独立尝试。资产路径属于实际执行主机或容器，不自动转换开发机路径。
-- 旧 `migrate.py --request` 的精度目标失败时可同时返回 `status=completed` 和退出码 1。总入口输入无效返回 2，必需条件不足返回 3。客户 `migrate.py --task` 完成交付返回 0，任务质量是否达标要读取 `task_quality[]` 所引用报告的 `conclusions.precision_target`。[总入口退出码](../skills/vllm-model-migration/references/contract.md#静态计划输出与退出码) · [精度阶段契约](../skills/vllm-model-migration/skills/vllm-precision-align/references/contract.md#任务质量对齐)
+- 旧 `migrate.py --request` 的精度目标失败时可同时返回 `status=completed` 和退出码 1。总入口输入无效返回 2，必需条件不足返回 3。客户 `migrate.py --task` 完成交付返回 0。终端 JSON 与客户回执均提供 `alignment_summary`，Agent 依据其中的中文摘要和三层明细汇报。任务质量自动验收仍读 `task_quality_conclusion.precision_target`。旧回执的分项依据在 `task_quality[]` 所引用报告的 `conclusions.precision_target`。[客户回执契约](../skills/vllm-model-migration/references/task-quality.md#客户回执中的三层对齐摘要) · [总入口退出码](../skills/vllm-model-migration/references/contract.md#静态计划输出与退出码)
 
 ## 精度与交接兼容性
 
-客户 `task.json` 必须包含 `model`、`environment` 和 `accuracy` 三组对象。可选的 `accuracy.gpu_baselines` 用于任务质量对齐。普通精度测试的 `accuracy.datasets[].limit` 只约束普通测试的样本范围。评测结果和缺项记录在客户回执中，三个交付 JSON 沿用既有结构。[客户字段与默认值](../skills/vllm-model-migration/references/customer-task.md#字段) · [基线字段及示例](../skills/vllm-model-migration/references/task-quality.md)
+客户 `task.json` 必须包含 `model`、`environment` 和 `accuracy` 三组对象。正式执行会合成 prompt 与 JSON 中的显式条件。可选的 `accuracy.gpu_baselines` 提供第一遍直接使用的 GPU 成绩，可附 GPU 评测信息。`accuracy.token_alignment` 为第二遍指定两项容差，从有效质量报告中已确认的失败分项选题。一旦确认双端在同前文的首个预测差异，就进入张量比较。省略 `accuracy.tensor_alignment` 或填写空对象时使用逐张量 dtype 默认容差，两项容差均可单独覆盖。CPU 重算提供偏差归因。普通精度测试的 `accuracy.datasets[].limit` 只约束普通测试的样本范围。评测结果和缺项记录在客户回执中，三个交付 JSON 沿用既有结构。[客户字段与默认值](../skills/vllm-model-migration/references/customer-task.md#字段) · [基线字段及示例](../skills/vllm-model-migration/references/task-quality.md)
 
 执行时先校验显式 JSON，再由 context 一次合成 prompt、应用静态默认；前置检查与业务执行共享实际参数。inputs 保留原归一化快照用于续接比较。--plan 不读取 context，仅作尚未合成 prompt 的 JSON 预览，其后端与默认参数不表示最终执行选择。
 

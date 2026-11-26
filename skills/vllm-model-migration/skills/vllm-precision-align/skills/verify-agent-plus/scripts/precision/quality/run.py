@@ -7,7 +7,7 @@ from ..evidence import begin, finish, load, record, verify_files, write
 from ..inputs import collect
 from ..runtime import service
 from ..runtime.process import execute
-from . import runtime, static_gate
+from . import runtime
 from .native import measure
 from .protocol import check_assets, ref, stable_ids, subset_assets
 
@@ -25,9 +25,6 @@ def project(attempt, manifest, protocol, result):
 
 def fail(manifest, error, status):
     manifest['diagnostic'] = {'type': type(error).__name__, 'message': str(error)}
-    if isinstance(error, static_gate.Mismatch):
-        manifest['diagnostic']['code'] = 'quality_static_mismatch'
-        manifest['detailed_report']['formal_requests'] = 0
     manifest['conclusions']['evaluation_validity'] = 'fail' if status == 'failed' else 'not_evaluated'
     return finish(manifest, status)
 
@@ -73,7 +70,6 @@ def run(request, parent, run_id):
         before = service.snapshot(inputs, measurement, attempt, 'before')
         index = freeze(request, inputs, assets, attempt, before)
         static = runtime.recorded(index, before)
-        static_gate.check(request, static)
         scope = str(attempt/'scope')
         details.update(tasks=index['tasks'], stable_samples=stable, scope_root=scope,
                        prompt_budget=index['prompt_budget'])

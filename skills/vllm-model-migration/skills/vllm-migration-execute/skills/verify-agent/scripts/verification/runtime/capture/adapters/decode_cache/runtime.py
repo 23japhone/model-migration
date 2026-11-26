@@ -86,6 +86,10 @@ def all_ready(rec, model, ready, config):
     ready.update(status='ready', version=config['version'], layer_scope='all', full_request=True,
                  layers=[r['path'] for r in rec.architecture['layers']], backend_errors=rec.backend_errors,
                  sources=verified_sources, max_snapshot_bytes=rec.cache_budget)
+    runner = getattr(rec, 'runner', None)
+    ready['prefix_reuse'] = (getattr(rec, 'world_size', 1) == 1
+                             and bool(getattr(getattr(runner, 'cache_config', None), 'enable_prefix_caching', False))
+                             and getattr(runner.vllm_config, 'kv_transfer_config', None) is None)
     return {'decode_cache': ready}
 
 
@@ -123,6 +127,7 @@ def selected(rec, schedule):
     if hasattr(rec, 'cache_targets') or hasattr(rec, 'layer_modules'):
         intent = state.read(request_folder(rec.folder) / 'intent.json')
         index = intent.get('cache_output_index')
+        rec.observe_cache_values = intent.get('cache_capture', {}).get('observe_values', True)
         if 'cache_capture' in intent:
             index = 'full_request'
             if getattr(rec, 'budget_folder', None) != rec.folder:
@@ -158,6 +163,11 @@ def install(stack, rec, record):
     from vllm.forward_context import get_forward_context
     plan = read_schedule(rec)
     record['schedule'] = plan
+    if plan.get('prefix_cache') and plan['forward_id'] != rec.frame['forward_id']:
+        raise ValueError('前缀分配与 worker 实际前向身份不同')
+    if not getattr(rec, 'observe_cache_values', True):
+        record.update(format='schedule_only', status='metadata_only')
+        return
     runner = rec.runner
     if record.get('format') == 2:
         metas = get_forward_context().attn_metadata
@@ -213,6 +223,8 @@ def observe_decode(rec):
             problems = layer_errors(layer)
             layer['status'] = 'incomplete' if problems else 'complete'
             record['errors'].extend(f"{layer['path']}: {msg}" for msg in problems)
+    elif record.get('format') == 'schedule_only':
+        return
     elif record['ops'] != EXPECTED_OPS:
         record['errors'].append('层调用缺失、重复或顺序不同')
     if not record['errors']:

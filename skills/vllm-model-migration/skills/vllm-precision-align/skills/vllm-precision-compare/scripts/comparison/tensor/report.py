@@ -19,7 +19,7 @@ def open_sides(req, plan):
         bundle = artifacts.package(req[side], side, plan)
         rows, issues = artifacts.index(bundle, expected)
         try:
-            native.verify(bundle, plan.value)
+            native.verify(bundle, plan.value, rows, issues)
         except READ_ERRORS as error:
             issues.append('原生来源或实物清单核验失败：' + str(error))
             rows = {}
@@ -32,7 +32,14 @@ def missing(row, call, slot, reason):
     row['missing'].append({'call': call, 'slot': slot, 'reason': str(reason)})
 
 
-def capture_call(side, capture, call, torch):
+def record_coverage(coverage, key, issue):
+    if issue:
+        missing(coverage, *key, issue)
+    else:
+        coverage['verified_slots'] += 1
+
+
+def capture_call(capture, call, torch):
     bundle, rows, coverage = capture
     values, sources, ordinals = {}, {}, set()
     for slot in call['slots']:
@@ -45,11 +52,12 @@ def capture_call(side, capture, call, torch):
             if torch is None:
                 raise ValueError('本地缺少用于校验原生张量的 PyTorch')
             values[slot['id']] = artifacts.verified(bundle, item, slot, torch)
-            fields = ('path', 'sha256', 'shape', 'dtype', 'layout', 'original_shape', 'capture_slice', 'argument', 'native_name')
+            fields = ('fp8_scaled', 'fp8_scale', 'path', 'sha256', 'shape', 'dtype', 'layout', 'original_shape', 'capture_slice', 'argument', 'native_name')
             sources[slot['id']] = {k: item[k] for k in fields if k in item}
             if type(item.get('ordinal')) is int and item['ordinal'] >= 0:
                 ordinals.add(item['ordinal'])
-            coverage['verified_slots'] += 1
+            issue = values[slot['id']].scale_issue
+            record_coverage(coverage, key, issue)
         except READ_ERRORS as error:
             missing(coverage, *key, error)
     roles = {slot['role'] for slot in call['slots'] if slot['id'] in values}
@@ -66,7 +74,7 @@ def compare_call(call, sides, limits, torch, plan):
            'execution_order': {}, 'sources': {}, 'slots': []}
     values = {}
     for name, capture in sides.items():
-        loaded, sources, ordinal = capture_call(name, capture, call, torch)
+        loaded, sources, ordinal = capture_call(capture, call, torch)
         row['execution_order'][name] = ordinal
         row['sources'][name] = sources
         values[name] = loaded
@@ -127,11 +135,7 @@ def capture_context(bundle):
 def devices_result(failures, comparable, slots, incomplete):
     if failures:
         return 'mismatch'
-    if incomplete or len(comparable) < len(slots):
-        return 'insufficient_evidence'
-    if any(row['result'] != 'pass' for _, row in slots):
-        return 'not_evaluated'
-    return 'aligned'
+    return 'insufficient_evidence' if incomplete or len(comparable) < len(slots) else 'aligned'
 
 
 def cpu_summary(calls):
@@ -153,19 +157,13 @@ def summarize(calls, incomplete):
     cpu = cpu_summary(calls)
     return {'result': result, 'first_exceedance': first_failed(failures, calls), 'largest_error': maximum,
             'first_exceedance_scope': 'verified_slots_with_observed_call_order',
-            'cpu_check': cpu, 'target_status': target_status(result, cpu)}
-
-
-def target_status(device, cpu):
-    if 'mismatch' in (device, cpu['result']):
-        return 'fail'
-    return 'pass' if (device, cpu['common_reference']) == ('aligned', 'aligned') else 'not_evaluated'
+            'cpu_check': cpu, 'target_status': {'mismatch':'fail', 'aligned':'pass'}.get(result, 'not_evaluated')}
 
 
 def run(req, request_ref):
     plan = bound(req['plan'])
     validate_plan(plan.value)
-    limits = policy(req['tensor_alignment'])
+    limits = policy(req.get('tensor_alignment', {}))
     sides = open_sides(req, plan)
     try:
         import torch
@@ -176,14 +174,15 @@ def run(req, request_ref):
     incomplete = any(row['missing'] or row['issues'] for row in coverage.values())
     status = 'incomplete' if incomplete else 'complete'
     uncovered = plan.value.get('scope_uncovered', [])
-    summary = summarize(calls, incomplete or uncovered) if len(sides) == 2 else {'result': 'awaiting_peer', 'target_status': 'not_evaluated'}
+    missing_devices = sorted({'gpu', 'npu'} - sides.keys())
+    summary = ({'result': 'insufficient_evidence', 'target_status': 'not_evaluated'} if missing_devices
+               else summarize(calls, incomplete or uncovered))
     kinds = {side: bundle.value.get('evidence_kind', 'unspecified') for side, (bundle, _, _) in sides.items()}
-    hardware_status = summary['target_status'] if set(kinds.values()) == {'runtime'} else 'not_evaluated'
     return {'task_id': 'vllm-precision-compare', 'status': 'completed', 'operation': 'tensor', 'format': 'tensor-comparison-v1',
             'case': plan.value['case'], 'position': plan.value['position'], 'plan': plan.ref, 'request': request_ref,
-            'capture_status': status, 'coverage': coverage, 'scope_uncovered': uncovered,
-            'calls': calls, 'tensor_alignment': req['tensor_alignment'],
+            'capture_status': status, 'coverage': coverage, 'missing_devices': missing_devices, 'scope_uncovered': uncovered,
+            'calls': calls, 'tensor_alignment': limits,
             'evidence': {'request': request_ref, 'plan': plan.ref,
                          **{side: bundle.ref for side, (bundle, _, _) in sides.items()}},
             'side_context': {side: capture_context(bundle) for side, (bundle, _, _) in sides.items()},
-            'evidence_kind': kinds, 'hardware_target_status': hardware_status, **summary}
+            'evidence_kind': kinds, **summary}

@@ -19,7 +19,7 @@ from .tensors import file_ref
 def validate(request, action):
     keys = ['source', 'request_id']
     schema.fields(request, keys + (['prompt'] if action == 'capture-one' else []),
-                  ['output_index', 'max_tokens', 'allowed_token_ids'] if action == 'capture-one' else ['output_index', 'layer', 'layer_index', 'api', 'occurrence', 'cache_snapshot', 'view', 'forward_id', 'prompt_position', 'rank', 'event_index', 'image_index', 'stack', 'image_snapshot'])
+                  ['output_index', 'max_tokens', 'allowed_token_ids'] if action == 'capture-one' else ['output_index', 'layer', 'layer_index', 'api', 'occurrence', 'cache_snapshot', 'view', 'forward_id', 'prompt_position', 'rank', 'event_index', 'image_index', 'stack', 'image_snapshot', 'native_tensor'])
     ref = request['source']
     schema.fields(ref, ['path', 'sha256'])
     schema.absolute(ref['path'])
@@ -32,6 +32,8 @@ def validate(request, action):
         from .generation.query import validate as generation_selectors
         generation_selectors(request)
         validate_forward_selector(request)
+        from .batch_joint.reader import validate as validate_member_tensor
+        validate_member_tensor(request)
         validate_snapshot(request)
         validate_layer_index(request)
         for field in ('layer', 'api'):
@@ -166,6 +168,14 @@ def run(request, target, run_id):
 
 def lookup(request, target, run_id):
     receipt = read_bound(request['source'])
+    if receipt.get('profile') == 'batch_joint':
+        from .batch_joint.reader import lookup as joint_lookup
+        return 0, joint_lookup(receipt, request, target)
+    if 'native_tensor' in request:
+        raise ValueError('native_tensor 需要批次数值回执')
+    if receipt.get('profile') == 'batch_identity':
+        from .batch_identity.receipt import lookup as batch_lookup
+        return 0, batch_lookup(receipt, request)
     if receipt.get('mode') == 'aclgraph':
         from .aclgraph.reader import lookup as graph_lookup
         return 0, graph_lookup(receipt, request)

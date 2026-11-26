@@ -66,6 +66,8 @@ def review_scores(entry, device, report_sha):
             or value.get('record_sha256') != entry['record']['sha256']
             or value.get('quality_report_sha256') != report_sha):
         raise ValueError(device + ' 评分与本次预测的身份不符')
+    if value.get('status') == 'unavailable':
+        raise ValueError(device + ' 同轮逐题评分不可用：' + str(value.get('reason', '缺少评分')))
     if not isinstance(value.get('metrics'), dict):
         raise ValueError('第二遍同轮逐题评分缺少指标')
     return value['metrics']

@@ -1,32 +1,31 @@
 # 客户输入与三文件完成合同
 
-本契约对应 `migrate.py --task task.json`，与旧 `--request` 互斥。自然语言由 Agent 理解；脚本不靠关键词决定意图。完整输入模板见[template.json](../assets/template.json)，内部观察与执行步骤见[customer-observations.md](customer-observations.md)。
+客户用 prompt 说明部署和评测意图，用 `migrate.py --task task.json` 提交参数。可复制[普通任务模板](../assets/template.json)、[含 GPU 基线的质量评测示例](../assets/task-quality.example.json)或[三层精度对齐完整示例](../assets/three-level-alignment.example.json)，按本次任务替换示例值。Agent 准备的 context 另见[执行与续接](customer-observations.md)。客户入口与旧 `--request` 互斥。
 
 ## 字段
 
-客户 JSON 只接受 `model`、`environment`、`accuracy` 三组；三组必须存在且为对象，允许空对象。普通精度测试字段见模板。可选的 accuracy.gpu_baselines 用于任务质量对齐，按下表及专项契约填写。未知字段、重复 JSON 键，以及旧 `served_model_name`、`vllm_ascend_image`、`evaluator_python`、`deployment` 均拒绝。完整显式模板继续可用；模板中的具体模型和设备值不作为默认。
+最小合法结构是 `{"model": {}, "environment": {}, "accuracy": {}}`。三个对象均必填。`model` 标识模型和权重，`environment` 限定部署环境，`accuracy` 选择普通评测和精度对齐条件。各组内可按下表省略字段。静态计划可接受三个空对象，实际部署仍须能确定模型、镜像和可用设备。入口拒绝未知字段、重复 JSON 键，以及旧字段 `served_model_name`、`vllm_ascend_image`、`evaluator_python`、`deployment`。
 
-下表的“未指定”统一指字段缺失、null 或整数 -1。-1.0、true/false、空串、纯空白及字符串 "-1" 均不能替代；显式空设备列表、空数据集列表和空子集列表也拒绝。绝对路径可含空格；不能包含 `..`。路径代表实际执行主机，模型缓存中受控的官方 blobs 链接按专门规则核验。迁移保留 -1 写法不意味着性能 Skill 的输入记录器也支持该写法。
+对支持“未指定”的字段，省略、`null` 和 JSON 整数 `-1` 等价。`-1.0`、字符串 `"-1"`、布尔值和空白字符串均不能作为缺省标记。嵌套对象中的必填项仍需给实际值，例如 `gpu_score: 0` 表示真实零分。设备、普通评测数据集和子集列表显式填写时须非空。路径指执行主机上的绝对路径，可含空格，禁止包含 `..`。性能 Skill 输入记录器的缺省写法另按其自身契约。
 
-入口先校验原始 JSON 的结构和显式值，此时不生成默认。Agent 从 prompt 提取的明确参数先补齐未指定字段，再应用静态默认和运行时发现；与 JSON 显式值冲突时先集中确认。prompt_fields 保持现有两层字段语法，不增加数组叶子路径；非法 JSON 或 prompt 值直接拒绝，不能用另一来源的合法值修补。prompt 只合成一次，环境前置检查、路径保护和业务执行共享同一声明。原始 task 不回写，合成声明与实际解析结果分别冻结；续接只允许尚未解析的默认项首次完成解析，不能悄悄改变已冻结值。
+入口先校验原始 JSON 和显式值，再用 prompt 中的明确要求补齐未指定字段。下表的缺省行为适用于这两处都未指定的情况。双方显式值冲突时集中确认。Agent 的 `prompt_fields` 使用两层字段路径，数据集条目按名称和顺序合成。环境前置检查、路径保护和业务执行共用一次合成结果。流程保留原始输入并冻结实际选择。已开启张量对齐的任务调整容差时，见[输出与恢复](#输出与恢复)。
 
-| 字段 | 显式值 | 未指定时的行为 |
-| --- | --- | --- |
-| model.model_repository_id | namespace/repository | 仅在找到完整可用本地权重时允许 |
-| model.path | 权重绝对路径 | 查实际配置的 ModelScope/Hugging Face 缓存；多候选要求明确路径 |
-| model.model_name | 非空模型名称，统一用于任务记录、结果标识、展示、vLLM 服务名及 API model | 按下述模型来源与配置规则解析 |
-| environment.image_name | 明确 tag/digest/image ID | 按[缺省镜像选择](#缺省镜像选择)从官方 Quay 选择最高基础版本，冻结选中的标签和目标平台 digest |
-| environment.container_name | 合法 Docker 名称，最长 101 字符 | 根据最终 model_name 生成合法且稳定的名称 |
-| environment.available_npu_devices | 本任务允许使用的 NPU 范围；非空、唯一、非负整数列表 | 当前执行主机实际发现的全部 NPU 候选池；不等于固定 TP |
-| accuracy.evaluator | evalscope / aisbench，大小写不敏感 | evalscope；每次准备调用共用环境安装脚本，绑定实际版本 |
-| accuracy.gpu_baselines | GPU 基线数组，空数组也视作未提供，详见[任务质量对齐](task-quality.md) | 有精度意图时依模型名称查找 GPU 基线，缺项时记录未评估并继续后续任务 |
-| accuracy.tensor_alignment | 对象，`{}` 或两个有限非负数 `atol`、`rtol` | 以单题 Token 首异常触发共同 L0/L1 前向张量比较，结果见 `tensor_alignment[]`。[三遍交接及复算](../skills/vllm-precision-align/references/tensor.md) |
-| accuracy.token_alignment | 对象，必须同时给出 `raw_logits.atol`、`processed_scores.atol` 两项有限非负绝对容差 | 省略时沿用现有质量评测流程，填写时对可比且未达标的分项定向诊断 |
-| accuracy.datasets | 非空对象列表；名称唯一；显式选择及顺序保持 | 按 ceval、gsm8k 顺序生成两项 |
-| accuracy.datasets[].name | 原生评测工具数据集标识 | 不允许 |
-| accuracy.datasets[].path | 实际本地绝对路径 | ceval 为 /data/ceval，gsm8k 为 /data/gsm8k；其他数据集须明确路径 |
-| accuracy.datasets[].subset_list | 非空、唯一字符串列表 | 展开原生 adapter 的全部实际子集 |
-| accuracy.datasets[].limit | 正整数，每子集最多前 N 条 | 全量；内部和 accuracy_plan 固定为 null |
+### 模型、环境与普通精度测试
+
+| 字段 | 含义及格式 | 是否必填 | 缺省行为 |
+| --- | --- | --- | --- |
+| `model.model_repository_id` | 模型来源，格式为 `namespace/repository` | 找不到完整本地权重时必填 | 复用核验完整的本地模型。若同时给出 ID 和本地路径，还会核验模型身份。 |
+| `model.path` | 本地模型权重目录 | 否 | 查 ModelScope 和 Hugging Face 的实际缓存。多个可用快照时须指定路径。需下载时写入所选来源缓存根下的 `customer-models/<仓库ID>`。 |
+| `model.model_name` | 任务记录、结果展示和 API 调用共用的 vLLM 服务名 | 无法从模型解析时必填 | 依次取已核验的来源仓库 ID、配置中的仓库 ID、模型类型或唯一架构名。 |
+| `environment.image_name` | 部署镜像的 tag、digest 或镜像 ID | 否 | 从官方 Quay 选最高基础版本，冻结标签和目标平台 digest。变体须显式指定。见[缺省镜像选择](#缺省镜像选择)。 |
+| `environment.container_name` | Docker 容器名，最长 101 个字符 | 否 | 优先用 `vllm_<最终模型名>`，必要时规范化并附加稳定哈希。 |
+| `environment.available_npu_devices` | 本任务允许使用的物理 NPU ID，须为非负整数且无重复 | 否 | 将主机实际发现的全部 NPU 纳入候选池，再按容量和可用性选卡。 |
+| `accuracy.evaluator` | 普通精度测试工具，可填 `evalscope` 或 `aisbench`，大小写不敏感 | 否 | 使用 `evalscope`，准备时绑定实际版本。显式选 AISBench 可执行精度测试，当前三文件交付仅支持 EvalScope。 |
+| `accuracy.datasets` | 普通精度测试的数据集数组，名称唯一，按声明顺序执行 | 否 | 依次生成 `ceval` 和 `gsm8k`。显式选择时只使用列出的数据集。 |
+| `accuracy.datasets[].name` | 原生评测工具中的数据集标识 | 每个显式条目必填 | 无默认名称。 |
+| `accuracy.datasets[].path` | 执行主机上的数据集目录 | 除 `ceval`、`gsm8k` 外必填 | `ceval` 使用 `/data/ceval`，`gsm8k` 使用 `/data/gsm8k`。 |
+| `accuracy.datasets[].subset_list` | 普通测试要测的子集名数组，名称唯一 | 否 | 取该版本原生 adapter 声明的全部实际子集。 |
+| `accuracy.datasets[].limit` | 每个所选子集取前 N 题，N 为正整数 | 否 | 每个子集取全量，归一化后为 `null`。该上限仅用于普通精度测试。 |
 
 默认模型名依次取当前资产绑定的来源/身份复核仓库 ID、实际 config.json 中符合 namespace/repository 格式的 _name_or_path、非空 model_type、唯一 architectures 项。配置文件须与模型回执中的文件摘要及 metadata 一致。只有本地路径的 _name_or_path 不采用；来源 ID 冲突先处理冲突，不以架构兜底掩盖。架构名称和配置名称只作为服务别名，不反向写入 model_repository_id，也不证明仓库身份；所有候选不可用时要求明确 model_name。
 
@@ -39,6 +38,91 @@
 客户 EvalScope 流程使用数据准备生成的原生目录：GSM8K 的 README 声明唯一 main 配置并设为默认，明确映射 train.jsonl/test.jsonl。subset_list=["default"] 通过原生加载器选择默认配置，["main"] 明确选择 main；整数 -1、null 或缺省不覆盖 adapter 的子集声明，当前 GSM8K 展开为 main。三种选择加载同一份测试文件，保留各自显式选择及回执名称，不在输入中互换名称；default/main 不应作为两个不同题集重复评测。
 
 subset_list 的 -1 不控制题数。limit 为正整数 N 时取 test.jsonl 的前 min(N, 实际行数) 条，缺失/null/整数 -1 时为完整测试文件；train 和 socratic 文件不计入测试题数。题数以本次准备和原生预检实际记录为准，不写死为官方样本数。旧目录需重新准备并绑定新回执，不能用新规则改写历史证据。
+
+### 任务质量对齐与 GPU 基线
+
+| 字段 | 含义及格式 | 是否必填 | 缺省行为 |
+| --- | --- | --- | --- |
+| `accuracy.gpu_baselines` | GPU 历史评测基线数组，每项对应一套评测协议和成绩 | 否 | 省略、`null`、整数 `-1` 或 `[]` 均表示未提供基线。有精度意图时按模型查公开基线，材料不足记为 `not_evaluated` 并继续其他任务。仅要求性能且无基线时记为 `not_requested`。 |
+
+下表字段均相对于一项 `accuracy.gpu_baselines[]`。用户显式提供基线时，最少填写 `evaluator`、`dataset` 和含实际分数的 `scores`。客户分数直接作为基线，按数据集、指标和可选子集匹配有效 NPU 成绩。逐题匹配另用题号。自动选择的工具版本只描述本次 NPU 复测条件。详见[任务质量的证据要求](task-quality.md)。
+
+| 字段 | 含义及格式 | 是否必填 | 缺省行为 |
+| --- | --- | --- | --- |
+| `evaluator` | GPU 使用的评测工具。当前质量复测支持 EvalScope | 是 | 无默认值，须独立于普通测试的 `accuracy.evaluator` 声明。 |
+| `dataset` | GPU 评测使用的原生 benchmark 标识 | 是 | 无默认值，须按 GPU 实际使用的数据集填写。 |
+| `scores` | 总分或分项分数组，同一指标与子集的组合唯一 | 是 | 至少填一条，零分可填 `0`。 |
+| `evaluator_version` | GPU 使用的评测器精确发行版本 | 否 | 留空即未声明 GPU 版本。NPU 独立选用本端已绑定的评测环境。 |
+| `subset_list` | 基线覆盖的子集名数组，显式填写时须非空、唯一 | 否 | 取该版本原生任务声明的全部评测子集。每个所选子集用全量原题，基线对象不接受 `limit`。 |
+| `task_name` | GPU 使用的注册任务名 | 否 | 未声明。 |
+| `task_revision` | GPU 侧评测任务实现版本 | 否 | 未声明。 |
+| `prompt_config` | GPU 提示词、聊天模板和请求形式 | 否 | 未声明。 |
+| `generation_config` | GPU 生成答案时的解码配置 | 否 | 未声明 GPU 生成配置。 |
+| `scoring_config` | GPU 自定义评分器和规则声明 | 否 | 未声明 GPU 评分配置。 |
+
+**每条成绩。** 以下字段相对于 `accuracy.gpu_baselines[].scores[]`。
+
+| 字段 | 含义及格式 | 是否必填 | 缺省行为 |
+| --- | --- | --- | --- |
+| `metric` | 原生指标名，如 `accuracy` | 是 | 无默认值。 |
+| `gpu_score` | 该范围与指标下的 GPU 实际成绩，按原生单位填写有限数值 | 是 | 无默认值。 |
+| `subset` | 这条分数所属的单个子集 | 否 | 使用所选范围的原生总分。 |
+| `target` | 该指标允许的退化量，格式为 `{"max_drop": 数值}` | 否 | 采用同指标、同范围的发布者阈值；缺省时按下一行计算。 |
+| `target.max_drop` | 按指标好坏方向允许的最大退化量，有限非负数 | 给出 `target` 时必填 | 非负且适合相对比较的指标取 GPU 分数 × 0.01。零基线或零点任意的分数取 0。退化量等于阈值算达标，`0` 表示不允许变差。对 0～1 准确率，`0.005` 代表 0.5 个百分点。 |
+| `sample_results` | 请求逐题比较的 GPU 评分明细数组 | 否 | 省略表示不请求逐题核对。显式 `[]` 会把逐题项记为未评估，保留有效的总分或分项分。 |
+| `sample_results[].sample_id` | 原始题号，字符串或整数 | 每条明细必填 | 无默认值。原题没有显式 ID 时，填写“相对源文件名#从零开始的数据行号”。 |
+| `sample_results[].score` | 此题的 GPU 原生得分，二元评分也可用布尔值 | 每条明细必填 | 无默认值。 |
+| `sample_results[].subset` | 此题所在的子集 | 题号无法唯一配对时必填 | 优先继承所属分项的 `subset`。总分下按题号匹配，跨子集重号时须明确子集。 |
+
+**提示、生成与评分参数。** 以下字段相对于一项 `accuracy.gpu_baselines[]`。这些可选字段记录客户 GPU 成绩的取得方式。NPU 复测按本端绑定的工具、注册任务、模板和评分器执行；本次复测使用的实际参数记录在 NPU 测量回执中。
+
+| GPU 字段 | 含义及格式 |
+| --- | --- |
+| `prompt_config.request_format` | 请求形式，可填 `chat` 或 `completion` |
+| `prompt_config.enable_thinking` | 是否启用模型思考模式，布尔值 |
+| `prompt_config.system_prompt` | 系统提示词文本 |
+| `prompt_config.prompt_template` | 把题目组成评测提示的模板文本 |
+| `prompt_config.chat_template` | 把聊天消息格式化为模型输入的模板文本 |
+| `generation_config.temperature` | 采样温度，有限非负数 |
+| `generation_config.top_p` | 核采样累积概率，范围为 `(0, 1]` |
+| `generation_config.top_k` | 采样候选数，整数 |
+| `generation_config.max_tokens` | 最大生成 Token 数，正整数 |
+| `generation_config.seed` | 随机种子，整数 |
+| `generation_config.stop` | 停止字符串或非空字符串列表 |
+| `scoring_config.scorer_name` | 评分器名称 |
+| `scoring_config.scorer_version` | 评分器版本标识 |
+| `scoring_config.answer_extraction` | 从回答中提取待评分答案的规则 |
+| `scoring_config.normalization` | 评分前对答案做标准化的规则 |
+| `scoring_config.invalid_answer_policy` | 无效或无法解析的答案如何计分 |
+
+### Token 预测对齐与张量对齐
+
+下表字段均位于 `accuracy` 下。有精度评测意图或提供了 GPU 基线时，流程进入任务质量对齐。第二遍从质量报告中选择可比且已确认未达标的题目或子集。第三遍需要同题、同前文且两端都有预测的首个异常 Token，也可续接与本次质量报告匹配的外部 Token 报告。当前定向采集适用于单卡、同步 Eager、文本贪心生成。GPU 预测包、共同采集清单和张量包由 Agent 通过 `context.evidence` 交接。见[Token 选题与续接](task-quality.md#从未达标分项进入-token-预测对齐)和[第三遍采集](../skills/vllm-precision-align/references/tensor.md)。
+
+| 字段 | 含义及格式 | 是否必填 | 缺省行为 |
+| --- | --- | --- | --- |
+| `token_alignment` | 启用第二遍，比较同一前文下逐步预测的全词表分数与实际接受的 Token ID | 否 | 省略、`null` 或整数 `-1` 表示关闭。启用时须同时声明下面两项容差，`{}` 无效。 |
+| `token_alignment.raw_logits.atol` | 全词表原始 logits 允许的最大绝对差 | 开启第二遍时必填 | 无默认值。有限非负数，`0` 要求逐候选相等。 |
+| `token_alignment.processed_scores.atol` | 选词前、经规则处理并归一化后的全词表概率允许的最大绝对差 | 开启第二遍时必填 | 无默认值。有限非负数，等于容差仍通过。两端选中同一 Token 时，分数超限也会报告异常。 |
+| `tensor_alignment` | 设置首个双端预测异常位置的张量容差 | 否 | 确认同前文的双端首差会自动进入第三遍。省略或填 `{}` 时逐张量使用实际 dtype 的默认值。 |
+| `tensor_alignment.atol` | 浮点张量逐元素比较的绝对容差，有限非负数 | 否 | 省略时按当前浮点张量的 dtype 补齐。显式 `0` 生效。 |
+| `tensor_alignment.rtol` | 相对于 GPU 参考值幅度的容差，有限非负数 | 否 | 省略时按当前浮点张量的 dtype 补齐。两项都填 `0` 时要求有限浮点元素数值相等。 |
+
+双端浮点阈值按元素计算，满足 `abs(NPU − GPU) ≤ atol + rtol × abs(GPU)` 即通过。在客户回执 `customer-manifest.json` 中，`alignment_summary` 并列给出任务质量、Token 预测和算子与张量的结论、范围及缺项。逐题记录保留首个异常 Token、张量超限调用和槽位，详细误差及坐标可追溯到绑定的比较报告。
+
+如果先取得一端的预测包，可以先交给 Agent，再沿用同一运行补交另一端。只开启 Token 对齐也支持这种续接。两次提交须对应同一份质量报告和相同的 Token 容差；可在 `token_alignment[].stage` 引用的回执中核对实际使用的预测包。
+
+### 三层精度对齐完整示例
+
+将[完整 JSON 示例](../assets/three-level-alignment.example.json)复制到 Skill 目录外作为 `task.json`。示例选择一张 NPU，普通精度测试取 C-Eval 的 `accountant` 子集前 10 题。第一遍任务质量复测则使用该子集的全量原题。示例声明 GPU 准确率为 `0.75`，省略 `max_drop`，本例没有发布者阈值，默认允许下降 `0.0075`。NPU 准确率达到 `0.7425` 即达标。实际使用时请替换模型、设备、GPU 实测成绩、生成条件和约定容差。
+
+若该子集未达标，第二遍按题比较 logits 和概率，缺 GPU 预测包时先交付选题清单。发现可比的首异常后，第三遍按示例中的 `"tensor_alignment": {}` 使用逐张量默认容差。也可单独覆盖 `atol` 或 `rtol`。CPU 参考用于解释已发现的偏差。
+
+将 `MIGRATION_SKILL_ROOT` 设为完整 Skill 的安装目录，在存有 `task.json` 的包外目录执行以下静态检查。合法输入返回 `status=not_run`。
+
+```bash
+python3 -B "$MIGRATION_SKILL_ROOT/scripts/migrate.py" --task task.json --work-root ./runs --run-id alignment-example --plan
+```
 
 ### prompt 补齐数据集字段
 
@@ -95,7 +179,7 @@ subset_list 的 -1 不控制题数。limit 为正整数 N 时取 test.jsonl 的�
 
 同名容器的观察明确为 `status=exited` 且 `running=false` 时，自动通过 verify-agent 公开入口再次核对完整 container_id/image_id/started_at、名称和退出状态，按完整 CID 非强制删除，再继续正常重建，无需额外用户授权。身份或状态变化、删除失败均阻塞，不改用强制删除。其他状态仍须显示精确身份并取得删除重建授权；详见[同名容器替换](customer-observations.md#同名容器替换)。
 
-`available_npu_devices` 是允许使用的范围，并非固定 TP 或要求占用全部设备。未指定时按[完整设备观察](customer-observations.md#默认设备池)形成候选池；显式列表不能扩大。先核验范围内设备，再结合真实权重、精度上下文、KV 布局、运行开销和版本支持的 TP 选择满足容量的最小组合，按 ID 排序并跳过占用卡。缺完整观察、零设备或容量不足时阻塞，不猜测卡号。观察不是设备锁；部署入口在实际启动前再次核对。
+`available_npu_devices` 限定候选设备。省略时按[完整设备观察](customer-observations.md#默认设备池)发现候选池，显式填写时仅在所列设备中选择。流程结合权重、上下文、KV 布局、运行开销和版本支持的 TP 优先选满足容量的空闲组合，容量不足时再评估[共享部署](customer-observations.md#空闲优先与共享部署)。设备观察不完整、零设备或容量不足时阻塞。部署入口在启动前再次核对实际设备。
 
 服务地址由内部部署策略生成：监听本机 `127.0.0.1`，从端口 `8000` 起逐个检查空闲端口，到 65535 仍不可用则阻塞。实际 host/port 写入冻结请求及交付文件，不再属于客户 JSON 或 prompt_fields。
 
@@ -130,8 +214,10 @@ work-root/run-id/
 
 全部校验后原子重命名整个交付目录，独立 export-manifest.json 标记 ready 后才能 completed。已有同内容三文件可幂等复用；不同内容拒绝覆盖。写入失败不交付半套；若目录已发布但回执失败，不能宣告成功，续接导出重新核验并补成独立回执。
 
-`--resume` 绑定原 task.json、run-id 与原回执。通常要求输入文件摘要一致。原任务已声明 `accuracy.tensor_alignment` 时，可在原路径只修改该对象的容差，并更新 `context.task_source` 摘要。已交付三文件且已有单题 Token 报告时，可按[第三遍续接约定](../skills/vllm-precision-align/references/tensor.md#续接与报告)复用上游证据。首次为已有任务启用该字段需使用新 run-id，或直接向精度阶段提供已冻结的报告。
+`--resume` 绑定原 task.json、run-id 与原回执。通常要求输入文件摘要一致。可在原路径补填、移除或修改 `accuracy.tensor_alignment` 的容差，并更新 `context.task_source` 摘要。已交付三文件且已有单题 Token 报告时，可按[第三遍续接约定](../skills/vllm-precision-align/references/tensor.md#续接与报告)复用上游证据。重新执行 Token 比较时，遇到双端首差会现场复算 CPU。
 
 进入常规准备时，已准备文件重新核对摘要，已执行配方冻结，环境继承原选择。每次有效正式准备仍调用安装脚本，安装前后核对实际 Python 与 EvalScope 版本绑定。迁移和评测原始引用均保留；有效评测通过公开 analyze 只读复核后复用。导出重试不部署、不重新评测；发布前仍重新核验完整来源。
 
 退出码：0=计划/安装帮助/安装预览有效或完整交付完成；2=客户字段/顶层引用错误；3=依赖、人工决策、语义复核、AISBench 交付边界或其他未完成；1=执行/证据失败或取消。以 status、steps 和独立回执共同判断，计划 not_run 不表示执行成功。资源状态以原始 verify 回执及本次观察为准，历史 retained 不等于当前存活。
+
+客户汇报使用 `alignment_summary.summary`，首句给出执行与任务质量结果，再按层列出已定界范围、差异及证据缺口。自动化确认任务质量达标时，检查 `task_quality_conclusion.precision_target` 是否为 `pass`。[客户回执中的三层对齐摘要](task-quality.md#客户回执中的三层对齐摘要)

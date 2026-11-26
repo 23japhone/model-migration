@@ -122,15 +122,17 @@ process长期服务的主PID已退出而原组号仍有成员时，不能以成�
 
 ## 正式评测采集会话
 
-`verify.py --action capture-session` 沿用 request/work-root/run-id/plan。begin 请求字段为 operation=begin、source 部署报告摘要引用、owner_pid；返回不可变 session 引用，租约绑定 PID/启动身份、部署、派生配置和 nonce。其余操作的 source 为 session 引用：arm 必填 sample_key/native_id/trace_id，可选正整数 cache_output_index 或 `cache_capture={"mode":"full_request","max_request_snapshot_bytes":正整数}`。后者要求部署使用全层缓存观察；seal 必填 trace_id 与 http.request/http.response 原始字节文件 `{path,sha256}`；end/status 无其他字段。--plan 仅校验形状，零目标环境访问和写入。
+`verify.py --action capture-session` 沿用 request/work-root/run-id/plan。begin 请求字段为 operation=begin、source 部署报告摘要引用、owner_pid；返回不可变 session 引用，租约绑定 PID/启动身份、部署、派生配置和 nonce。其余操作的 source 为 session 引用：单请求 arm 在顶层填写 sample_key/native_id/trace_id，可选正整数 cache_output_index 或 `cache_capture={"mode":"full_request","max_request_snapshot_bytes":正整数}`。后者要求部署使用全层缓存观察；seal 必填 trace_id 与 http.request/http.response 原始字节文件 `{path,sha256}`；end/status 无其他字段。--plan 仅校验形状，零目标环境访问和写入。
 
 begin 核验自有 retained 服务、新适配器真实 worker/engine/frontend 就绪记录与摘要；prepared 不等于 ready。跨命令通过文件锁保护持久 lease 状态，不依赖上次命令持有的进程锁。旧 capture-one 在租约存在时也拒绝。重复 arm、已封存 trace、其他控制者或失活租约不覆盖现场。
+
+单卡 Eager（同步或显式 `--async-scheduling`）的 `profile="batch_joint"` 在成员回执中增加原生张量切片、logits 和可选的全层缓存状态。`profile="batch_identity"` 只记录真实前向、Token 行和接受结果。两种批次模式都在 arm 的 `requests[]` 中一次登记至少两个成员，每项包含 `sample_key`、`native_id` 和组内唯一的 `trace_id`。随后按成员分别 seal。见[批次身份协议](runtime-capture.md#查询同一次前向中的多个请求)。
 
 单卡同步 Eager 的 arm 可选 `profile="token_prediction"`，按样本导出完整词表预测回执。参数、实际 HTTP 字节约束和可迁移文件布局见[单题预测协议](runtime-capture.md#仅采集单题的-token-预测)。
 
 前端从实际 engine_client.generate 参数取得 external ID，经 InputProcessor 记录 engine internal ID，并记录完整响应 ID 与最终引擎 Token 序列；不会将 Chat 请求套成固定 cmpl 后缀。worker 前向覆盖模型执行至 compute_logits；关闭 debugger 后复制原始全词表 logits，argmax 前复制处理后分数，调度器输出为最终接受依据。每个已开启前向都有 begin/end。seal 核对正式响应、接受序列、前文、所有 Token 前向、实际模块/API 调用与文件后生成 capture-receipt。EOS 短输出允许封存，不伪造第二个 Token。
 
-单卡文本 greedy 会话支持同步 Eager 和 ACLGraph，图服务可回查每次实际重放。单机多卡同步 Eager 会话按实际 TP 组采集单图、SSE 和显式 seed 的随机采样证据。双卡已按场景做过实测，四卡和八卡的这些生成场景仍待实机验证。[单卡图服务](runtime-capture.md#单卡-aclgraph-文本请求) · [生成场景与双卡实测范围](runtime-capture.md#双卡图文流式与固定-seed-采样)
+单请求文本 greedy 会话在单卡上支持同步 Eager 和 ACLGraph，图服务可回查每次实际重放。单机多卡同步 Eager 会话按实际 TP 组采集单图、SSE 和显式 seed 的随机采样证据。双卡已按场景做过实测，四卡和八卡的这些生成场景仍待实机验证。[单卡图服务](runtime-capture.md#单卡-aclgraph-文本请求) · [生成场景与双卡实测范围](runtime-capture.md#双卡图文流式与固定-seed-采样)
 
 msProbe 的覆盖范围为实际模块与注册 API；不保证设备 kernel 内部或未注册扩展内部可见。hook 包及目标源码摘要仍须匹配。采集失败不更改普通部署生命周期结论；会话操作自身失败返回 1，输入错误 2，成功 0。end 仅释放本次会话，未完结实际请求保留租约；不停止模型或其他任务。采集回执与查询产物独立于部署交接，后者不回写。
 

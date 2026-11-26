@@ -1,62 +1,95 @@
-"""在首疑点核对已有 CPU 单步参考，独立记录两端误差。"""
-from pathlib import Path
+"""在 GPU/NPU 首个双端预测差异处运行 CPU 前向，独立报告两端偏差。"""
+from contextlib import redirect_stdout
+import multiprocessing
+import sys
+from time import monotonic
 
 from .evidence import bound
 from .token_cpu import forward
-from .token_vectors import peak_error, read_step, step_vectors
-
-
-def check_prefix(cpu, gpu, position, subset):
-    row = gpu.value
-    if type(cpu.get("position")) is not int or cpu["position"] != position:
-        raise ValueError("CPU 位置与首疑点不符")
-    if cpu.get("sample_id") != row["sample_id"] or type(cpu.get("sample_id")) is not type(row["sample_id"]):
-        raise ValueError("CPU 参考题号不符")
-    if "subset" in cpu and cpu["subset"] != subset:
-        raise ValueError("CPU 参考子集不符")
-    prefix = row["prompt_token_ids"] + row["output_token_ids"][:position - 1]
-    for field, expected in (("prompt_token_ids", row["prompt_token_ids"]), ("prefix_token_ids", prefix)):
-        if cpu.get(field) != expected or any(type(i) is not int for i in cpu[field]):
-            raise ValueError("CPU 参考有效前文不符")
+from .token_vectors import peak_error, read_step
 
 
 def measure(device, oracle, tolerances):
     facts = {}
     for field, values, ref in zip(("raw_logits", "processed_scores"), device, oracle):
         if ref is None:
-            facts[field] = {"status": "not_evaluated", "reason": "CPU 没有同一选词规则的参考概率"}
+            facts[field] = {"status": "unavailable", "reason": "CPU 没有同一选词规则的参考概率"}
             continue
         token_id, error = peak_error(values, ref)
         facts[field] = {"token_id": token_id, "max_abs_error": error, "within_tolerance": error <= tolerances[field]}
     return facts
 
 
-def reference(req, gpu, report, position):
-    if "cpu_model" in req:
-        prefix = gpu.value["prompt_token_ids"] + gpu.value["output_token_ids"][:position - 1]
-        oracle, metadata = forward(req["cpu_model"], prefix)
-        report["evidence_kind"]["cpu"] = "local_cpu_forward"
-        return oracle, metadata
-    artifact = bound(req["cpu"])
-    check_prefix(artifact.value, gpu, position, report["subset"])
-    row = artifact.value
-    oracle = step_vectors(row["raw_logits"], row["processed_probs"], Path(artifact.ref["path"]).parent)
-    report["evidence"]["cpu"] = artifact.ref
-    report["evidence_kind"]["cpu"] = row.get("evidence_kind", "unspecified")
-    return oracle, {}
+def unavailable(error, attempts):
+    reason = str(error) or type(error).__name__
+    if attempts and attempts[-1]["status"] == "running":
+        attempts[-1].update(status="failed", error=reason)
+    return {"status": "unavailable", "reason": reason, "attempts": attempts, "gpu": None, "npu": None}
+
+
+def cpu_worker(channel, spec, references, prefix, position, tolerances):
+    attempts = []
+
+    def started(name):
+        channel.send([*attempts, {"dtype": name, "status": "running"}])
+
+    with channel, redirect_stdout(sys.stderr):
+        try:
+            oracle, metadata = forward(spec, prefix, attempts, started)
+            checked = {side: measure(read_step(bound(source), position - 1), oracle, tolerances)
+                       for side, source in references.items()}
+            report = {"status": "completed", "attempts": attempts, **metadata, **checked}
+        except Exception as exc:
+            report = unavailable(exc, attempts)
+        channel.send(report)
+
+
+def worker_result(reader, process):
+    attempts = []
+    deadline = monotonic() + 14400
+    while reader.poll(max(0, deadline - monotonic())):
+        try:
+            message = reader.recv()
+        except (EOFError, OSError):
+            process.join(1)
+            return unavailable(f"CPU 复算进程异常退出，退出码 {process.exitcode}", attempts)
+        if isinstance(message, dict):
+            return message
+        attempts = message
+    return unavailable("CPU 复算超过四小时的单题时限", attempts)
+
+
+def run_worker(spec, devices, prefix, position, tolerances):
+    # 子进程拥有模型和 CPU 内核。即使底层加载器被系统终止，父进程仍持有双端比较结果。
+    context = multiprocessing.get_context("spawn")
+    sources = {side: data.ref for side, data in devices.items()}
+    reader, writer = context.Pipe(duplex=False)
+    with reader, writer:
+        process = context.Process(target=cpu_worker, args=(writer, spec, sources, prefix, position, tolerances))
+        process.start()
+        writer.close()
+        try:
+            return worker_result(reader, process)
+        finally:
+            process.join(1)
+            if process.is_alive():
+                process.kill()
+            process.join()
+            process.close()
 
 
 def verify_cpu(req, devices, report, tolerances):
     if report["result"] != "mismatch":
         return {"status": "not_applicable", "reason": "没有具有双端预测向量的首个可疑位置"}
-    if "cpu" not in req and "cpu_model" not in req:
-        return {"status": "not_evaluated", "reason": "未提供该位置的 CPU 参考"}
     position = report["first_anomalous_token"]
     try:
-        oracle, metadata = reference(req, devices["gpu"], report, position)
-        checked = {side: measure(read_step(data, position - 1), oracle, tolerances)
-                   for side, data in devices.items()}
+        if "cpu_model" not in req:
+            raise ValueError(req.get("cpu_model_error") or "缺少本次 CPU 复算所需的冻结模型权重清单")
+        gpu = devices["gpu"].value
+        prefix = gpu["prompt_token_ids"] + gpu["output_token_ids"][:position - 1]
+        check = run_worker(req["cpu_model"], devices, prefix, position, tolerances)
     except Exception as exc:
-        # 可选的 CPU 依赖、模型实现和文件来源各有自己的异常，不撤销已核实的双端首差。
-        return {"status": "not_evaluated", "position": position, "reason": str(exc)}
-    return {"status": "completed", "position": position, **metadata, **checked}
+        check = unavailable(exc, [])
+    if check["status"] == "completed":
+        report["evidence_kind"]["cpu"] = "local_cpu_forward"
+    return {"position": position, **check}

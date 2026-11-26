@@ -89,7 +89,8 @@ def verify_state(state, descriptor, directory, schedule, complete):
     files = state['snapshots']
     required = required_snapshots(state)
     optional = {'expected_' + key for key in required if not key.endswith('.input')}
-    verify_files(directory, files, required | optional)
+    from .prefix.receipt import prefix_files
+    verify_files(directory, files, required | optional | prefix_files(state, schedule))
     if complete:
         if not required or not required.issubset(files):
             raise ValueError('层状态张量文件缺失')

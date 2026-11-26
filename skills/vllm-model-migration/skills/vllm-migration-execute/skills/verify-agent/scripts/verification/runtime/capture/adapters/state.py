@@ -25,7 +25,8 @@ def write(path, value):
 
 def active():
     try:
-        return root() / read(root() / 'active.json')['directory']
+        active_record = read(root() / 'active.json')
+        return None if 'group_id' in active_record else root() / active_record['directory']
     except FileNotFoundError:
         return None
 

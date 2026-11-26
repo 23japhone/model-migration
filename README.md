@@ -16,7 +16,7 @@
 - **使用原生评测**：新测量默认 EvalScope，兼容显式 AISBench；保留原生模板、评分和数据身份，分别判断测量有效性、GPU/NPU 可比性和目标达标情况。
 - **共用环境与证据**：客户 EvalScope 每次有效正式准备调用原版安装脚本，续接继承环境并核对实际绑定；性能启动前另行核验 Python、venv、CLI、版本和当前 PATH，实际两端共用须有进程证据。
 - **交付可核验配置**：完整 EvalScope 客户流程联合校验、整体发布三个 JSON，保留独立导出回执、文件路径和 SHA256。
-- **按输出 Token 回查运行数据**，通过 `verify-agent` 可找到产生该 Token 的实际前向、msProbe 张量及已适配层的缓存原值。同步 Eager 按所选物理卡数处理单机张量并行，双卡已有实机记录，四卡和八卡已做离线验证，单卡文本请求还支持 ACLGraph。MLA 缓存适配范围为单卡同步 Eager。[运行时采集工具](skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/runtime-capture.md)
+- **按输出 Token 回查运行数据**，通过 `verify-agent` 可找到产生该 Token 的实际前向、msProbe 张量及已适配层的缓存原值。单卡 Eager 可在同步或显式异步调度下采集多个文本请求，按各自的回执查询同一前向中的数据。同步 Eager 按所选物理卡数处理单机张量并行，双卡已有实机记录，四卡和八卡已做离线验证，单卡文本请求还支持 ACLGraph。MLA 缓存适配范围为单卡同步 Eager。[运行时采集工具](skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/runtime-capture.md)
 
 本仓交付的是包含指令、脚本、契约和模板的 Skills。Agent 负责需求理解、资料核对、源码适配与语义复核；脚本负责确定性执行和证据记录。使用本项目无需启动 MoFix 后端。
 
@@ -41,7 +41,7 @@
 
 ### 3. 准备 prompt 与 task.json
 
-将示例复制到技能资源目录之外，按实际执行主机填写 `model`、`environment`、`accuracy` 三组信息，另指定证据工作根和 `run-id`。`model.model_name` 同时用于任务记录、展示和 API 服务名。普通部署与精度评测可以使用基础模板；已有 GPU 成绩时，可直接参照任务质量示例填写 `accuracy.gpu_baselines`。[基础模板](skills/vllm-model-migration/assets/template.json) · [含 GPU 基线的完整示例](skills/vllm-model-migration/assets/task-quality.example.json)
+将示例复制到技能资源目录之外，按实际执行主机填写 `model`、`environment`、`accuracy` 三组信息，另指定证据工作根和 `run-id`。`model.model_name` 同时用于任务记录、展示和 API 服务名。按任务选择[基础模板](skills/vllm-model-migration/assets/template.json)、[含 GPU 基线的任务质量示例](skills/vllm-model-migration/assets/task-quality.example.json)或[任务质量、Token 预测和张量三层对齐示例](skills/vllm-model-migration/assets/three-level-alignment.example.json)。
 
 例如，交给 Agent 的任务描述可以是：
 
@@ -100,9 +100,9 @@ flowchart TD
     A --> H[部署与普通精度满足交付条件时导出三个 JSON]
     E --> Q[任务质量对齐：选取 GPU 基线，复用或复测 NPU 成绩]
     Q --> R[质量报告或缺项原因]
-    R -. 启用 Token 对齐且有可比的未达标分项 .-> T[选取退化题或失败子集]
+    R -. 启用 Token 对齐且有已确认的失败分项 .-> T[选取退化题或失败子集]
     T -. 取得双端预测后 .-> C[逐题报告首个异常输出位置]
-    C -. 启用张量对齐且该位置有双端预测差异 .-> X[按共同清单比较该步的模块和算子张量]
+    C -. 同一前文已定位双端预测首差 .-> X[按共同清单比较该步的模块和算子张量]
 ```
 
 | 层级 | Skill | 职责 |
@@ -115,7 +115,7 @@ flowchart TD
 | 精度阶段 | `vllm-precision-align` | 组织测量或历史分析，汇总比较与目标结论 |
 | ↳ 精度任务 | `verify-agent-plus` | 执行原生精度评测、复核已有成绩，按选题清单重跑并关联同一请求的评分和预测 |
 | ↳ 精度任务 | `vllm-precision-compare` | 比较总分、分项和逐题评分，定位首个异常 Token，按调用比较 GPU/NPU 张量及适用的 CPU 参考 |
-| ↳ 精度任务 | `three-step-demarcation` | 按需对服务链路做三步定界 |
+| ↳ 精度任务 | `three-step-demarcation` | 对普通评测记录的异常请求逐题定界，也可单独提交一条异常 Chat 请求 |
 
 阶段通过公开 CLI 和文件契约调用任务。`verify-agent` 唯一管理模型服务，精度任务只管理自有评测进程，borrowed 服务保持运行。独立步骤失败时保留其他有效成果，仅阻塞其实际消费者。
 
@@ -148,7 +148,7 @@ flowchart TD
 
 需要定位首个异常输出 Token 时，在 `accuracy.token_alignment` 下填写两项绝对容差。按失败分项选题并取得二遍预测包后，查看客户回执中的 `token_alignment[].token_report`。[字段、二遍选择与续接](skills/vllm-model-migration/references/task-quality.md#从未达标分项进入-token-预测对齐)
 
-若 Token 报告已定位同一前文下的预测差异，可用 `accuracy.tensor_alignment` 对比该步的模块和算子。在客户回执的 `tensor_alignment[].tensor_report` 中查看超限调用、元素坐标和缺项。当前覆盖单卡、单请求、同步 Eager 文本贪心生成，离线用例使用合成 GPU/NPU 证据。[采集、客户证据和复算](skills/vllm-model-migration/skills/vllm-precision-align/references/tensor.md)
+若 Token 报告已定位同一前文下的预测差异，流程自动对比该步的模块和算子。省略 `accuracy.tensor_alignment` 时按各张量的实际 dtype 补齐容差。在客户回执的 `tensor_alignment[].tensor_report` 中查看超限调用、元素坐标和缺项。当前覆盖单卡、单请求、同步 Eager 文本贪心生成，离线用例使用合成 GPU/NPU 证据。[采集、客户证据和复算](skills/vllm-model-migration/skills/vllm-precision-align/references/tensor.md)
 
 ## 支持范围与当前限制
 

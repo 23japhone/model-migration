@@ -55,8 +55,13 @@ def request_plan(scheduler, output, internal, folder):
         index = intent.get('cache_output_index')
         return snapshot(scheduler, output, internal, index) if index is not None else None
     step = step_position(output, internal, folder)
-    return {**allocation(scheduler, internal, step['output_index'], step['position']), **step,
+    plan = {**allocation(scheduler, internal, step['output_index'], step['position']), **step,
             'request_id': intent['request_id']}
+    if intent['cache_capture'].get('prefix_reuse'):
+        from .prefix.residency import provenance
+        plan['prefix_cache'] = provenance(scheduler, output, internal, step)
+        plan['forward_id'] = uuid4().hex
+    return plan
 
 
 def step_position(output, internal, folder):
@@ -64,7 +69,7 @@ def step_position(output, internal, folder):
     fresh = [r for r in output.scheduled_new_reqs if r.req_id == internal]
     if fresh:
         position, index = fresh[0].num_computed_tokens, 0
-        if position != 0:
+        if position != 0 and not state.read(folder / 'intent.json').get('cache_capture', {}).get('prefix_reuse'):
             raise ValueError('full_request 要求冷前缀，新请求已有缓存位置')
     else:
         cached = output.scheduled_cached_reqs
@@ -125,6 +130,8 @@ def install_schedule(cls, parallel=False):
                     plan.update(identity)
                 state.write(folder / ('schedule-' + plan['schedule_id'] + '.json'), plan)
                 output._verify_cache_schedule_id = plan['schedule_id']
+                if 'prefix_cache' in plan:
+                    output._verify_prefix_forward_id = plan['forward_id']
         except Exception as error:
             if folder is not None:
                 try:
@@ -133,3 +140,6 @@ def install_schedule(cls, parallel=False):
                     pass  # worker 将以缺失调度 ID 封存这次观测。
         return output
     cls.schedule = scheduled
+    if not parallel:
+        from .prefix.residency import prepare
+        prepare(cls)

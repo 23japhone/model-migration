@@ -16,6 +16,10 @@ prompt_fields 必须为对象，只使用 `model.model_name`、`model.path`、`e
 
 数据集补值使用完整名称序列的 `accuracy.datasets` 列表：两边已有列表时名称、数量、顺序必须一致，prompt 的每项带 name，其余只写需要补齐或明确的 path/subset_list/limit。未修改项保留为 `{ "name": "gsm8k" }` 等名称条目。字段缺失/null/-1 不清空另一来源的明确要求；双方明确且不同按具体数据集/字段报告冲突。子集列表不合并，不接受索引路径。整组 JSON 未指定时，prompt 决定完整列表；最终声明仍须满足客户完整校验。示例和边界见[客户补值契约](customer-task.md#prompt-补齐数据集字段)。
 
+精度字段遵循相同的合成顺序。JSON 中的 `accuracy.gpu_baselines: []` 可由 prompt 的显式基线补齐；prompt 中的空基线列表也会保留 JSON 已有的基线。省略的 Token 或张量策略可由 prompt 补齐。显式 `accuracy.tensor_alignment: {}` 会传给张量阶段。
+
+续接时将新取得的 GPU 或 NPU 预测包放入 `evidence`。客户入口从同一 run-id 的 Token 阶段回执核对质量报告、Token 容差和原生请求，合并两次提交的预测包。已交付三个 JSON 后，只补张量材料时可沿用冻结的上游报告。该路径要求有效声明已开启张量对齐、前次 Token 报告绑定本轮质量报告、其余上下文一致。损坏的张量材料会在诊断中记录缺项；普通执行和普通续接仍校验每份输入证据的文件摘要。
+
 内部回执 inputs 保留原有归一化客户声明语义，仅用于追溯和续接比较；其静态默认不用于选择实际后端或检查实际资产路径。declared_inputs 冻结合成 prompt 后的声明，effective_inputs 保存实际参数，default_resolutions 保存动态解析值、来源类别、资产/主机身份及证据引用。原 task 不回写。首次解析可在续接中完成；已冻结值或绑定身份变化要求新 run-id，不恢复旧结果。即使一次续接没有 context，冻结记录也保留。模型名和默认容器名未解析时阻塞名称消费者；设备池未解析只阻塞部署。--plan 只作尚未合成 prompt 的 JSON 预览，不读取 context 或运行时证据。
 
 ## 公开发现接口
