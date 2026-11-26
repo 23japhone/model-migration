@@ -4,6 +4,14 @@
 
 ## 当前验证基准
 
+### 同步批次的联合数值采集
+
+同一批次专项覆盖身份及数值 18 项。数值测试通过公开入口给两个重复 Token 分配不同 BF16 激活，并读回各自的字节。它还覆盖未知张量轴、密集投影的共享权重、摘要变化、缺少一个成员的 logits、不同物理槽、多请求的 GDN 续块与冷初态、MLA 子批起点和成员预算。使用本页的 discovery 命令运行全量离线回归，871 项通过，独立 `source_contract` 52 项通过。设备运行与容量以对应模型的实机记录为准。
+
+### 批次与请求的身份映射
+
+运行 `python3.12 -B -m unittest discover -s tests/vllm-model-migration/worker_capture/batch_cases -p 'test_*.py' -v`。公开会话用例让独立 worker 进程接收带身份的调度结果；A 提前封存，B 继续运行。两条查询分别取回同一前向的重复 Token 和无输出分块。用例也检查三成员重排、padding、采样行互换、缺少实际执行、未登记成员、摘要变化与在途请求租约。采集入口见[批次身份](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/runtime-capture.md#查询同一次前向中的多个请求)。
+
 ### 2026-11-26 客户 task.json 的三层精度对齐
 
 [客户入口回归](../tests/vllm-model-migration/tensor_stage_cases/test_customer_dispatch.py)直接读取[三层示例](../skills/vllm-model-migration/assets/three-level-alignment.example.json)，隔离模型部署和首轮测量，使用合成质量报告和预测包，实际执行 Token 与张量阶段 CLI。示例的两项 Token 容差定位到第 2 个输出，显式 `tensor_alignment: {}` 使用同一份质量报告和 Token 报告生成采集计划，缺 GPU 张量包时该题为 `awaiting_gpu`。用例同时覆盖只启用 Token 时分次补包、旧子报告损坏后重新比较，以及由 prompt 开启第三遍后的续接。[字段合成回归](../tests/vllm-model-migration/test_prompt_resolution.py)检查空基线、等价声明、真实冲突和普通续接的证据摘要。

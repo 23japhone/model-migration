@@ -7,6 +7,8 @@ import uuid
 from . import parallel as tp
 
 from . import state
+from .batch import worker as batch_worker
+from .joint import window as joint
 from .alignment import worker as targeted
 from .decode_cache.runtime import observe_decode, prepare_worker, selected
 from .coverage import Coverage
@@ -62,7 +64,9 @@ class Recorder:
         self.coverage = Coverage(self, model)
         from .image_capture import install as install_images
         install_images(self, model)
-        state.ready(role, **prepare_worker(self, model), **identity, mode='eager', synchronous=True, vocab_size=self.size, layers=layers,
+        sync_batch = batch_worker.capable(runner, self.world_size)
+        state.ready(role, **prepare_worker(self, model), **identity, mode='eager', synchronous=True,
+                    batch_identity=sync_batch, batch_joint=sync_batch, vocab_size=self.size, layers=layers,
                     modules=self.modules, architecture=self.architecture, direct_eager_modules=self.direct_calls.paths,
                     coverage_capability='modules_and_registered_apis', token_prediction=self.world_size == 1,
                     tensor_alignment=self.world_size == 1 and targeted.can_arm(),
@@ -243,11 +247,15 @@ def install(cls):
         return result
     def scheduled(self, scheduler_output, *args, **kwargs):
         rec = getattr(self, '_verify_recorder', None)
+        self._verify_batch = getattr(scheduler_output, '_verify_batch', None)
         if rec:
             rec.observe(rec.select, scheduler_output)
         try:
             result = execute(self, scheduler_output, *args, **kwargs)
         finally:
+            batch, self._verify_batch = self._verify_batch, None
+            if batch and rec:
+                rec.observe(joint.finish, rec, batch)
             if rec and rec.frame:
                 rec.observe(rec.close)
                 state.write(rec.folder / ('end-' + rec.frame['forward_id'] + '.json'),
@@ -257,6 +265,13 @@ def install(cls):
         return result
     def invoked(self, num_tokens_padded, input_ids=None, positions=None, *args, **kwargs):
         rec = getattr(self, '_verify_recorder', None)
+        plan = getattr(self, '_verify_batch', None)
+        if plan and not plan['foreign_members']:
+            with batch_worker.forward(plan, self, input_ids, positions) as rows:
+                if rec and plan.get('profile') == 'batch_joint':
+                    with joint.model(rec, plan, rows):
+                        return forward(self, num_tokens_padded, input_ids, positions, *args, **kwargs)
+                return forward(self, num_tokens_padded, input_ids, positions, *args, **kwargs)
         if not rec or not rec.frame:
             return forward(self, num_tokens_padded, input_ids, positions, *args, **kwargs)
         rec.observe(rec.start, input_ids, positions)

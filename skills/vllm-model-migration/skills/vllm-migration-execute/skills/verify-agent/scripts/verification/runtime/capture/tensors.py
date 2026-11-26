@@ -12,26 +12,35 @@ def file_ref(path, root):
     return {'path': str(path), 'sha256': sha256(path)}
 
 
-def arguments(value, location, folder, token_row, module_layer):
+def arguments(value, location, folder, token_row, module_layer, missing=None):
     if value is None or isinstance(value, (str, int, float, bool)) or value in ([], {}):
         yield {'argument': location, 'type': type(value).__name__, 'value': value}
     elif isinstance(value, list):
         for i, item in enumerate(value):
-            yield from arguments(item, [*location, i], folder, token_row, module_layer)
-    elif isinstance(value, dict) and 'data_name' in value:
-        yield tensor_ref(value, location, folder, token_row, module_layer)
+            yield from arguments(item, [*location, i], folder, token_row, module_layer, missing)
+    elif isinstance(value, dict) and ('data_name' in value or {'shape', 'dtype'} <= value.keys()):
+        yield stored_argument(value, location, folder, token_row, module_layer, missing)
     elif isinstance(value, dict):
-        if 'shape' in value and 'dtype' in value:
-            if all(value['shape']):
-                raise ValueError(f'张量缺少原始数据文件 {location}')
-            yield {'argument': location, 'shape': value['shape'], 'dtype': value['dtype'],
-                   'elements': 0, 'slice': 'whole_tensor'}
-            return
         if 'type' in value and 'value' in value:
             yield {'argument': location, 'type': value['type'], 'value': value['value']}
             return
         for k, item in value.items():
-            yield from arguments(item, [*location, k], folder, token_row, module_layer)
+            yield from arguments(item, [*location, k], folder, token_row, module_layer, missing)
+
+
+def stored_argument(value, location, folder, token_row, module_layer, missing):
+    try:
+        if 'data_name' in value:
+            return tensor_ref(value, location, folder, token_row, module_layer)
+        if all(value['shape']):
+            raise ValueError(f'张量缺少原始数据文件 {location}')
+        return {'argument': location, 'shape': value['shape'], 'dtype': value['dtype'],
+                'elements': 0, 'slice': 'whole_tensor'}
+    except (ValueError, OSError) as error:
+        if missing is None:
+            raise
+        missing.append(f'{location} {error}')
+        return {'argument': location, 'shape': value['shape'], 'dtype': value['dtype'], 'unavailable': True}
 
 
 def tensor_ref(value, location, folder, token_row, module_layer):
@@ -94,10 +103,10 @@ def linear_slices(tensors, row, positions):
             v['slice'] = {'axis': 0, 'index': row}
 
 
-def call_arguments(call, data, folder, row, module_layer):
+def call_arguments(call, data, folder, row, module_layer, missing=None):
     if 'output' not in data or not ({'input_args', 'input_kwargs'} & data.keys()):
         raise ValueError('调用输入输出字段缺失：' + call)
-    result = {side: list(arguments(data[side], [side], folder, row, module_layer)) if side in data else []
+    result = {side: list(arguments(data[side], [side], folder, row, module_layer, missing)) if side in data else []
               for side in ('input_args', 'input_kwargs', 'output')}
     if not (result['input_args'] or result['input_kwargs']) or not result['output']:
         raise ValueError('调用输入输出无法解析：' + call)

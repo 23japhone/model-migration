@@ -106,6 +106,19 @@ def schedule_errors(row, groups):
     return []
 
 
+def allocated_layers(layers, plan, errors):
+    groups = {row['path']: set() for row in layers}
+    owners = {s['address']: r['path'] for r in layers for s in r['states']}
+    allocated = [name for group in plan['groups'] for name in group['layers']]
+    for name in allocated:
+        owner = owners.get(name) or next((p for p in groups if name == p or name.startswith(p + '.')), None)
+        if owner is None:
+            errors.append('调度层缺少结构映射 ' + name)
+        else:
+            groups[owner].add(name)
+    return groups
+
+
 def install_layers(stack, rec, record, plan, metas):
     directory = rec.folder / ('cache-' + rec.frame['forward_id'])
     directory.mkdir(mode=0o700)
@@ -118,15 +131,7 @@ def install_layers(stack, rec, record, plan, metas):
             rec.request_remaining -= record['snapshot_bytes']
         stack.callback(account)
     root = Snapshots(directory, budget, rec.cache_watch)
-    groups = {row['path']: set() for row in rec.architecture['layers']}
-    owners = {s['address']: r['path'] for r in rec.architecture['layers'] for s in r['states']}
-    allocated = [name for group in plan['groups'] for name in group['layers']]
-    for name in allocated:
-        owner = owners.get(name) or next((p for p in groups if name == p or name.startswith(p + '.')), None)
-        if owner is None:
-            record['errors'].append('调度层缺少结构映射 ' + name)
-        else:
-            groups[owner].add(name)
+    groups = allocated_layers(rec.architecture['layers'], plan, record['errors'])
     for row in rec.architecture['layers']:
         layer = {'path': row['path'], 'index': row['index'], 'kind': row['kind'],
                  'invocations': [], 'errors': schedule_errors(row, groups)}
