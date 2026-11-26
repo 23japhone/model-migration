@@ -7,6 +7,7 @@ import sys
 from . import engine, state, worker, frontend
 from .sources import SOURCES
 from . import parallel
+from .async_batch import sources as asynchronous
 
 
 def attach(module):
@@ -15,17 +16,26 @@ def attach(module):
         actual = hashlib.sha256(Path(module.__file__).read_bytes()).hexdigest()
         if actual not in SOURCES[name]:
             raise ValueError('未适配的目标源码 ' + name + ' ' + actual)
-        if name == 'vllm_ascend.compilation.acl_graph':
+        if name == asynchronous.CORE:
+            from .async_batch import engine as async_engine
+            async_engine.install(module.EngineCore)
+        elif name == 'vllm_ascend.compilation.acl_graph':
             from .aclgraph import hooks
             hooks.install(module)
         elif name == parallel.EXECUTOR:
             parallel.executor(module.MultiprocExecutor)
         elif name.endswith('.scheduler'):
             engine.scheduler(module.Scheduler)
+            if (state.root() / 'async-batch.json').is_file():
+                from .async_batch.retire import watch_aborts
+                watch_aborts(module.Scheduler)
         elif name.endswith('.input_processor'):
             engine.input_processor(module.InputProcessor)
         elif name.endswith('.model_runner_v1'):
             worker.install(module.NPUModelRunner)
+            if (state.root() / 'async-batch.json').is_file():
+                from .async_batch import bindings
+                bindings.install(module.NPUModelRunner)
             if (state.root() / 'graph.json').is_file():
                 from .aclgraph.hooks import install_calibration
                 install_calibration(module.NPUModelRunner)
@@ -60,6 +70,8 @@ def enable():
         SOURCES[MODULE] = (DIGEST,)
     if (state.root() / 'parallel.json').is_file():
         SOURCES[parallel.EXECUTOR] = (parallel.EXECUTOR_SHA,)
+    if (state.root() / 'async-batch.json').is_file():
+        SOURCES[asynchronous.CORE] = (asynchronous.DIGESTS[asynchronous.CORE],)
     sys.meta_path.insert(0, Hooks())
     for name in SOURCES.keys() & sys.modules.keys():
         attach(sys.modules[name])

@@ -126,7 +126,7 @@ process长期服务的主PID已退出而原组号仍有成员时，不能以成�
 
 begin 核验自有 retained 服务、新适配器真实 worker/engine/frontend 就绪记录与摘要；prepared 不等于 ready。跨命令通过文件锁保护持久 lease 状态，不依赖上次命令持有的进程锁。旧 capture-one 在租约存在时也拒绝。重复 arm、已封存 trace、其他控制者或失活租约不覆盖现场。
 
-单卡同步 Eager 的 `profile="batch_joint"` 在成员回执中增加原生张量切片、logits 和可选的全层缓存状态。`profile="batch_identity"` 支持一次登记一组 trace，逐请求封存真实前向和 Token 行映射。见[批次身份协议](runtime-capture.md#查询同一次前向中的多个请求)。
+单卡 Eager（同步或显式 `--async-scheduling`）的 `profile="batch_joint"` 在成员回执中增加原生张量切片、logits 和可选的全层缓存状态。`profile="batch_identity"` 支持一次登记一组 trace，逐请求封存真实前向和 Token 行映射。见[批次身份协议](runtime-capture.md#查询同一次前向中的多个请求)。
 
 单卡同步 Eager 的 arm 可选 `profile="token_prediction"`，按样本导出完整词表预测回执。参数、实际 HTTP 字节约束和可迁移文件布局见[单题预测协议](runtime-capture.md#仅采集单题的-token-预测)。
 

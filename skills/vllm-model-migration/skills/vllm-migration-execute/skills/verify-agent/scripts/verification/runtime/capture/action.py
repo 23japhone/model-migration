@@ -172,7 +172,7 @@ def lookup(request, target, run_id):
         from .batch_joint.reader import lookup as joint_lookup
         return 0, joint_lookup(receipt, request, target)
     if 'native_tensor' in request:
-        raise ValueError('native_tensor 需要同步批次数值回执')
+        raise ValueError('native_tensor 需要批次数值回执')
     if receipt.get('profile') == 'batch_identity':
         from .batch_identity.receipt import lookup as batch_lookup
         return 0, batch_lookup(receipt, request)

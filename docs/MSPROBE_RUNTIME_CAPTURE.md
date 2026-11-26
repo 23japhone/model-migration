@@ -4,7 +4,7 @@
 
 Llama-3-8B-Instruct 的单卡 V1、同步 Eager、BF16、greedy、冷前缀短测使用 7 和 97 个 prompt Token，并发请求各生成 12 个 Token。两条请求的实际前文、输出和结束原因与关闭身份采集时一致。交付版记录了 12 次共享前向，长请求的 3 个无输出 prefill 块可按 prompt 位置查询。停服后复查同一个前向，短请求在请求行 1 消费位置 0 至 6，得到首个输出 82；长请求在请求行 0 消费位置 96，得到首个输出 8。两条结果各自绑定 worker 输入、采样行和引擎接受记录。
 
-`batch_identity` 只记录元数据，本次实测没有生成数值张量文件。同步批次数值由独立的 `batch_joint` 模式采集。异步调度待适配。[调用与查询](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/runtime-capture.md#查询同一次前向中的多个请求)
+`batch_identity` 只记录元数据，本次实测没有生成数值张量文件。同步批次数值由独立的 `batch_joint` 模式采集。单卡显式异步调度复用同一组入口，按每次实际提交、worker 结果与引擎接受记录关联前向。[调用与查询](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/runtime-capture.md#查询同一次前向中的多个请求)
 
 ## 单卡 Eager 的同步批次联合采集
 

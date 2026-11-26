@@ -136,6 +136,8 @@ def verify_arm(request, root, ready, preparation):
 
 
 def arm(request, root, lease, ready, preparation):
+    if ready.get('synchronous') is False:
+        raise ValueError('异步 worker 仅支持批次身份和联合采集')
     if lease['state'] != 'idle' or (root / 'active.json').exists(): raise ValueError('已有活动请求')
     if any(row['trace_id'] == request['trace_id'] for row in lease['sealed']): raise ValueError('trace_id 已使用')
     verify_arm(request, root, ready, preparation)
@@ -153,6 +155,24 @@ def arm(request, root, lease, ready, preparation):
     write_json(root / 'lease.json', lease)
     write_json(root / 'active.json', {'directory': folder.name})
     return {'status': 'completed', 'directory': folder.name, 'trace_id': request['trace_id']}
+
+
+def operation_worker(operation, root, lease, handoff, prep, attempt):
+    def inspect():
+        return live(handoff, prep, attempt)
+
+    if operation != 'seal':
+        return inspect()
+    if 'graph_worker' in lease:
+        from .aclgraph.receipt import seal_worker
+        return seal_worker(lease['graph_worker'], inspect)
+    if 'members' in lease:
+        from .parallel.topology import group_size, seal_members
+        size = group_size(read_bound(prep['parallel']))
+        return seal_members(root / lease['directory'], lease['members'], inspect, size=size)
+    if 'group_id' in lease and batches.confirmed(root / lease['group_id']):
+        return None
+    return inspect()
 
 
 def operate(request, target):
@@ -174,15 +194,7 @@ def operate(request, target):
             (root / 'lease.json').unlink()
             return {'status': 'completed', 'sealed': lease['sealed'], 'previous_state': lease['state']}
         attempt = probe_directory(target, declared)
-        if request['operation'] == 'seal' and 'graph_worker' in lease:
-            from .aclgraph.receipt import seal_worker
-            ready = seal_worker(lease['graph_worker'], lambda: live(handoff, prep, attempt))
-        elif request['operation'] == 'seal' and 'members' in lease:
-            from .parallel.topology import group_size, seal_members
-            size = group_size(read_bound(prep['parallel']))
-            ready = seal_members(root / lease['directory'], lease['members'], lambda: live(handoff, prep, attempt), size=size)
-        else:
-            ready = live(handoff, prep, attempt)
+        ready = operation_worker(request['operation'], root, lease, handoff, prep, attempt)
         if request.get('profile') in ('batch_identity', 'batch_joint'):
             return batches.arm(request, root, lease, ready, prep)
         if request['operation'] == 'seal' and 'group_id' in lease:

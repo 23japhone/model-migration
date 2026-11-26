@@ -116,7 +116,12 @@ def install(stack, rec, plan, rows, frame):
         )
         folder = rec.folder / ('member-' + trace) / ('cache-' + frame['forward_id'])
         folder.mkdir(mode=0o700)
-        root = Snapshots(folder, Allowance(physical, budget), rec.cache_watch)
+        allowance = Allowance(physical, budget)
+        if plan.get('asynchronous'):
+            from ..async_batch.snapshots import FrozenSnapshots
+            root = FrozenSnapshots(folder, allowance, rec.cache_watch, rec.joint_archive, trace)
+        else:
+            root = Snapshots(folder, allowance, rec.cache_watch)
         layers = frame['cache'][trace] = []
         step = plan['requests'][row['internal_id']]
         problems = frame.setdefault('member_errors', {}).setdefault(trace, [])

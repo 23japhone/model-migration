@@ -58,7 +58,13 @@ def prepare_files(request, attempt, receipt):
     folder = host / attempt.name
     runtime = runtime_root(folder, request)
     folder.mkdir(mode=0o700, parents=True, exist_ok=False)
+    from .adapters.async_batch.sources import requested
     size = len(request['npu']['devices'])
+    if requested(request['service']['command']):
+        if size != 1 or request['worker_capture']['adapter'] != 'msprobe_pytorch_eager':
+            raise ValueError('异步采集仅支持单卡 Eager')
+        write_json(folder / 'async-batch.json', {'mode': 'async'})
+        receipt['scheduling'] = 'async'
     if size > 1:
         mapping = request['_device_state']['devices']
         parallel = folder / 'parallel.json'

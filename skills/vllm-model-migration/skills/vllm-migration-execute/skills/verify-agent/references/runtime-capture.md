@@ -44,7 +44,7 @@ seal 不重发推理。成功后用相同 session 调用 `operation=end`；多�
 
 ## 查询同一次前向中的多个请求
 
-在自有单卡服务上使用 Model Runner V1、同步 Eager、BF16、冷前缀和至少两个并发序列。完成 `begin` 后，一次登记所有成员。
+在自有单卡服务上使用 Model Runner V1、Eager、BF16、冷前缀和至少两个并发序列。完成 `begin` 后，一次登记所有成员。
 
 ```json
 {"operation":"arm","source":{"path":"/work/capture/capture-session.json","sha256":"<session摘要>"},"profile":"batch_identity","requests":[{"trace_id":"trace-a","sample_key":"short","native_id":1},{"trace_id":"trace-b","sample_key":"long","native_id":2}]}
@@ -54,9 +54,9 @@ seal 不重发推理。成功后用相同 session 调用 `operation=end`；多�
 
 用每个成员自己的回执与 `request_id` 执行 `capture-read`。选 `view="timeline"` 列出每个实际前向，选 `prompt_position`、`output_index` 或 `forward_id` 查看该成员的一步。两条回执中相同的 `forward_id` 表示同一次模型前向。`batch_row` 是本步 worker 请求行，`token_range` 是打平输入的左闭右开区间，`sample_row` 是输出对象里的采样行。无输出块的 `output_index` 为 null。缺 worker 记录或同批出现未登记请求时，回执以 `incomplete` 列出对应的前向。此模式采集请求、输入和接受结果的元数据，层张量与缓存原值沿用各自现有的采集范围。
 
-### 同步批次的联合数值采集
+### 批次的联合数值采集
 
-worker 就绪回执的 `batch_joint=true` 表示支持同步批次数值采集。在同一 `capture-session` 中将 arm 的 `profile` 设为 `batch_joint`。单独使用此 profile 保存 msProbe 原件和每个成员的全词表 logits。服务配置了 `worker_capture.decode_cache.layer_scope="all"` 时，arm 可增加 `"cache_capture":{"mode":"full_request","max_request_snapshot_bytes":1073741824}`，同时保存各成员的层输入输出和后端状态。每个成员单独占用请求预算，同一物理前向共用服务的 `max_snapshot_bytes`。msProbe 原件由同批成员共用一次，磁盘需另外计量。
+worker 就绪回执的 `batch_joint=true` 表示支持该服务的批次数值采集。在同一 `capture-session` 中将 arm 的 `profile` 设为 `batch_joint`。单独使用此 profile 保存 msProbe 原件和每个成员的全词表 logits。服务配置了 `worker_capture.decode_cache.layer_scope="all"` 时，arm 可增加 `"cache_capture":{"mode":"full_request","max_request_snapshot_bytes":1073741824}`，同时保存各成员的层输入输出和后端状态。每个成员单独占用请求预算，同一物理前向共用服务的 `max_snapshot_bytes`。msProbe 原件由同批成员共用一次，磁盘需另外计量。
 
 例如 A 占用 Token 行 `[0,1)` 做 decode，B 占用 `[1,4)` 继续 prefill。两者的回执使用同一个 `forward_id`。A 的 logits 取实际 batch 行，B 没有输出时可以按 prompt 位置查回该前向。相同 Token ID 不参与行号推断。
 
@@ -68,6 +68,16 @@ worker 就绪回执的 `batch_joint=true` 表示支持同步批次数值采集�
 | 同上加 `cache_snapshot` | 取回本成员实际缓存快照和对应写入或读取计划。普通注意力可选 `key.after` 等，GDN 可选 `conv.before`、`ssm.after` 等，MLA 可选 `mla.latent.after`、`mla.rope.after` 等 |
 
 每个成员用自己的 HTTP 原件独立 seal。读取时，选择器须属于回执登记的成员。观察失败、预算不足和原件摘要变化会报告 `incomplete`，可另选同一前向的完好文件。运行时配置和设备证据见仓库采集记录。
+
+### 多个前向同时在途
+
+在服务 argv 显式设置 `--async-scheduling`，使用 `worker_capture.adapter="msprobe_pytorch_eager"`。就绪回执会核对实际引擎队列、执行器和 worker，记录 `synchronous=false` 与 `async_queue`。在这个服务中 arm 使用 `batch_identity` 或 `batch_joint`，HTTP 与查询方式同上。
+
+假设 F0 和 F1 均已提交，F1 的结果先就绪。查询 A 的 `output_index=1` 使用引擎实际接受该 Token 的前向。该前向持有自己的采样对象和请求行映射。每次物理前向独占一个 msProbe step，沿用 `async_dump=false`，原生窗口在本次 `compute_logits` 后关闭。A 和 B 分别按自己的 Token 行区间读取该 step 的原件。缓存观察按各自实际槽位或状态行冻结原 dtype 字节，磁盘写入完成后发布该前向的数值清单。无输出的 prefill 块可按成员的 `prompt_position` 查询。已丢弃的候选可按 `forward_id` 查到原因，`output_index` 为空。
+
+时间线的 `async_events` 提供同机单调时钟纳秒值。 `submitted_ns` 记录执行器返回提交句柄的时刻，`ready_ns` 记录 worker 取到该次采样结果的时刻，`retired_ns` 记录引擎处理完结果的时刻，数值组另有 `archived_ns`。当提交新前向时旧 Future 仍在队列中，且新提交早于旧结果就绪，`overlaps` 才列出旧前向。如果另一个成员的结果此时尚未发布，`overlap_unconfirmed` 保留待核实的前向，该成员可先独立封存。该字段证明两个执行请求同时在途；同批有两条请求或设备算子是否同时运行分别有自己的证据。
+
+若前端已结束，但该成员仍有结果或数值待归档，`seal` 返回 `pending` 和具体 `forward_ids`。保留原 HTTP 文件，稍后用同一参数再次 seal。引擎确认中止且前端已结束的成员可用已保存的空响应或错误响应封存，回执标记 `delivery="cancelled"`。时间线仅给引擎实际接受的输出编号。若固定版本引擎实际发送 `ENGINE_CORE_DEAD`，工具核对 arm 时的进程身份和前端结束记录；有对应错误或空响应的成员以 `inference_status="failed"` 封存，仍可按 `forward_id` 查看已生成的证据和缺项。
 
 ## 仅采集单题的 Token 预测
 
@@ -196,10 +206,10 @@ Ascend MLA 目前支持未量化 BF16、PA 布局、128 Token 物理块、单卡
 
 | 方面 | 当前行为与未覆盖范围 |
 | --- | --- |
-| 请求与输出范围 | 默认会话逐条采集。单卡同步 Eager 的 batch_identity 可追踪同批多个文本请求的实际 Token 行与接受结果，batch_joint 还可取回已适配的成员张量和缓存。sample_key/native_id 由调用方提供，工具不生成评测题目清单 |
+| 请求与输出范围 | 默认会话逐条采集。单卡 Eager 的 batch_identity 可追踪同批多个文本请求的实际 Token 行与接受结果，batch_joint 还可取回已适配的成员张量和缓存。sample_key/native_id 由调用方提供，工具不生成评测题目清单 |
 | 查询与采集选择 | layer/api/occurrence 只筛选已落盘结果；msProbe 采集范围沿用原配置；可选缓存观察支持一个 decode 或全程全层采集；单卡 Eager 可显式记录跨请求前缀复用 |
 | 预测与张量 | 开启数值采集时，greedy 请求保留产生输出所用的 logits 和选词分数，多卡固定 seed 采样可在输出 rank 查到抽样前概率。只为已识别布局提供 Token 切片，其余保留整张量。prompt 每个位置的全词表和每个中间选词步骤超出采集范围。 |
-| 执行路径 | 单卡 ACLGraph 已验收 Llama 整图和 Qwen 分段图的文本请求。单机多卡 V1 同步 Eager 支持单图、SSE 和带 seed 的全词表随机采样。多请求的张量与缓存数值、异步调度、多卡图模式、beam、推测解码、音视频和多图仍待适配。 |
+| 执行路径 | 单卡 ACLGraph 已验收 Llama 整图和 Qwen 分段图的文本请求。单机多卡 V1 同步 Eager 支持单图、SSE 和带 seed 的全词表随机采样。单卡文本 Eager 批次支持同步或显式异步调度。多卡异步批次、多卡图模式、beam、推测解码、音视频和多图仍待适配。 |
 | 数据范围 | 实际模块及注册 API 的前向输入输出；可选缓存观察单独提供已适配层的算子边界、地址计划和状态快照。设备 kernel 内部未观测 |
 | 存储与恢复 | 当前配置同步保存真实张量；缓存原始字节受单前向预算和全程模式的请求预算限制，msProbe 仍按原配置保存；压缩去重、自动租约恢复和跨机传输未接入。离线查询依赖回执原路径，不是可自动搬迁的数据包 |
 

@@ -11296,8 +11296,8 @@
         "statements": 27
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/worker.py::Recorder.__init__": {
-        "branches": 7,
-        "complexity": 14,
+        "branches": 5,
+        "complexity": 12,
         "line": 38,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/worker.py",
         "statements": 25
@@ -12721,7 +12721,7 @@
         "complexity": 11,
         "line": 155,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/session.py",
-        "statements": 38
+        "statements": 37
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/session.py::probe_directory": {
         "branches": 0,
