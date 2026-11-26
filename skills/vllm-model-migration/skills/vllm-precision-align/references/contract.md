@@ -68,7 +68,7 @@ run下可选GPU基线读取失败不阻止单端评测，具体比较限制由�
 | 字段 | 用途 |
 | --- | --- |
 | `schema_version` | 字符串 `1.0` |
-| `baseline` | 客户填报的 EvalScope 数据集分数、目标和可选逐题评分 |
+| `baseline` | GPU 评测工具和数据集、分项成绩，以及可选阈值和逐题评分。当前 NPU 原生测量使用 EvalScope |
 | `native_request` | 交给 `verify-agent-plus` 的完整冻结测量请求，包含已绑定的部署、数据、配置和期望协议 |
 | `candidates` | 可选，原 NPU 测量回执的 `{path, sha256}` 数组。省略或空数组表示没有历史候选 |
 | `baseline_source` | 默认 `customer_provided` 直接使用客户成绩，`publisher` 核实公开 GPU 分数来源 |
@@ -80,7 +80,7 @@ run下可选GPU基线读取失败不阻止单端评测，具体比较限制由�
 
 阶段终态写入 `<work-root>/<run-id>/vllm-precision-align/quality/<attempt>/quality-stage-manifest.json`。取得测量后，`receipt` 指向原始回执，`measurement` 指向原生评分，`quality_report` 指向比较报告。复用时 `verification` 指向本次只读复核回执，重跑时与 `receipt` 相同。候选选择依据和耗时见 `candidate_checks`。阶段的 `completed` 表示已交付报告。读取报告的 `conclusions.precision_target` 判断目标是否达标，通过 `scores[]` 查看分项成绩和可选逐题变化。客户回执的 `task_quality[]` 给出阶段状态与可用报告的位置，三个交付 JSON 按原有条件导出。
 
-质量重跑由 EvalScope 直连现有服务，客户端预检提示长度。按数据集、指标和可选子集比较分数，逐题比较另按稳定题号配对。`target.max_drop` 依次取客户显式值、同指标同范围发布者阈值、项目默认值。默认允许非负 GPU 基线相对退化 1%，任意零点分数取零，等于阈值时达标。报告 `comparison_basis` 给出基线来源；分项 `target_source` 给出阈值依据。任一项已确认失败即交付失败分项。
+质量重跑由 EvalScope 直连现有服务，客户端预检提示长度。按数据集、指标和可选子集比较分数，逐题比较另按稳定题号配对。`target.max_drop` 依次取客户显式值、同指标同范围发布者阈值、项目默认值。非负比例尺度指标默认允许 GPU 基线的 1%，零基线或任意零点分数默认取零，等于阈值时达标。报告 `comparison_basis` 给出基线来源；分项 `target_source` 给出阈值依据。任一项已确认失败即交付失败分项。
 
 精度意图明确且未提供 GPU 基线时，客户入口检索模型发布方资料，核实公开分数的来源、指标与范围。正式测量前复核固定的公开来源和分数。来源不可用时列出缺项，记录 `quality_measurement_started=false`，继续可执行的其他任务。
 
@@ -88,7 +88,7 @@ run下可选GPU基线读取失败不阻止单端评测，具体比较限制由�
 
 通过 `precision.py --action token --request <请求> --work-root <包外目录> --run-id <标识>` 处理一份已发布的任务质量报告。请求提供 `schema_version="1.0"`、`quality_report={path,sha256}` 和 `token_alignment`。其中 `raw_logits.atol` 用于原始 logits，`processed_scores.atol` 用于选词前的归一化概率，两者均为非负绝对容差。可选 `bundles` 为预测包引用数组。仅当需委托 NPU 定向评测时提供首轮相同协议的 `native_request`。加 `--plan` 只校验参数形状和输出边界。
 
-阶段对照 `next_action.failed_scores` 和 `scores` 的可比未达标分项，按指标方向选择首轮逐题对比已定位的退化题。总分和学科分数指向同一题时仅列一次，保留触发它的每个指标。只有学科分数时，可以从首轮有效 NPU 回执取得该学科完整题号名册。仅有总分且无法定位样本，或缺少可核验的学科名册时，交付待定界范围。`selection.json` 的 `cases` 给出子集、原题号和触发项，`scope_coverage` 区分已定位的退化题与完整学科候选，`pending_scopes` 记录缺失依据。
+阶段对照 `next_action.failed_scores` 和 `scores` 中标为 `precision_target=fail` 的分项，按指标方向选择首轮逐题对比已定位的退化题。总分和学科分数指向同一题时仅列一次，保留触发它的每个指标。只有学科分数时，可以从首轮有效 NPU 回执取得该学科完整题号名册。仅有总分且无法定位样本，或缺少可核验的学科名册时，交付待定界范围。`selection.json` 的 `cases` 给出子集、原题号和触发项，`scope_coverage` 区分已定位的退化题与完整学科候选，`pending_scopes` 记录缺失依据。
 
 一个预测包记录 `format=token-prediction-bundle-v1`、设备 `hardware=gpu|npu`、`quality_report_sha256`、`evidence_kind=synthetic|runtime` 和 `cases`。每题提供 `subset`、`sample_id`、指向预测记录的 `record={path,sha256}`，可附 `cpu` 和 `review` 引用。预测记录及 CPU 核验字段见[比较任务](../skills/vllm-precision-compare/SKILL.md)。第二遍逐题评分文件含相同题号、子集、设备、来源类型、质量报告摘要、`record_sha256` 和 `metrics` 原生指标分值。具有原始退化证据的题可据此判断是否复现；整科候选只报告第二遍实际观察到的分差。模拟结果均标明来源。
 
