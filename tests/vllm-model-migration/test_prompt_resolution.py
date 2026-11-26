@@ -12,6 +12,7 @@ from unittest.mock import patch
 from test_customer_contract import customer
 from coordination.runtime.sources import ref
 from customer_workflow import cli, context, contract, intent, runner
+from customer_workflow.tensor_alignment.continuation import context_identity
 
 
 class PromptResolutionTests(unittest.TestCase):
@@ -66,9 +67,9 @@ class PromptResolutionTests(unittest.TestCase):
         events = []
         load, derive = context.load, contract.container_name
 
-        def loading(*args):
+        def loading(*args, **kwargs):
             events.append('context')
-            return load(*args)
+            return load(*args, **kwargs)
 
         def deriving(name):
             events.append(('container', name))
@@ -130,6 +131,53 @@ class PromptResolutionTests(unittest.TestCase):
         workflow.assert_not_called()
         install.assert_not_called()
         resolved.assert_called_once()
+
+    def test_precision_fields_merge_by_their_customer_contract(self):
+        baseline = [{'dataset': 'ceval', 'evaluator': 'evalscope',
+                     'scores': [{'metric': 'accuracy', 'gpu_score': 0.75}]}]
+        equivalent = [{**baseline[0], 'evaluator': 'EvalScope', 'task_revision': None}]
+        policy = {'raw_logits': {'atol': 0}, 'processed_scores': {'atol': 0.01}}
+        for key, declared, prompt, expected in (
+                ('gpu_baselines', [], baseline, baseline), ('gpu_baselines', baseline, [], baseline),
+                ('gpu_baselines', equivalent, baseline, baseline),
+                ('token_alignment', policy, None, policy), ('tensor_alignment', {}, -1, {})):
+            with self.subTest(key=key, prompt=prompt):
+                raw = customer()
+                raw['accuracy'][key] = declared
+                code, result, workflow, *_ = self.invoke(raw, {'accuracy.' + key: prompt})
+                self.assertEqual(code, 0, result)
+                self.assertEqual(workflow.call_args.args[1]['accuracy'][key], expected)
+        raw = customer()
+        raw['accuracy']['gpu_baselines'] = baseline
+        code, result, workflow, *_ = self.invoke(raw, {'accuracy.gpu_baselines': [
+            {**baseline[0], 'scores': [{'metric': 'accuracy', 'gpu_score': 0.5}]}]})
+        self.assertEqual(code, 3)
+        self.assertEqual(result['next_action']['conflicts'], ['accuracy.gpu_baselines'])
+        workflow.assert_not_called()
+
+    def test_normal_resume_checks_evidence_when_tensor_disabled_or_token_report_absent(self):
+        evidence = self.root / 'evidence.json'
+        for flag, with_report in ((None, True), (-1, True), ({}, False), ({}, True)):
+            with self.subTest(flag=flag, with_report=with_report):
+                self.args.resume = None
+                raw = customer()
+                raw['accuracy']['tensor_alignment'] = flag
+                _, _, workflow, *_ = self.invoke(raw, {})
+                session = workflow.call_args.args[0]
+                quality = session.artifact('quality', {'operation': 'run'})
+                token = {'status': 'not_triggered', 'quality_report': quality}
+                if with_report:
+                    token['token_report'] = session.artifact('wrong-report', {'operation': 'token'})
+                session.finish('completed', task_quality=[{'report': quality}], token_alignment=[token],
+                               tensor_context_identity=context_identity(json.loads(self.context.read_text())))
+                self.args.resume = session.path
+                evidence.write_text('{}')
+                original = ref(evidence)
+                evidence.write_text('{"changed":true}')
+                code, result, workflow, *_ = self.invoke(raw, {}, evidence=[original])
+                self.assertEqual(code, 2, result)
+                self.assertIn('摘要', result['reason'])
+                workflow.assert_not_called()
 
     def test_explicit_validation_keeps_unresolved_values_without_defaults(self):
         raw = {'model': {'model_name': None}, 'environment': {}, 'accuracy': {'evaluator': -1}}

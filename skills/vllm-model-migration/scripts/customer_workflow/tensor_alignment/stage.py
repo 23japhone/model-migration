@@ -67,20 +67,24 @@ def compare_one(session, key, token, policy, supplied, root):
             'stage': session.value['steps'][key]['receipt'], 'quality_report': quality, 'token_report': token['token_report']}
 
 
+def token_quality(source):
+    try:
+        info = sources.bound(source)
+    except sources.ERRORS:
+        return None
+    if ((info.get('task_id'), info.get('operation')) == ('vllm-precision-align', 'token')
+            and isinstance(info.get('cases'), list)):
+        return info.get('quality_report')
+    return None
+
+
 def external_tokens(quality_rows, supplied):
     """已有 Token 报告可直接随上下文交付，仍逐份绑定本轮质量报告。"""
-    reports = []
-    for source in supplied.get('evidence', []):
-        try:
-            info = sources.bound(source)
-        except sources.ERRORS:
-            continue
-        if (info.get('task_id'), info.get('operation')) == ('vllm-precision-align', 'token') and 'cases' in info:
-            reports.append((source, info))
+    reports = [(source, token_quality(source)) for source in supplied.get('evidence', [])]
     rows = []
     for row in quality_rows:
         quality = row.get('report')
-        choices = [source for source, info in reports if quality and info.get('quality_report') == quality]
+        choices = [source for source, origin in reports if quality and origin == quality]
         if len(choices) == 1:
             rows.append({'status': 'completed', 'quality_report': quality, 'token_report': choices[0],
                          'quality_stage': row.get('stage')})
