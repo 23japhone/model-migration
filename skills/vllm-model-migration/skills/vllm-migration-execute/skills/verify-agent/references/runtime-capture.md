@@ -8,15 +8,15 @@
 | --- | --- | --- |
 | `verify` 准备并启动 | 原部署请求 + `worker_capture`，已声明可写输出路径 | 验证报告、最终部署交接、采集准备回执和配置摘要 |
 | `capture-session begin` | 验证报告 `{path,sha256}`、调用控制进程 `owner_pid` | 不可变 `session={path,sha256}`；持久租约 |
-| `capture-session arm` | session 引用、`sample_key`、`native_id`、唯一 `trace_id` | 活动请求目录；尚未发送模型请求 |
-| 调用模型 | 一条带 `X-Precision-Trace: <trace_id>` 的真实请求 | 调用方保存的原始 HTTP JSON 请求、JSON 或 SSE 响应字节及摘要 |
-| `capture-session seal` | session 引用、trace_id、`http.request/response` 摘要引用 | `receipt={path,sha256}`、实际 Token 数、样本身份 |
+| `capture-session arm` | session 引用。单请求在顶层填写 `sample_key`、`native_id` 和唯一 `trace_id`。批次在 `requests[]` 中逐成员填写这三个字段 | 单请求返回活动目录，批次返回 `group_id` 与成员 trace 列表 |
+| 调用模型 | 每个成员发送带自己 `X-Precision-Trace` 的真实请求 | 调用方保存的原始 HTTP JSON 请求、JSON 或 SSE 响应字节及摘要 |
+| `capture-session seal` | session 引用、trace_id、`http.request/response` 摘要引用 | 该请求的 `receipt={path,sha256}`。异步结果尚待归档时返回 `pending` 和待完成的 `forward_ids` |
 | `capture-session end` | session 引用 | 封存清单、释放本次租约；模型服务继续原生命周期 |
 | `capture-read` | 采集回执、`request_id=trace_id`，按零基 `output_index` 查输出；全程回执也可按 `forward_id` 或零基 `prompt_position` 查前向，或用 `view=timeline` 列出时间线 | 所选前向的输入位置、调用和文件索引，以及适用的输出预测与缓存快照 |
 
 所有动作通过同一个 `scripts/verify.py`，保留 `--request --work-root --run-id --plan`。`--plan` 只做静态检查，不验证来源材料、进程或设备。真实调用在部署的 Linux 宿主侧执行；Docker 使用已有显式可写 bind mount，配置同时记录宿主路径与容器路径。调用方与运行材料必须在同一可见路径空间；不存在自动 SSH 或跨机文件传输。
 
-会话要求自有且 retained 的单请求服务。同步 Eager 文本 greedy 支持单卡和单机多卡纯张量并行，单卡文本服务也可使用 ACLGraph 适配器。单图、SSE 与固定 seed 采样使用单机多卡同步 Eager 会话。完整总 Skill 资源必须可访问，既有共享设备合同是依赖；单独复制 `capture/` 不足以部署。目标解释器必须已经安装兼容 msProbe。工具核对适配器源码、目标 vLLM/vLLM-Ascend 源码及挂点，不自动安装、升级或改变服务并行/图模式。`prepared` 仅证明准备成功，开始会话还需实际 worker、engine、frontend 就绪记录及当前服务身份。
+会话使用自有且状态为 `retained` 的服务。默认逐条采集。要并发采集文本请求，使用单卡 Eager 的[批次会话](#查询同一次前向中的多个请求)。同步 Eager 文本 greedy 支持单卡和单机多卡纯张量并行，单卡文本服务也可使用 ACLGraph 适配器。单图、SSE 与固定 seed 采样使用单机多卡同步 Eager 会话。完整总 Skill 资源必须可访问，既有共享设备合同是依赖；单独复制 `capture/` 不足以部署。目标解释器必须已经安装兼容 msProbe。工具核对适配器源码、目标 vLLM/vLLM-Ascend 源码及挂点，不自动安装、升级或改变服务并行/图模式。`prepared` 仅证明准备成功，开始会话还需实际 worker、engine、frontend 就绪记录及当前服务身份。
 
 ## 无评测器的会话调用
 
@@ -52,7 +52,7 @@ seal 不重发推理。成功后用相同 session 调用 `operation=end`；多�
 
 收到 `group_id` 后并发发送文本请求。每条请求使用自己的 `X-Precision-Trace`，显式设置 `temperature=0`、`return_token_ids=true`，使用单输出、非流式响应。用各自的原始 HTTP 请求、响应和 trace 独立 `seal`。最后一个成员封存后可登记下一组。所有请求结束后用 `end` 释放会话。
 
-用每个成员自己的回执与 `request_id` 执行 `capture-read`。选 `view="timeline"` 列出每个实际前向，选 `prompt_position`、`output_index` 或 `forward_id` 查看该成员的一步。两条回执中相同的 `forward_id` 表示同一次模型前向。`batch_row` 是本步 worker 请求行，`token_range` 是打平输入的左闭右开区间，`sample_row` 是输出对象里的采样行。无输出块的 `output_index` 为 null。缺 worker 记录或同批出现未登记请求时，回执以 `incomplete` 列出对应的前向。此模式采集请求、输入和接受结果的元数据，层张量与缓存原值沿用各自现有的采集范围。
+用每个成员自己的回执与 `request_id` 执行 `capture-read`。选 `view="timeline"` 列出每个实际前向，选 `prompt_position`、`output_index` 或 `forward_id` 查看该成员的一步。两条回执中相同的 `forward_id` 表示同一次模型前向。`batch_row` 是本步 worker 请求行，`token_range` 是打平输入的左闭右开区间，`sample_row` 是输出对象里的采样行。无输出块的 `output_index` 为 null。缺 worker 记录或同批出现未登记请求时，回执以 `incomplete` 列出对应的前向。`batch_identity` 只保存这些身份与位置记录。需要张量原值时，选择下面的 `batch_joint`。
 
 ### 批次的联合数值采集
 
@@ -73,9 +73,9 @@ worker 就绪回执的 `batch_joint=true` 表示支持该服务的批次数值�
 
 在服务 argv 显式设置 `--async-scheduling`，使用 `worker_capture.adapter="msprobe_pytorch_eager"`。就绪回执会核对实际引擎队列、执行器和 worker，记录 `synchronous=false` 与 `async_queue`。在这个服务中 arm 使用 `batch_identity` 或 `batch_joint`，HTTP 与查询方式同上。
 
-假设 F0 和 F1 均已提交，F1 的结果先就绪。查询 A 的 `output_index=1` 使用引擎实际接受该 Token 的前向。该前向持有自己的采样对象和请求行映射。每次物理前向独占一个 msProbe step，沿用 `async_dump=false`，原生窗口在本次 `compute_logits` 后关闭。A 和 B 分别按自己的 Token 行区间读取该 step 的原件。缓存观察按各自实际槽位或状态行冻结原 dtype 字节，磁盘写入完成后发布该前向的数值清单。无输出的 prefill 块可按成员的 `prompt_position` 查询。已丢弃的候选可按 `forward_id` 查到原因，`output_index` 为空。
+假设 F0 和 F1 均已提交，F1 的结果先就绪。查询 A 的 `output_index=1` 使用引擎实际接受该 Token 的前向。该前向持有自己的采样对象和请求行映射。在 `batch_joint` 模式下，每次物理前向独占一个 msProbe step，沿用 `async_dump=false`，原生窗口在本次 `compute_logits` 后关闭。A 和 B 分别按自己的 Token 行区间读取该 step 的原件。启用全程缓存观察后，按各成员实际槽位或状态行冻结原 dtype 字节，磁盘写入完成后发布该前向的数值清单。无输出的 prefill 块可按成员的 `prompt_position` 查询。已丢弃的候选可按 `forward_id` 查到原因，`output_index` 为空。
 
-时间线的 `async_events` 提供同机单调时钟纳秒值。 `submitted_ns` 记录执行器返回提交句柄的时刻，`ready_ns` 记录 worker 取到该次采样结果的时刻，`retired_ns` 记录引擎处理完结果的时刻，数值组另有 `archived_ns`。当提交新前向时旧 Future 仍在队列中，且新提交早于旧结果就绪，`overlaps` 才列出旧前向。如果另一个成员的结果此时尚未发布，`overlap_unconfirmed` 保留待核实的前向，该成员可先独立封存。该字段证明两个执行请求同时在途；同批有两条请求或设备算子是否同时运行分别有自己的证据。
+时间线的 `async_events` 提供同机单调时钟纳秒值。 `submitted_ns` 记录执行器返回提交句柄的时刻，`ready_ns` 记录 worker 取到该次采样结果的时刻，`retired_ns` 记录引擎处理完结果的时刻，`batch_joint` 另用 `archived_ns` 记录该次前向的数值归档时间。当提交新前向时旧 Future 仍在队列中，且新提交早于旧结果就绪，`overlaps` 才列出旧前向。如果另一个成员的结果此时尚未发布，`overlap_unconfirmed` 保留待核实的前向，该成员可先独立封存。该字段证明两个执行请求同时在途；同批有两条请求或设备算子是否同时运行分别有自己的证据。
 
 若前端已结束，但该成员仍有结果或数值待归档，`seal` 返回 `pending` 和具体 `forward_ids`。保留原 HTTP 文件，稍后用同一参数再次 seal。引擎确认中止且前端已结束的成员可用已保存的空响应或错误响应封存，回执标记 `delivery="cancelled"`。时间线仅给引擎实际接受的输出编号。若固定版本引擎实际发送 `ENGINE_CORE_DEAD`，工具核对 arm 时的进程身份和前端结束记录；有对应错误或空响应的成员以 `inference_status="failed"` 封存，仍可按 `forward_id` 查看已生成的证据和缺项。
 
