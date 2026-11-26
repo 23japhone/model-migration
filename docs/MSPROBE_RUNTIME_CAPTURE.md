@@ -1,10 +1,18 @@
 # msProbe 运行时采集交付
 
+## 单卡 Eager 的异步批次采集
+
+2026-11-26，单卡 NPU 使用 Model Runner V1、BF16、greedy、冷前缀及显式 `--async-scheduling`。Llama-3-8B-Instruct 的两条请求分别输入 7 和 35 个 Token。在身份对照中，两条请求共经历 5 个物理前向，前 4 个由两者共享。短请求生成第二个输出时消费 Token 82，占用行区间 `[0,1)`。长请求在同一个 `forward_id` 占用 `[1,16)`，消费 15 个 prompt Token，这一步没有输出。另一次自然到达的双请求运行记录到多个前向同时在途。两个 Future 逆序完成时的归属由[离线回归](TESTING.md#单卡-eager-批次的联合数值采集)覆盖。
+
+两次联合数值探针各观察一个请求的一次 prefill，输入同为 7 个 Token。`capture-read` 在 Llama 和 Qwen3.5-27B 上均读回了首末文本层的 msProbe 成员切片，回执记录的首个输出分别为 82 和 198。双模型、多请求、连续 decode 的异步全程数值对照按要求停止，仍待完成。[批次采集和查询](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/runtime-capture.md#多个前向同时在途)
+
+历史原件的可读范围以实际保留文件为准。2026-11-26 已清理部分历史图模式、缓存后端、前缀命中、同步批次及 Llama 单前向探针的原始数值。对应回执、HTTP 记录和摘要仍可核对。已删除的原值无法从旧回执恢复，重新采集会生成新的样本。
+
 ## 2026-11-26 单卡同步批次中的请求身份
 
 Llama-3-8B-Instruct 的单卡 V1、同步 Eager、BF16、greedy、冷前缀短测使用 7 和 97 个 prompt Token，并发请求各生成 12 个 Token。两条请求的实际前文、输出和结束原因与关闭身份采集时一致。交付版记录了 12 次共享前向，长请求的 3 个无输出 prefill 块可按 prompt 位置查询。停服后复查同一个前向，短请求在请求行 1 消费位置 0 至 6，得到首个输出 82；长请求在请求行 0 消费位置 96，得到首个输出 8。两条结果各自绑定 worker 输入、采样行和引擎接受记录。
 
-`batch_identity` 只记录元数据，本次实测没有生成数值张量文件。同步批次数值由独立的 `batch_joint` 模式采集。单卡显式异步调度复用同一组入口，按每次实际提交、worker 结果与引擎接受记录关联前向。[调用与查询](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/runtime-capture.md#查询同一次前向中的多个请求)
+`batch_identity` 只记录元数据，本次实测没有生成数值张量文件。同步批次数值由独立的 `batch_joint` 模式采集。[调用与查询](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/runtime-capture.md#查询同一次前向中的多个请求)
 
 ## 单卡 Eager 的同步批次联合采集
 
