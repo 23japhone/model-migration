@@ -8,6 +8,7 @@ from .contract import check_output
 from .evidence import begin, bound, finish, record, verify_files, write
 from .history import details as history_details, native, reanalyze
 from .inputs import collect
+from .anomaly_extract import from_evaluation
 from .backends import read_task
 from .runtime import aisbench, service
 
@@ -118,6 +119,8 @@ def run(request,parent,run_id,baseline_mode=False):
         prepared=prepare(request,inputs,attempt)
         values=measure_tasks(request,prepared,attempt,manifest)
         bind_outputs(prepared,values,manifest)
+        # 1.4 异常判定：从 HTTP 记录提取样本，按口径判定，写进 manifest.anomalies
+        manifest['anomalies'] = from_evaluation(prepared, inputs['handoff'])
         verify_files(prepared.get('validation_files',{}))
         after=service.snapshot(inputs,request,attempt,'after')
         if before!=after:raise ValueError('评测期间服务或 worker 身份变化')

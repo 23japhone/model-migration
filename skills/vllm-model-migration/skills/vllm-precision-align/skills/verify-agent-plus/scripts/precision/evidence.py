@@ -61,7 +61,7 @@ def record(request, run_id, action, status):
                 'operation':action,'inputs':request,'status':status,'success':False,
                 'conclusions':{'evaluation_validity':'not_evaluated','comparability':'not_evaluated',
                                'precision_target':'not_evaluated'},
-                'evidence':{},'uncovered':[],'detailed_report':{},'started_at':now(),
+                'evidence':{},'uncovered':[],'anomalies':[],'detailed_report':{},'started_at':now(),
                 'environment_check':{},'accuracy_evaluation':{},'performance_benchmarks':{},'logs':[]}
 
 

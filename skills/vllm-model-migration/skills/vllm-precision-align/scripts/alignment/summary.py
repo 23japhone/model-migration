@@ -26,7 +26,8 @@ def collect_result(value,manifest,key,receipt):
     manifest['results'][key]={'receipt':receipt,'conclusions':value['conclusions'],
         'measurements':value.get('detailed_report',{}).get('measurements',[]),
         'conditions':value.get('detailed_report',{}).get('conditions'),
-        'comparison':value.get('detailed_report',{}).get('comparison'), 'uncovered':value['uncovered']}
+        'comparison':value.get('detailed_report',{}).get('comparison'), 'uncovered':value['uncovered'],
+        'anomalies':value.get('anomalies',[])}
     manifest['uncovered'].extend(value['uncovered'])
 
 
@@ -61,6 +62,9 @@ def conclude(manifest):
     manifest['conclusions']['precision_testing']='pass' if status=='completed' else ('fail' if status=='failed' else 'review_required')
     manifest['conclusions']['comparability']=applicable(manifest,'comparability','baseline_requested')
     manifest['conclusions']['precision_target']=applicable(manifest,'precision_target','targets_requested')
+    diag_values=[manifest['results'][name]['conclusions'].get('demarcation','not_evaluated')
+                 for name in manifest['tasks'].get('diagnoses',{}) if name in manifest['results']]
+    manifest['conclusions']['demarcation']=verdict(diag_values)
     rows=list(manifest['tasks']['evaluations'].values())
     targets=[row for row in rows if row.get('targets_requested')]
     targets_pass=all(row.get('conclusions',{}).get('precision_target')=='pass' for row in targets)

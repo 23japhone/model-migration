@@ -37,11 +37,13 @@ def dependencies(value):
         for key,item in table.items():name(key);reference(item)
         field='dataset' if group=='datasets' else 'deployment'
         used={row[field] for row in value['evaluations'] if field in row}
+        if group=='deployments':
+            used |= {row['deployment'] for row in value.get('diagnoses',[])}
         if used!=set(table):raise ValueError('依赖缺失或没有实际评测消费者：'+group)
 
 
 def validate(value,action):
-    fields(value,('schema_version','evaluations'),('datasets','deployments','timeout_seconds'))
+    fields(value,('schema_version','evaluations'),('datasets','deployments','diagnoses','auto_diagnose','timeout_seconds'))
     if value['schema_version']!='1.0':raise ValueError('仅支持schema_version=1.0')
     rows=value['evaluations']
     if not isinstance(rows,list) or not rows:raise ValueError('至少提供一个评测项')
@@ -50,9 +52,15 @@ def validate(value,action):
         for key in ('dataset','deployment'):
             if key in row:name(row[key])
     if len({row['id'] for row in rows})!=len(rows):raise ValueError('评测项标识重复')
+    diagnoses=value.get('diagnoses',[])
+    if not isinstance(diagnoses,list):raise ValueError('diagnoses 须为数组')
+    for row in diagnoses:diagnosis_row(row)
+    if len({row['id'] for row in diagnoses})!=len(diagnoses):raise ValueError('定界项标识重复')
     dependencies(value)
     if action=='analyze' and (value.get('datasets') or value.get('deployments')):
         raise ValueError('历史分析不得调用准备或部署任务')
+    if 'auto_diagnose' in value and type(value['auto_diagnose']) is not bool:
+        raise ValueError('auto_diagnose 须为布尔值')
     timeout=value.get('timeout_seconds',14400)
     if type(timeout)!=int or not 1<=timeout<=86400:raise ValueError('超时须为1—86400秒')
     return value
@@ -71,6 +79,11 @@ def evaluation_row(row, action):
         if action != 'run':
             raise ValueError('精度结果复用仅用于 run 续接')
         reference(row['result'])
+
+
+def diagnosis_row(row):
+    fields(row, ('id', 'badcase', 'deployment'))
+    name(row['id']); reference(row['badcase']); name(row['deployment'])
 
 
 def path_values(value):

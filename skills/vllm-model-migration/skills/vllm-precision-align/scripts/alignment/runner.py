@@ -7,6 +7,7 @@ from .delegation import TaskBlocked,delegate
 from .evidence import EvidenceError,begin,publish,safe,save
 from .request import output
 from .sources import INPUT_ERRORS,preflight
+from diagnosis.service import demarcate, demarcate_anomaly
 
 TASK_ERRORS=(*INPUT_ERRORS,RuntimeError)
 
@@ -65,6 +66,14 @@ def prepared(item,values,manifest):
     return request
 
 
+def prepared_diagnosis(item,manifest):
+    """解析定界项的 service（来自部署交接）与 badcase 引用。"""
+    dependency=manifest['tasks']['deployments'][item['deployment']]
+    if dependency['status']!='completed':raise ValueError('必需依赖未完成：deployment/'+item['deployment'])
+    resource=summary.resource(dependency['receipt'])
+    return {'endpoint':resource['endpoint'],'model':resource['model']['name']}, item['badcase']
+
+
 def evaluations(request,values,attempt,manifest,timeout,action):
     if action=='run':
         from .preflight import evaluations as check_datasets
@@ -82,6 +91,39 @@ def evaluations(request,values,attempt,manifest,timeout,action):
         value,reference=evaluate_item(item,child,attempt,manifest,timeout,action)
         if value:summary.collect_result(value,manifest,key,reference)
         save(attempt,manifest)
+
+
+def diagnoses(request,work_root,attempt,manifest,timeout,action):
+    for item in request.get('diagnoses',[]):
+        key=item['id'];row=manifest['tasks']['diagnoses'][key]
+        if row['status']=='blocked':continue
+        try:
+            service,badcase=prepared_diagnosis(item,manifest)
+        except INPUT_ERRORS as error:item_error(row,error,'blocked');save(attempt,manifest);continue
+        code,value=demarcate(service,badcase,work_root,manifest['run_id'],timeout)
+        row.update(status=value.get('status','failed'),conclusions=value.get('conclusions',{}))
+        manifest['results'][key]={'conclusions':value.get('conclusions',{}),'uncovered':value.get('uncovered',[])}
+        manifest['uncovered'].extend(value.get('uncovered',[]))
+        save(attempt,manifest)
+
+
+def auto_diagnoses(request, work_root, attempt, manifest, timeout, action):
+    """评测产出异常后，交给 diagnosis 模块自动定界（方案 B 自动衔接）。"""
+    if request.get('auto_diagnose') is False:
+        return  # 显式关闭自动诊断
+    for eval_id, result in list(manifest['results'].items()):
+        if eval_id not in manifest['tasks'].get('evaluations', {}):
+            continue  # 只处理评测结果，跳过 diagnoses 等其它组
+        for position, anomaly in enumerate(result.get('anomalies', [])):
+            diag_id = 'auto-%s-%s-%s' % (eval_id, anomaly.get('sample_id', position), anomaly.get('anomaly_type', position))
+            row = manifest['tasks']['diagnoses'].setdefault(diag_id, {'status': 'not_run'})
+            if row['status'] == 'blocked':
+                continue
+            code, value = demarcate_anomaly(anomaly, work_root, manifest['run_id'], timeout)
+            row.update(status=value.get('status', 'failed'), conclusions=value.get('conclusions', {}))
+            manifest['results'][diag_id] = {'conclusions': value.get('conclusions', {}), 'uncovered': value.get('uncovered', [])}
+            manifest['uncovered'].extend(value.get('uncovered', []))
+            save(attempt, manifest)
 
 
 def evaluate_item(item, child, attempt, manifest, timeout, action):
@@ -117,6 +159,8 @@ def run(request,work_root,run_id,action):
         timeout=request.get('timeout_seconds',14400)
         dependencies(request,values,attempt,manifest,timeout)
         evaluations(request,values,attempt,manifest,timeout,action)
+        diagnoses(request,work_root,attempt,manifest,timeout,action)
+        auto_diagnoses(request,work_root,attempt,manifest,timeout,action)
         summary.conclude(manifest)
     except EvidenceError:raise
     except KeyboardInterrupt as error:
