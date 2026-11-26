@@ -8,12 +8,15 @@ from ... import outputs, request as schema
 from ...evidence import read_bound, write_json
 from .adapters.state import read
 from .generation import tensor_alignment, token_prediction
+from .batch_identity import session as batches
 from .lease import identity, locked, no_lease, owned
 from .service import deployment, live
 from .tensors import file_ref
 
 
 def validate(request):
+    if request.get('profile') in ('batch_identity', 'batch_joint'):
+        return batches.validate_arm(request, validate)
     schema.fields(request, ['operation', 'source'], ['owner_pid', 'sample_key', 'native_id', 'trace_id', 'http', 'cache_output_index', 'cache_capture', 'profile', 'tensor_plan'])
     schema.fields(request['source'], ['path', 'sha256']); schema.absolute(request['source']['path'])
     if not schema.HASH.fullmatch(str(request['source']['sha256'])): raise ValueError('来源摘要无效')
@@ -159,7 +162,9 @@ def operate(request, target):
         declared, handoff, prep = deployment(authority['source'])
         read_bound(authority['derived_config'])
         if request['operation'] == 'end':
-            if lease['state'] == 'armed':
+            if 'group_id' in lease:
+                batches.close_group(root, lease)
+            elif lease['state'] == 'armed':
                 folder = root / lease['directory']
                 if (folder/'request.json').exists() and not (folder/'frontend-end.json').exists():
                     raise ValueError('实际请求尚未结束，保留活动租约；不能让后续采集混入该前向')
@@ -178,6 +183,10 @@ def operate(request, target):
             ready = seal_members(root / lease['directory'], lease['members'], lambda: live(handoff, prep, attempt), size=size)
         else:
             ready = live(handoff, prep, attempt)
+        if request.get('profile') in ('batch_identity', 'batch_joint'):
+            return batches.arm(request, root, lease, ready, prep)
+        if request['operation'] == 'seal' and 'group_id' in lease:
+            return batches.finish_member(root, lease, request, authority, handoff)
         if request['operation'] == 'arm': return arm(request, root, lease, ready, prep)
         if request['operation'] == 'seal':
             from .session_receipt import seal

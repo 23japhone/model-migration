@@ -10383,11 +10383,11 @@
         "statements": 12
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/decode_cache/layer_capture.py::install_layers": {
-        "branches": 6,
-        "complexity": 15,
+        "branches": 3,
+        "complexity": 4,
         "line": 109,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/decode_cache/layer_capture.py",
-        "statements": 24
+        "statements": 17
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/decode_cache/layer_capture.py::install_states": {
         "branches": 3,
@@ -10831,11 +10831,11 @@
         "statements": 7
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/frontend.py::wrap_client.generate": {
-        "branches": 5,
-        "complexity": 6,
+        "branches": 4,
+        "complexity": 5,
         "line": 20,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/frontend.py",
-        "statements": 17
+        "statements": 15
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/adapters/image_capture.py::bind": {
         "branches": 0,
@@ -12490,11 +12490,11 @@
         "statements": 26
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/tensors.py::arguments": {
-        "branches": 9,
-        "complexity": 15,
+        "branches": 7,
+        "complexity": 13,
         "line": 15,
         "path": "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/tensors.py",
-        "statements": 18
+        "statements": 13
       },
       "skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/scripts/verification/runtime/capture/tensors.py::call_arguments": {
         "branches": 4,

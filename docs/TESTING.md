@@ -4,6 +4,14 @@
 
 ## 当前验证基准
 
+### 同步批次的联合数值采集
+
+同一批次专项覆盖身份及数值 18 项。数值测试通过公开入口给两个重复 Token 分配不同 BF16 激活，并读回各自的字节。它还覆盖未知张量轴、密集投影的共享权重、摘要变化、缺少一个成员的 logits、不同物理槽、多请求的 GDN 续块与冷初态、MLA 子批起点和成员预算。使用本页的 discovery 命令运行全量离线回归，871 项通过，独立 `source_contract` 52 项通过。设备运行与容量以对应模型的实机记录为准。
+
+### 批次与请求的身份映射
+
+运行 `python3.12 -B -m unittest discover -s tests/vllm-model-migration/worker_capture/batch_cases -p 'test_*.py' -v`。公开会话用例让独立 worker 进程接收带身份的调度结果；A 提前封存，B 继续运行。两条查询分别取回同一前向的重复 Token 和无输出分块。用例也检查三成员重排、padding、采样行互换、缺少实际执行、未登记成员、摘要变化与在途请求租约。采集入口见[批次身份](../skills/vllm-model-migration/skills/vllm-migration-execute/skills/verify-agent/references/runtime-capture.md#查询同一次前向中的多个请求)。
+
 ### 2026-11-26 客户回执的任务质量结论
 
 在仓库根运行 `python3.12 -B -m unittest discover -s tests/vllm-model-migration/task_quality -p test_customer_conclusion.py -v`。客户入口用例读取合成的首轮质量报告，通过实际导出入口发布三个 JSON，检查每个文件的摘要、退出码 0，以及终端和落盘回执完全一致。GPU 准确率 80%、NPU 准确率 78%、允许下降 1 个百分点时，两处 `summary` 均以“任务已完成，任务质量未达标”开头。仅性能交付也经过同一导出入口。
