@@ -92,9 +92,10 @@ def begin(request,parent,run_id,action):
     except OSError as error:raise EvidenceError('尝试目录创建失败：'+safe(error)) from error
     tasks={group:{key:{'status':'not_run'} for key in request.get(group,{})} for group in ('datasets','deployments')}
     tasks['evaluations']={row['id']:{'status':'not_run'} for row in request['evaluations']}
+    tasks['diagnoses']={row['id']:{'status':'not_run'} for row in request.get('diagnoses',[])}
     value={'schema_version':'1.0','task_id':'vllm-precision-align','run_id':run_id,'operation':action,
            'inputs':request,'status':'running','success':False,'started_at':now(),'tasks':tasks,'results':{},
-           'resources':[],'errors':[], 'conclusions':{key:'not_evaluated' for key in ('precision_testing','evaluation_validity','comparability','precision_target')},
+           'resources':[],'errors':[], 'conclusions':{key:'not_evaluated' for key in ('precision_testing','evaluation_validity','comparability','precision_target','demarcation')},
            'evidence':{key:str(attempt/name) for key,name in (('manifest','precision-stage-manifest.json'),('ledger','task-ledger.json'),('handoff','precision-stage-handoff.json'))},
            'uncovered':['本阶段不诊断、调参、自动重测或执行性能验收'],'next_action':'running'}
     write(attempt/'stage.request.json',request);save(attempt,value)

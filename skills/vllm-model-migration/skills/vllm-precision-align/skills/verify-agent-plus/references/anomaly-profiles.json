@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0",
+  "anomalies": [
+    {
+      "type": "empty_tool_calls",
+      "enabled": true,
+      "description": "请求带 tools，但 chat 响应无 tool_calls（本应调用工具却返回空）",
+      "detect": {"request_has_tools": true, "response_has_tool_calls": false},
+      "maps_to": ["TOOL_PARSER", "MODEL_OUTPUT"]
+    },
+    {
+      "type": "missing_reasoning_content",
+      "enabled": true,
+      "description": "原始输出有 think 标记，但 chat 响应缺 reasoning_content",
+      "detect": {"has_think_text": true, "response_has_reasoning": false},
+      "maps_to": ["THINKING_PARSER"]
+    },
+    {
+      "type": "garbage_output",
+      "enabled": true,
+      "description": "输出乱码或无意义重复（字符多样性过低 / 重复 n-gram 过高）",
+      "detect": {"thresholds": {"char_diversity": 0.3, "dup_ngram_ratio": 0.5}},
+      "maps_to": ["MODEL_NUMERIC"]
+    },
+    {
+      "type": "low_score",
+      "enabled": false,
+      "description": "单题/总分低于阈值（兜底，阈值待定，暂不启用）",
+      "detect": {"score_threshold": null},
+      "maps_to": []
+    }
+  ]
+}
