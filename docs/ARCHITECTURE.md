@@ -134,13 +134,13 @@ flowchart TD
     A --> H[独立导出：三个交付 JSON]
     E -. 客户任务的 GPU 基线或精度意图 .-> Q[任务质量对齐]
     Q --> S[客户回执中的质量报告]
-    S -. 启用 Token 对齐且有可比失败分项 .-> T[定界选题并比较首个异常输出位置]
-    T -. 启用张量对齐且目标位置有双端预测差异 .-> X[按单题计划核验并比较模块和算子张量]
+    S -. 启用 Token 对齐且有已确认的失败分项 .-> T[定界选题并比较首个异常输出位置]
+    T -. 同一前文已定位双端预测首差 .-> X[按单题计划核验并比较模块和算子张量]
     M -. 需要适配回执 .-> R[Agent 按 adapt-agent 完成实现与公开检查]
     R -. 新请求显式续接 .-> M
 ```
 
-客户 `migrate.py --task` 在普通精度步骤后、三文件交付前调度任务质量对齐，将质量报告引用写入 `customer-manifest.json` 的 `task_quality[]`。启用 `accuracy.token_alignment` 后，精度阶段从可比的未达标分项选题。已有双端预测的题可直接比较。有 GPU 预测、缺 NPU 记录且具备首轮冻结请求的题委托原生评测重跑。客户通过 `token_alignment[]` 查看选题和比较报告。确认双端同前文的首差时，阶段使用本次生成或外部提供的同题 Token 报告自动发起张量诊断。实际张量 dtype 决定缺省容差，直接比较 GPU、NPU 得出结论，从 `tensor_alignment[]` 可查逐调用结果。三文件交付按普通精度、部署和导出回执独立判定。[定向重跑与比较的阶段契约](../skills/vllm-model-migration/skills/vllm-precision-align/references/contract.md#token-预测对齐)
+客户 `migrate.py --task` 在普通精度步骤后、三文件交付前调度任务质量对齐，将质量报告引用写入 `customer-manifest.json` 的 `task_quality[]`。启用 `accuracy.token_alignment` 后，精度阶段按质量报告中已确认的失败分项选题。已有双端预测的题可直接比较。有 GPU 预测、缺 NPU 记录且具备首轮冻结请求的题委托原生评测重跑。客户通过 `token_alignment[]` 查看选题和比较报告。确认双端同前文的首差时，阶段使用本次生成或外部提供的同题 Token 报告自动发起张量诊断。实际张量 dtype 决定缺省容差，直接比较 GPU、NPU 得出结论，从 `tensor_alignment[]` 可查逐调用结果。三文件交付按普通精度、部署和导出回执独立判定。[定向重跑与比较的阶段契约](../skills/vllm-model-migration/skills/vllm-precision-align/references/contract.md#token-预测对齐)
 
 ### 4.2 支持度分流与明确续接
 
@@ -224,7 +224,7 @@ flowchart TD
 
 普通精度测试中，EvalScope 的 `limit` 为正整数时表示每个所选 subset 的题数上限；未填或为 `null` 时表示所选范围全量。数据选择、实际 sample_ids、评测配置和交接保持一致，不能用示例的小样本数量替代用户输入。输出达到配置上限时保留原生分数并记录截断，不能擅自增加“零截断才算完成”的门槛。 任务质量重跑按 GPU 基线选择的数据范围和原生配置单独预检提示长度与生成预算。
 
-任务质量对齐只使用 EvalScope 的评分证据。报告按原生名称、聚合方式、单位与方向匹配指标。未设置目标时可报告分差。客户提供基线时，精度阶段按评测条件核验已有 NPU 成绩，或委托原生重跑；每次按当前 GPU 分数和目标重新比较。有精度意图且缺少客户基线时，先检索同模型的公开 GPU 基线，查无可核验资料即记录 `not_evaluated` 并继续后续任务。质量评测只留评分及复核所需的证据。对未达标样本，Token 定向复测通过单卡同步 Eager 服务，在同一次贪心生成中关联原生评分和逐步预测。跨端比较使用相同样本和前文，报告首个异常位置。单题张量比较沿用这里确定的题目、前文和异常位置。[客户质量与 Token 复测契约](../skills/vllm-model-migration/references/task-quality.md#从未达标分项进入-token-预测对齐)
+任务质量对齐使用客户声明的 GPU 成绩，按数据集、指标及可选子集匹配有效 NPU 成绩。当前 NPU 原生测量使用 EvalScope，可复核已有测量或按本次请求重跑。未填写 `max_drop` 时，取同指标同范围的发布者阈值或项目默认值，报告退化量、有效阈值和是否达标。有精度意图且缺少客户基线时，先检索同模型的公开 GPU 基线，查无可核验资料即记录 `not_evaluated` 并继续后续任务。质量评测只留评分及复核所需的证据。对未达标样本，Token 定向复测通过单卡同步 Eager 服务，在同一次贪心生成中关联原生评分和逐步预测。跨端比较使用相同样本和前文，报告首个异常位置。单题张量比较沿用这里确定的题目、前文和异常位置。[客户质量与 Token 复测契约](../skills/vllm-model-migration/references/task-quality.md#从未达标分项进入-token-预测对齐)
 
 历史 `analyze` 按原报告或 native 来源身份处理，不查询当前最新版本、不导入评测 SDK、不产生新推理或重新评分；缺失的历史来源不能用新默认值补齐。
 
