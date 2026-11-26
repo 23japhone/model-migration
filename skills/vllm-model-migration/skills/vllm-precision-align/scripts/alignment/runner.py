@@ -111,7 +111,7 @@ def auto_diagnoses(request, work_root, attempt, manifest, timeout, action):
     """评测产出异常后，交给 diagnosis 模块自动定界（方案 B 自动衔接）。"""
     if request.get('auto_diagnose') is False:
         return  # 显式关闭自动诊断
-    for eval_id, result in manifest['results'].items():
+    for eval_id, result in list(manifest['results'].items()):
         if eval_id not in manifest['tasks'].get('evaluations', {}):
             continue  # 只处理评测结果，跳过 diagnoses 等其它组
         for position, anomaly in enumerate(result.get('anomalies', [])):
