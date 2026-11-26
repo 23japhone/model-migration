@@ -42,6 +42,8 @@ class _Handler(BaseHTTPRequestHandler):
             self._send(200, {'prompt': '用户：北京今天天气怎么样 工具：get_weather'})
         elif self.path == '/v1/chat/completions/render':
             self._send(404, {'detail': 'Not Found'})
+        elif self.path == '/v1/completions' and self.server.empty_completion:
+            self._send(200, {'choices': [{'text': '', 'finish_reason': 'stop'}]})
         elif self.path == '/v1/completions':
             self._send(200, {'choices': [{
                 'text': '<tool_call>\n<function=get_weather>\n<parameter=city>\n北京\n</parameter>\n</function>\n</tool_call>',
@@ -55,8 +57,9 @@ class _Handler(BaseHTTPRequestHandler):
 
 
 class MockVLLM:
-    def __init__(self):
+    def __init__(self, *, empty_completion=False):
         self._server = ThreadingHTTPServer(('127.0.0.1', 0), _Handler)
+        self._server.empty_completion = empty_completion
         self.port = self._server.server_address[1]
         self._thread = threading.Thread(target=self._server.serve_forever, daemon=True)
 

@@ -38,7 +38,8 @@ def verdict(values):
 
 
 def execution_status(manifest):
-    items=[item for group in manifest['tasks'].values() for item in group.values()]
+    items=[item for group in ('datasets','deployments','evaluations')
+           for item in manifest['tasks'].get(group,{}).values()]
     rows=list(manifest['tasks']['evaluations'].values())
     if all(x['status']=='completed' for x in rows):return 'completed'
     return 'failed' if any(x['status']=='failed' for x in items) else 'blocked'
@@ -46,8 +47,8 @@ def execution_status(manifest):
 
 def applicable(manifest,key,requested):
     rows=manifest['tasks']['evaluations']
-    values=[row['conclusions'][key] for name,row in manifest['results'].items()
-            if rows[name].get(requested) or row['conclusions'][key]!='not_evaluated']
+    values=[row['conclusions'][key] for row in rows.values() if row.get('conclusions')
+            and (row.get(requested) or row['conclusions'][key]!='not_evaluated')]
     result=verdict(values)
     if result=='pass' and manifest.get('status')!='completed':return 'not_evaluated'
     return result
@@ -56,16 +57,16 @@ def applicable(manifest,key,requested):
 def conclude(manifest):
     status=execution_status(manifest)
     manifest['status']=status
-    validity=[row['conclusions'].get('evaluation_validity','not_evaluated') for row in manifest['results'].values()]
+    rows=manifest['tasks']['evaluations'].values()
+    validity=[row['conclusions']['evaluation_validity'] for row in rows if row.get('conclusions')]
     if status!='completed':validity.append('fail' if status=='failed' else 'review_required')
     manifest['conclusions']['evaluation_validity']=verdict(validity)
     manifest['conclusions']['precision_testing']='pass' if status=='completed' else ('fail' if status=='failed' else 'review_required')
     manifest['conclusions']['comparability']=applicable(manifest,'comparability','baseline_requested')
     manifest['conclusions']['precision_target']=applicable(manifest,'precision_target','targets_requested')
-    diag_values=[manifest['results'][name]['conclusions'].get('demarcation','not_evaluated')
-                 for name in manifest['tasks'].get('diagnoses',{}) if name in manifest['results']]
-    manifest['conclusions']['demarcation']=verdict(diag_values)
-    rows=list(manifest['tasks']['evaluations'].values())
+    manifest['conclusions']['demarcation']=verdict([
+        row.get('conclusions',{}).get('demarcation','not_evaluated')
+        for row in manifest['tasks'].get('diagnoses',{}).values()])
     targets=[row for row in rows if row.get('targets_requested')]
     targets_pass=all(row.get('conclusions',{}).get('precision_target')=='pass' for row in targets)
     manifest['success']=status=='completed' and manifest['conclusions']['evaluation_validity']=='pass' and targets_pass

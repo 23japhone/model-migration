@@ -15,7 +15,7 @@ description: 根据部署和数据交接编排 vLLM/vLLM-Ascend 精度测试、�
 4. 新请求默认 EvalScope，省略 evaluator.version 或使用 latest 时由精度任务核验官方最新稳定版；旧 AISBench Python 配置及显式版本请求继续兼容。阶段不补写 backend/version，不安装依赖、不回退工具；版本或配置不满足时明确阻塞该项。
 5. `run` 显式委托必需准备/部署，随后调用每个精度请求；`analyze` 只调用精度任务的历史分析入口，禁止准备、部署及新推理。完整原始配置、预测和评分仍由精度任务保存，阶段引用固定回执，不以分数或退出0代替有效评测。
 6. 独立项失败继续其他就绪项，取消保留已完成结果并只通知本次自有CLI收敛；服务生命周期始终归 `verify-agent`，借用服务保持运行，不按名称清理。证据不能保存时停止后续外部效果。
-7. 交付阶段manifest、终态task-ledger、绑定台账摘要的handoff、逐项精度报告、原样实际评测条件和服务资源索引。有效评测目标fail仍是completed；缺GPU/目标不宣布对齐或达标，不自动按分数重测。分别报告真实验收、离线测试、未验证项。
+7. 交付阶段manifest、终态task-ledger、绑定台账摘要的handoff、逐项精度报告、原样实际评测条件和服务资源索引。有效评测目标fail仍是completed；缺GPU/目标不宣布对齐或达标，不自动按分数重测。评测明细从 `results` 读取，单题定界从 `tasks.diagnoses` 追溯原报告，阶段定界结论见 `conclusions.demarcation`。分别报告真实验收、离线测试、未验证项。
 
 ## 公开CLI
 

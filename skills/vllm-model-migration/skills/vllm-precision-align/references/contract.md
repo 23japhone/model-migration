@@ -12,6 +12,8 @@
 | evaluations | 非空数组；每项 id 唯一。普通项有 request `{path,sha256}`，可选 dataset/deployment 引用下表依赖；run 可选 result 引用相同输入的有效原 run。未就绪项可仅用 id/blocked_reason，保留阻塞且继续独立项 |
 | datasets | 可选名称→数据准备请求引用；必须有实际评测消费者。由固定 `vllm-dataset-prepare` 公开CLI调用一次，可共享。 |
 | deployments | 可选名称→部署请求引用；必须有实际评测消费者。由固定 `verify-agent` 公开CLI调用一次。service.retention须显式keep，不自动改变原策略。 |
+| diagnoses | 可选的显式单题定界清单。每项提供 id、deployment 和异常 Chat 请求的 badcase 引用。 |
+| auto_diagnose | 默认 true，普通评测按已记录的 HTTP 异常逐题触发定界。设为 false 时仍执行显式定界项。 |
 | timeout_seconds | 每次实际子CLI时限，默认14400，1—86400秒；子任务plan上限60秒，其自身更细时限仍生效。 |
 
 所有引用为规范绝对路径及64位小写SHA256，拒绝符号链接重定向、重复JSON键、非有限数字和未知顶层字段。请求及原始日志不得包含凭据。阶段诊断和CLI展示日志对常见秘密字段作基础脱敏，不保证自由文本秘密识别；冻结的原始请求及任务原文不能以脱敏改变其身份。
@@ -45,11 +47,15 @@ run下可选GPU基线读取失败不阻止单端评测，具体比较限制由�
 包外 `work-root/run-id/vllm-precision-align/UUID/` 包含：
 
 - precision-stage-manifest.json：共同schema_version=1.0、task_id、run_id、operation、inputs、status、success、conclusions、evidence及uncovered；另有tasks/results/resources/errors和next_action。
-- task-ledger.json：datasets、deployments、evaluations各项状态、原因、回执及结论。终态不保留running/not_run；取消前未启动项为cancelled。
+- task-ledger.json：datasets、deployments、evaluations 和 diagnoses 各项状态、原因、回执及结论。终态不保留running/not_run；取消前未启动项为cancelled。
 - precision-stage-handoff.json：固定最终台账SHA256、tasks、逐项报告、资源交接和结论；manifest再固定该handoff的摘要。
 - 原始冻结请求、每次子CLI的plan/执行stdout、stderr、argv、cwd、PID、退出码和超时/取消信息，以及children下的完整原生产物。
 
 阶段status和目标分开：所有必需评测有效结束时completed，精度目标可以fail或not_evaluated；独立执行失败为failed，缺交接或待复核为blocked。单项有效结果即使阶段失败也保留。conclusions分别为precision_testing、evaluation_validity、comparability和precision_target。只有实际请求的全部目标pass才能宣称整体目标通过；未请求目标的项不取消其他明确目标。阶段success要求completed、全部评测有效、所有已请求目标pass。
+
+`results` 的键是评测 ID，只保存原始评测的测量、结论、异常清单和证据。单题定界按诊断 ID 保存在 `tasks.diagnoses`，其中 `receipt` 用路径和 SHA256 引用原始定界报告，报告的 `detailed_report.primary` 给出具体判断。自动项的 `evaluation` 和从零开始的 `anomaly_index` 绑定原评测的异常记录。超时或未能生成报告时，台账保留终态和原因。旧版三组台账仍可读取。
+
+阶段的 `conclusions.demarcation` 独立汇总所有已登记的诊断项。有明确失败时为 `fail`，其次有待复核项时为 `review_required`，全部取得有效通过证据时为 `pass`。无诊断或其余证据不足的组合为 `not_evaluated`。定界得到明确分类即可由子任务判为 `pass`。评测有效性、可比性、质量目标、执行状态及退出码仍由必需评测及其依赖决定。
 
 退出0表示阶段有效完成且所有适用目标通过或未请求目标；1表示执行/证据失败、取消、超时或目标未通过（状态仍可completed）；2表示顶层输入或输出边界无效；3表示必需输入、交接或语义复核不足。不能只凭退出码判断精度是否有效或是否完成。
 

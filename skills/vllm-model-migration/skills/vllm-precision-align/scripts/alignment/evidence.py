@@ -97,7 +97,7 @@ def begin(request,parent,run_id,action):
            'inputs':request,'status':'running','success':False,'started_at':now(),'tasks':tasks,'results':{},
            'resources':[],'errors':[], 'conclusions':{key:'not_evaluated' for key in ('precision_testing','evaluation_validity','comparability','precision_target','demarcation')},
            'evidence':{key:str(attempt/name) for key,name in (('manifest','precision-stage-manifest.json'),('ledger','task-ledger.json'),('handoff','precision-stage-handoff.json'))},
-           'uncovered':['本阶段不诊断、调参、自动重测或执行性能验收'],'next_action':'running'}
+           'uncovered':['本阶段不调参、自动重测或执行性能验收'],'next_action':'running'}
     write(attempt/'stage.request.json',request);save(attempt,value)
     return attempt,value
 
